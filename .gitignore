@@ -1,0 +1,36 @@
+# Node.js dependencies
+node_modules/
+.next/
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# Backups
+backup_original
+*.bak
+*.tmp
+
+# Coverage
+coverage/
+
+#claude
+.claude/

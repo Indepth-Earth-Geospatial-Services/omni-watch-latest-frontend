@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO Connection Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: monospace;
+        background: #1a1a1a;
+        color: #00ff00;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .section {
+        background: #2a2a2a;
+        border: 1px solid #00ff00;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .connected {
+        background: #004400;
+        color: #00ff00;
+      }
+      .disconnected {
+        background: #440000;
+        color: #ff0000;
+      }
+      .log {
+        background: #0a0a0a;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #333;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 12px;
+      }
+      .log-entry {
+        margin: 5px 0;
+        padding: 5px;
+        border-bottom: 1px solid #222;
+      }
+      .event-name {
+        color: #00aaff;
+        font-weight: bold;
+      }
+      .timestamp {
+        color: #888;
+        font-size: 10px;
+      }
+      h2 {
+        color: #00ff00;
+        border-bottom: 2px solid #00ff00;
+        padding-bottom: 10px;
+      }
+      button {
+        background: #00ff00;
+        color: #000;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        margin: 5px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      button:hover {
+        background: #00dd00;
+      }
+      #video-preview {
+        max-width: 100%;
+        height: auto;
+        border: 2px solid #00ff00;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔌 Socket.IO Connection Test</h1>
+
+      <!-- Video Socket (Port 6060) -->
+      <div class="section">
+        <h2>📹 Video Stream Socket (Port 6060)</h2>
+        <div id="video-status" class="status disconnected">DISCONNECTED</div>
+        <p><strong>URL:</strong> http://192.168.1.54:6060</p>
+        <button onclick="connectVideoSocket()">Connect</button>
+        <button onclick="disconnectVideoSocket()">Disconnect</button>
+        <button onclick="clearVideoLog()">Clear Log</button>
+
+        <h3>Events Received:</h3>
+        <div id="video-log" class="log">
+          <div class="log-entry">Waiting for connection...</div>
+        </div>
+
+        <h3>Video Preview:</h3>
+        <img
+          id="video-preview"
+          alt="Video frame will appear here"
+          style="display: none"
+        />
+      </div>
+
+      <!-- Detection Socket (Port 4000) -->
+      <div class="section">
+        <h2>🎯 Detection Socket (Port 4000/detection)</h2>
+        <div id="detection-status" class="status disconnected">
+          DISCONNECTED
+        </div>
+        <p><strong>URL:</strong> http://192.168.1.54:4000/detection</p>
+        <button onclick="connectDetectionSocket()">Connect</button>
+        <button onclick="disconnectDetectionSocket()">Disconnect</button>
+        <button onclick="clearDetectionLog()">Clear Log</button>
+
+        <h3>Events Received:</h3>
+        <div id="detection-log" class="log">
+          <div class="log-entry">Waiting for connection...</div>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="section">
+        <h2>📊 Statistics</h2>
+        <p>
+          Video Frames Received:
+          <strong><span id="frame-count">0</span></strong>
+        </p>
+        <p>
+          Detections Received:
+          <strong><span id="detection-count">0</span></strong>
+        </p>
+        <p>
+          Last Frame FPS: <strong><span id="fps">0</span></strong>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      let videoSocket = null;
+      let detectionSocket = null;
+      let frameCount = 0;
+      let detectionCount = 0;
+      let lastFrameTime = Date.now();
+      let frameCountForFPS = 0;
+
+      // Video Socket Functions
+      function connectVideoSocket() {
+        if (videoSocket && videoSocket.connected) {
+          logVideo("Already connected!", null);
+          return;
+        }
+
+        logVideo("Attempting to connect...", null);
+        videoSocket = io("http://192.168.1.54:6060", {
+          transports: ["websocket", "polling"],
+        });
+
+        // Connection events
+        videoSocket.on("connect", () => {
+          document.getElementById("video-status").className =
+            "status connected";
+          document.getElementById("video-status").textContent = "CONNECTED";
+          logVideo("connect", { socketId: videoSocket.id });
+        });
+
+        videoSocket.on("disconnect", (reason) => {
+          document.getElementById("video-status").className =
+            "status disconnected";
+          document.getElementById("video-status").textContent = "DISCONNECTED";
+          logVideo("disconnect", { reason });
+        });
+
+        videoSocket.on("connect_error", (error) => {
+          logVideo("connect_error", { error: error.message });
+        });
+
+        // Listen to ALL possible events
+        videoSocket.onAny((eventName, ...args) => {
+          logVideo(eventName, args[0]);
+
+          // Try to detect frame data
+          const data = args[0];
+          if (data && (data.data || data.frame)) {
+            handleFrame(data);
+          }
+        });
+
+        // Common event names to try
+        const possibleEvents = [
+          "frame",
+          "video",
+          "stream",
+          "image",
+          "data",
+          "message",
+        ];
+        possibleEvents.forEach((eventName) => {
+          videoSocket.on(eventName, (data) => {
+            handleFrame(data);
+          });
+        });
+      }
+
+      function disconnectVideoSocket() {
+        if (videoSocket) {
+          videoSocket.disconnect();
+          videoSocket = null;
+        }
+      }
+
+      function handleFrame(data) {
+        frameCount++;
+        document.getElementById("frame-count").textContent = frameCount;
+
+        // Calculate FPS
+        frameCountForFPS++;
+        const now = Date.now();
+        const elapsed = now - lastFrameTime;
+        if (elapsed >= 1000) {
+          const fps = Math.round((frameCountForFPS * 1000) / elapsed);
+          document.getElementById("fps").textContent = fps;
+          frameCountForFPS = 0;
+          lastFrameTime = now;
+        }
+
+        // Try to display the frame
+        const imgElement = document.getElementById("video-preview");
+        if (data && data.data) {
+          imgElement.src = "data:image/jpeg;base64," + data.data;
+          imgElement.style.display = "block";
+        } else if (data && typeof data === "string") {
+          imgElement.src = "data:image/jpeg;base64," + data;
+          imgElement.style.display = "block";
+        }
+      }
+
+      function logVideo(eventName, data) {
+        const log = document.getElementById("video-log");
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+
+        const timestamp = new Date().toLocaleTimeString();
+        const dataStr = data
+          ? JSON.stringify(data, null, 2).substring(0, 500)
+          : "null";
+
+        entry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="event-name">${eventName}</span>
+                <pre style="margin: 5px 0; color: #aaa;">${dataStr}</pre>
+            `;
+
+        log.insertBefore(entry, log.firstChild);
+      }
+
+      function clearVideoLog() {
+        document.getElementById("video-log").innerHTML =
+          '<div class="log-entry">Log cleared.</div>';
+      }
+
+      // Detection Socket Functions
+      function connectDetectionSocket() {
+        if (detectionSocket && detectionSocket.connected) {
+          logDetection("Already connected!", null);
+          return;
+        }
+
+        logDetection("Attempting to connect...", null);
+        detectionSocket = io("http://192.168.1.54:4000/detection", {
+          transports: ["websocket", "polling"],
+        });
+
+        // Connection events
+        detectionSocket.on("connect", () => {
+          document.getElementById("detection-status").className =
+            "status connected";
+          document.getElementById("detection-status").textContent = "CONNECTED";
+          logDetection("connect", { socketId: detectionSocket.id });
+        });
+
+        detectionSocket.on("disconnect", (reason) => {
+          document.getElementById("detection-status").className =
+            "status disconnected";
+          document.getElementById("detection-status").textContent =
+            "DISCONNECTED";
+          logDetection("disconnect", { reason });
+        });
+
+        detectionSocket.on("connect_error", (error) => {
+          logDetection("connect_error", { error: error.message });
+        });
+
+        // Listen to ALL possible events
+        detectionSocket.onAny((eventName, ...args) => {
+          logDetection(eventName, args[0]);
+
+          // Count detections
+          if (
+            eventName.toLowerCase().includes("detection") ||
+            eventName === "newDetection" ||
+            eventName === "detection"
+          ) {
+            detectionCount++;
+            document.getElementById("detection-count").textContent =
+              detectionCount;
+          }
+        });
+
+        // Common event names to try
+        const possibleEvents = [
+          "newDetection",
+          "detection",
+          "detect",
+          "object",
+          "data",
+          "message",
+        ];
+        possibleEvents.forEach((eventName) => {
+          detectionSocket.on(eventName, (data) => {
+            detectionCount++;
+            document.getElementById("detection-count").textContent =
+              detectionCount;
+          });
+        });
+      }
+
+      function disconnectDetectionSocket() {
+        if (detectionSocket) {
+          detectionSocket.disconnect();
+          detectionSocket = null;
+        }
+      }
+
+      function logDetection(eventName, data) {
+        const log = document.getElementById("detection-log");
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+
+        const timestamp = new Date().toLocaleTimeString();
+        const dataStr = data ? JSON.stringify(data, null, 2) : "null";
+
+        entry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="event-name">${eventName}</span>
+                <pre style="margin: 5px 0; color: #aaa;">${dataStr}</pre>
+            `;
+
+        log.insertBefore(entry, log.firstChild);
+      }
+
+      function clearDetectionLog() {
+        document.getElementById("detection-log").innerHTML =
+          '<div class="log-entry">Log cleared.</div>';
+      }
+
+      // Auto-connect on page load
+      window.onload = () => {
+        console.log("Socket.IO Test Page Loaded");
+        console.log('Click "Connect" buttons to start testing');
+      };
+    </script>
+  </body>
+</html>
