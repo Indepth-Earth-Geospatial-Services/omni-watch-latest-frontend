@@ -6,6 +6,8 @@ import { MainLayout } from "@/components/layout/main-layout";
 import Modal from "@/components/Modal";
 import { WebRTCStream } from "@/config/webrtc-streams";
 import { useDronesWebSocket } from "@/hooks/useDronesWebSocket";
+import { useDJIDevices } from "@/hooks/useDJIDevices";
+import { DJI_CONFIG } from "@/lib/dji/config";
 import { RegisterDeviceModal } from "@/components/features/devices/RegisterDeviceModal";
 import { EditDeviceModal } from "@/components/features/devices/EditDeviceModal";
 import { DroneAPIResponse } from "@/services/api/drone-api";
@@ -29,26 +31,32 @@ export default function LiveFeedsPage() {
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [deviceToEdit, setDeviceToEdit] = useState<DroneAPIResponse | null>(null);
 
-  // Get all streams from database with WebSocket real-time updates
-  const { drones: allStreams = [], isLoading, error, isConnected, refresh, getRawDrone } = useDronesWebSocket();
+  // Both hooks always called — Rules of Hooks forbids conditional hook calls.
+  // DJI_CONFIG.USE_DJI_CLOUD selects which result drives the UI.
+  const wsResult  = useDronesWebSocket();
+  const djiResult = useDJIDevices();
 
-  // Helper to open edit modal with a specific stream
+  const allStreams: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD
+    ? (djiResult.data ?? [])
+    : (wsResult.drones ?? []);
+
+  const isLoading   = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.isLoading  : wsResult.isLoading;
+  const error       = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.error       : wsResult.error;
+  const isConnected = DJI_CONFIG.USE_DJI_CLOUD ? !djiResult.isError    : wsResult.isConnected;
+
+  // Refresh: React Query exposes refetch(); WebSocket hook exposes refresh()
+  const refresh = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.refetch : wsResult.refresh;
+
+  // Edit device — only valid in the old API path (DroneAPIResponse shape).
+  // When DJI is active the Edit Device button is hidden; DJI device editing comes in a later phase.
   const handleEditDevice = (streamId: string) => {
-    // Get full drone data from cache (NO API CALL!)
-    const droneData = getRawDrone(streamId);
+    if (DJI_CONFIG.USE_DJI_CLOUD) return;
+    const droneData = wsResult.getRawDrone(streamId);
     if (droneData) {
       setDeviceToEdit(droneData);
       setShowEditModal(true);
-    } else {
-      console.error('Drone data not found in cache:', streamId);
     }
   };
-
-  // Debug logging
-  console.log("All streams from DB:", allStreams);
-  console.log("All streams length:", allStreams.length);
-  console.log("Loading:", isLoading);
-  console.log("Error:", error);
 
   // Filter streams based on search and feed type
   const filteredStreams = useMemo(() => {
@@ -103,16 +111,18 @@ export default function LiveFeedsPage() {
         {isLoading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="text-gray-400 mt-4">Loading streams from database...</p>
+            <p className="text-gray-400 mt-4">
+              {DJI_CONFIG.USE_DJI_CLOUD ? 'Loading devices from DJI server…' : 'Loading streams from database…'}
+            </p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
           <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
-            <p className="text-red-400">Failed to load streams: {error.message}</p>
+            <p className="text-red-400">Failed to load streams: {(error as Error)?.message}</p>
             <button
-              onClick={() => refresh()}
+              onClick={() => refresh?.()}
               className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm"
             >
               Retry
@@ -124,7 +134,11 @@ export default function LiveFeedsPage() {
         {!isConnected && !isLoading && (
           <div className="bg-yellow-900/20 border border-yellow-500 rounded-lg p-3 mb-6 flex items-center">
             <i className="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
-            <p className="text-yellow-400 text-sm">Disconnected from real-time updates. Attempting to reconnect...</p>
+            <p className="text-yellow-400 text-sm">
+              {DJI_CONFIG.USE_DJI_CLOUD
+                ? 'Cannot reach DJI server. Check that the backend is running.'
+                : 'Disconnected from real-time updates. Attempting to reconnect…'}
+            </p>
           </div>
         )}
 
@@ -218,12 +232,14 @@ export default function LiveFeedsPage() {
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-3 mt-4">
             <button
-              onClick={() => refresh()}
+              onClick={() => refresh?.()}
               className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
             >
               <i className="fas fa-sync mr-2"></i>
               Refresh
             </button>
+            {/* Edit Device is only available in the old API path — DJI device editing comes in a later phase */}
+            {!DJI_CONFIG.USE_DJI_CLOUD && (
             <div className="relative">
               <button
                 onClick={() => setShowDeviceSelector(!showDeviceSelector)}
@@ -268,6 +284,7 @@ export default function LiveFeedsPage() {
                 </div>
               )}
             </div>
+            )}
             <button
               onClick={() => setShowRegisterModal(true)}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
@@ -319,10 +336,9 @@ export default function LiveFeedsPage() {
                     No Device Connected
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
-                    Configure streams in webrtc-streams.ts
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Debug: allStreams={allStreams.length}, filtered={filteredStreams.length}
+                    {DJI_CONFIG.USE_DJI_CLOUD
+                      ? 'No devices found. Ensure devices are bound to the workspace.'
+                      : 'Register a device using the button above.'}
                   </p>
                 </div>
               )}
@@ -337,9 +353,6 @@ export default function LiveFeedsPage() {
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     Try adjusting your search or filter
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Debug: allStreams={allStreams.length}, filtered={filteredStreams.length}, type={selectedFeedType}
                   </p>
                 </div>
               )}

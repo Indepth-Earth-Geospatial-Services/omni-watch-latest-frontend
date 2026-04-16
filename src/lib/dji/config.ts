@@ -5,6 +5,10 @@ export const DJI_CONFIG = {
   // Full base URL assembled from env vars — e.g. "http://192.168.1.10:6789"
   BASE_URL: `http://${process.env.NEXT_PUBLIC_API_IP ?? 'localhost'}:${process.env.NEXT_PUBLIC_API_PORT ?? '6789'}`,
 
+  // WebSocket base URL for the WebRTC signalling server — e.g. "ws://192.168.1.10:6080"
+  // Each device stream is at WEBRTC_BASE_URL/{device_sn}
+  WEBRTC_BASE_URL: `ws://${process.env.NEXT_PUBLIC_API_IP ?? 'localhost'}:${process.env.NEXT_PUBLIC_WEBRTC_PORT ?? '6080'}`,
+
   WORKSPACE_ID: process.env.NEXT_PUBLIC_WORKSPACE_ID ?? '',
   DEVICE_SN: process.env.NEXT_PUBLIC_DEVICE_SN ?? '',
 

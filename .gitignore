@@ -34,3 +34,7 @@ coverage/
 
 #claude
 .claude/
+
+# mcp
+.mcp.json
+.playwright-mcp/

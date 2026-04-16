@@ -25,7 +25,7 @@ import { useAuth } from "@/providers/AuthProvider";
 const formSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }),
-  remember: z.boolean().default(false),
+  remember: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;

@@ -50,8 +50,8 @@ export interface DJIDeviceProperty {
 }
 
 export interface BindDeviceRequest {
-  sn: string;
+  user_id: string;              // DJI user ID of the binding user (from GET /users/current)
   workspace_id: string;
-  device_name: string;
-  nickname?: string;
+  device_sn: string;            // serial number of the drone being bound
+  child_device_sn?: string;     // serial number of the attached payload/camera, if any
 }

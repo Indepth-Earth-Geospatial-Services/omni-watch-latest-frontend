@@ -1,5 +1,8 @@
 "use client";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useDJIDevices, useBoundDevices } from "@/hooks/useDJIDevices";
+import { useFlightAreas, useSyncFlightAreas } from "@/hooks/useMapElements";
+import { DJI_CONFIG } from "@/lib/dji/config";
 import { LayoutTemplate } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,7 +14,6 @@ import Map, {
 } from "react-map-gl/maplibre";
 import {
   getAllStreams,
-  getStreamsByFeedType,
   WebRTCStream,
 } from "@/config/webrtc-streams";
 
@@ -67,7 +69,14 @@ function GeoMap() {
     null
   );
 
-  const [deviceList, setDeviceList] = useState<WebRTCStream[]>(getAllStreams());
+  // DJI Cloud hooks — always called (Rules of Hooks); feature flag selects which result is used
+  const { data: djiDevices = [] } = useDJIDevices();
+  const { data: boundDevices = [] } = useBoundDevices();
+  const { data: flightAreas = [] } = useFlightAreas();
+  const { mutate: syncGeofences, isPending: isSyncing } = useSyncFlightAreas();
+
+  const staticDeviceList = getAllStreams();
+  const deviceList: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD ? djiDevices : staticDeviceList;
 
 
   const [selectedStyle, setSelectedStyle] = useState("dark");
@@ -92,10 +101,8 @@ function GeoMap() {
     const updatedPositions: Record<string, DronePositionType> = {};
     let hasChanges = false;
 
-    console.log(`📡 Processing ${droneUpdates.size} drone(s) from telemetry...`);
-
     // Iterate through all drones that have sent telemetry
-    droneUpdates.forEach((update, sn) => {
+    droneUpdates.forEach((_update, sn) => {
       const telemetry = getProcessedDroneData(sn);
 
       if (telemetry) {
@@ -106,7 +113,6 @@ function GeoMap() {
         if (currentKey !== prevKey) {
           hasChanges = true;
           prevTelemetryRef.current[sn] = currentKey;
-          console.log(`✅ Asset detected: ${sn} at [${telemetry.latitude}, ${telemetry.longitude}]`);
         }
 
         const deviceNickname = deviceList.find(device => device.id === sn)?.metadata?.alias || sn;
@@ -117,14 +123,11 @@ function GeoMap() {
           longitude: telemetry.longitude,
           latitude: telemetry.latitude,
         };
-      } else {
-        console.log(`⚠️ Skipping ${sn}: Invalid coordinates`, telemetry);
       }
     });
 
     // Only trigger re-render if positions actually changed
     if (hasChanges) {
-      console.log(`🗺️ Updating map with ${Object.keys(updatedPositions).length} asset(s)`);
       setDronePositions(updatedPositions);
     }
   }, [droneUpdates, getProcessedDroneData]);
@@ -230,6 +233,30 @@ function GeoMap() {
         {dronePositionsArray.map((drone) => (
           <PulseMarker key={drone.sn} drone={drone} onClick={flyToDrone} />
         ))}
+
+        {/* Flight area markers — DJI geofences (shown when USE_DJI_CLOUD=true) */}
+        {DJI_CONFIG.USE_DJI_CLOUD && flightAreas.map((area) => {
+          // Extract a lat/lng anchor from the content if available, otherwise skip rendering
+          const content = area.content as any;
+          const lng: number | undefined = content?.longitude ?? content?.center?.longitude;
+          const lat: number | undefined = content?.latitude ?? content?.center?.latitude;
+          if (lng === undefined || lat === undefined) return null;
+
+          return (
+            <Marker key={area.id} longitude={lng} latitude={lat} anchor="center">
+              <div
+                title={area.name}
+                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs font-bold cursor-default ${
+                  area.status === 1
+                    ? 'border-red-500 bg-red-500/20 text-red-400'
+                    : 'border-gray-500 bg-gray-500/20 text-gray-400'
+                }`}
+              >
+                ⛔
+              </div>
+            </Marker>
+          );
+        })}
 
         {/* Popup for selected drone */}
         {selectedDrone && selectedDroneInfo && (
@@ -359,6 +386,26 @@ function GeoMap() {
             Zoom Extent
           </button>
         </div>
+
+        {/* Sync flight areas to devices — DJI Cloud only */}
+        {DJI_CONFIG.USE_DJI_CLOUD && (
+          <div className="mb-4">
+            <button
+              onClick={() =>
+                syncGeofences({
+                  device_sn: boundDevices.map((d) => d.device_sn),
+                })
+              }
+              disabled={isSyncing || boundDevices.length === 0}
+              className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-3 rounded text-sm transition-colors"
+            >
+              {isSyncing ? 'Syncing...' : `Sync Geofences (${flightAreas.length})`}
+            </button>
+            {boundDevices.length === 0 && (
+              <p className="text-xs text-gray-500 mt-1 text-center">No bound devices</p>
+            )}
+          </div>
+        )}
 
         {/* Drone List */}
         <div className="h-full overflow-auto">

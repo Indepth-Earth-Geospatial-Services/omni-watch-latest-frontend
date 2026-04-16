@@ -2,7 +2,7 @@
 // All requests go through the Next.js proxy at /api/dji/... — never directly to the DJI server.
 
 import { DJI_CONFIG } from './config';
-import { setToken, clearToken } from './token-store';
+import { setToken, clearToken, getToken } from './token-store';
 import type { LoginResponse, RefreshResponse } from '@/lib/types';
 
 // LoginResponse and RefreshResponse are the canonical types from src/lib/types/auth.ts
@@ -48,9 +48,15 @@ export async function loginDJI(
  * On failure clears the token so the user is redirected to sign-in.
  */
 export async function refreshDJIToken(): Promise<void> {
+  const currentToken = getToken();
+
   const response = await fetch(`/api/dji${DJI_CONFIG.MANAGE}/token/refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // The DJI server uses the current token to identify which session to refresh
+      ...(currentToken ? { 'x-auth-token': currentToken } : {}),
+    },
   });
 
   const json = await response.json();

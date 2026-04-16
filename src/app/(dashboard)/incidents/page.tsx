@@ -1,10 +1,12 @@
 "use client"
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { StatCard } from '@/components/features/metrics/stat-card'
 import { SearchFilter } from '@/components/features/filters/search-filter'
 import { formatTimeAgo } from '@/lib/utils'
+import { useWorkspaceHMS } from '@/hooks/useHMS'
+import { DJI_CONFIG } from '@/lib/dji/config'
 
 interface Incident {
   id: string

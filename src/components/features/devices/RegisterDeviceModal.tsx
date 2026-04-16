@@ -6,6 +6,9 @@ import { createDrone, CreateDronePayload } from '@/services/api/drone-api';
 import { useUnregisteredDevices } from '@/hooks/useUnregisteredDevices';
 import { SURVEILLANCE_CLASSES } from '@/constants/yolo-classes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useBindDevice } from '@/hooks/useDJIDevices';
+import { DJI_CONFIG } from '@/lib/dji/config';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface RegisterDeviceModalProps {
   isOpen: boolean;
@@ -20,6 +23,7 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
   const [deviceType, setDeviceType] = useState<DeviceType>('DRONE');
   const { unregisteredDevices } = useUnregisteredDevices();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -51,7 +55,7 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Mutation for creating drone
+  // Old API mutation — used when USE_DJI_CLOUD=false, or for BODY CAM / CCTV devices
   const createMutation = useMutation({
     mutationFn: (payload: CreateDronePayload) => createDrone(payload),
     onSuccess: () => {
@@ -63,6 +67,10 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
       setErrors({ submit: error.message || 'Failed to register device' });
     },
   });
+
+  // DJI Cloud API mutation — used when USE_DJI_CLOUD=true and device type is DRONE
+  // Binds the physical DJI device to the workspace by its serial number
+  const bindMutation = useBindDevice();
 
   const resetForm = () => {
     setStep('device-type');
@@ -96,7 +104,6 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
           camera: device.telemetryData.data.cameras.map((cam: any) => cam.payload_index),
         }));
       }
-      console.log('Selected device:', device);
     }
   }, [formData.serialNumber, deviceType, unregisteredDevices]);
 
@@ -175,40 +182,50 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
   };
 
   const handleSubmit = async () => {
-    // Generate unique serial number for Body Cam and CCTV if not already set
+    // DJI Cloud path — only for DRONE type (BODY CAM / CCTV are not DJI Cloud devices)
+    if (DJI_CONFIG.USE_DJI_CLOUD && deviceType === 'DRONE') {
+      bindMutation.mutate(
+        {
+          user_id:       user?.user_id ?? '',
+          workspace_id:  user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID,
+          device_sn:     formData.serialNumber,
+        },
+        {
+          onSuccess: () => { onClose(); resetForm(); },
+          onError:   (err: any) => setErrors({ submit: err.message || 'Failed to bind device' }),
+        }
+      );
+      return;
+    }
+
+    // Old API path — used when USE_DJI_CLOUD=false, or for BODY CAM / CCTV devices
     let finalSerialNumber = formData.serialNumber;
     if (deviceType !== 'DRONE' && !finalSerialNumber) {
-      // Generate format: BODYCAM-XXXXXX or CCTV-XXXXXX
       const timestamp = Date.now().toString(36).toUpperCase();
       const random = Math.random().toString(36).substring(2, 6).toUpperCase();
       finalSerialNumber = `${deviceType.replace(' ', '')}-${timestamp}-${random}`;
     }
 
-    // For drones, streamUrl might be empty initially (set when stream is available)
-    // For Body Cam/CCTV, streamUrl is the RTSP/RTMP URL they provided
-    const streamUrl = deviceType === 'DRONE' ? '' : formData.streamUrl;
-
     const payload: CreateDronePayload = {
       deviceSerialNumber: finalSerialNumber,
-      deviceName: formData.deviceName,
-      deviceCategory: deviceType,
+      deviceName:         formData.deviceName,
+      deviceCategory:     deviceType,
       isUsingAiDetection: formData.useAI,
-      streamIsOn: false,
-      streamUrl: streamUrl,
+      streamIsOn:         false,
+      streamUrl:          deviceType === 'DRONE' ? '' : formData.streamUrl,
       metadata: {
-        alias: formData.alias,
+        alias:       formData.alias,
         description: formData.description,
       },
       streamCredentials: {
         userName: formData.useAI ? formData.userName : '',
         password: formData.useAI ? formData.password : '',
-        port: formData.useAI ? formData.port : '8554',
+        port:     formData.useAI ? formData.port : '8554',
       },
-      cameras: formData.camera, // Camera IDs (kept for backward compatibility)
-      detectionClasses: formData.useAI ? formData.selectedClasses : [], // YOLO class IDs as numbers
+      cameras:         formData.camera,
+      detectionClasses: formData.useAI ? formData.selectedClasses : [],
     };
 
-    console.log('Submitting device registration:', payload);
     createMutation.mutate(payload);
   };
 
@@ -269,9 +286,9 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
             {formData.useAI && <span className={step === 'incident-classes' ? 'text-blue-400 font-medium' : ''}>Incident Classes</span>}
             <span className={step === 'confirm' ? 'text-blue-400 font-medium' : ''}>Confirm</span>
           </div>
-          <div className="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+          <div className="bg-gray-700 rounded-full h-1 mt-2">
             <div
-              className="h-full bg-blue-500 transition-all duration-300"
+              className="bg-blue-500 h-1 rounded-full transition-all"
               style={{
                 width: step === 'device-type' ? '25%' : step === 'device-info' ? '50%' : step === 'incident-classes' ? '75%' : '100%'
               }}
@@ -323,10 +340,10 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
           </button>
           <button
             onClick={step === 'confirm' ? handleSubmit : handleNext}
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || bindMutation.isPending}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {createMutation.isPending ? (
+            {(createMutation.isPending || bindMutation.isPending) ? (
               <>
                 <i className="fas fa-spinner fa-spin mr-2"></i>
                 Registering...

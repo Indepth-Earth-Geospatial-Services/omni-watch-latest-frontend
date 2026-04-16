@@ -5,7 +5,9 @@ import { MainLayout } from '@/components/layout/main-layout'
 import { StatCard } from '@/components/features/metrics/stat-card'
 import { WebRTCStream } from '@/config/webrtc-streams'
 import { useDronesWebSocket } from '@/hooks/useDronesWebSocket'
+import { useDJIDevices } from '@/hooks/useDJIDevices'
 import { useWebRTCStream } from '@/hooks/use-webrtc-stream'
+import { DJI_CONFIG } from '@/lib/dji/config'
 
 // Compact stream card for dashboard (no modal, just shows video)
 function DashboardStreamCard({ stream }: { stream: WebRTCStream }) {
@@ -95,11 +97,23 @@ function DashboardStreamCard({ stream }: { stream: WebRTCStream }) {
 }
 
 export default function DashboardPage() {
-  // Get all streams from database with WebSocket real-time updates
-  const { drones: allStreams = [], isLoading, error, isConnected } = useDronesWebSocket();
+  // Both hooks are always called — Rules of Hooks requires no conditional hook calls.
+  // DJI_CONFIG.USE_DJI_CLOUD (set in .env.local) selects which result is active.
+  const wsResult  = useDronesWebSocket();
+  const djiResult = useDJIDevices();
+
+  const allStreams: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD
+    ? (djiResult.data ?? [])
+    : (wsResult.drones ?? []);
+
+  const isLoading  = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.isLoading  : wsResult.isLoading;
+  const error      = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.error       : wsResult.error;
+  // WebSocket has a live isConnected flag; DJI polling is "connected" whenever data exists
+  const isConnected = DJI_CONFIG.USE_DJI_CLOUD ? !djiResult.isError   : wsResult.isConnected;
+
   const onlineStreams = allStreams.filter((s: WebRTCStream) => s.isOnline);
-  const totalStreams = allStreams.length;
-  const onlineCount = onlineStreams.length;
+  const totalStreams  = allStreams.length;
+  const onlineCount   = onlineStreams.length;
 
   return (
     <div className="bg-background text-foreground min-h-screen">
@@ -108,14 +122,16 @@ export default function DashboardPage() {
         {isLoading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="text-gray-400 mt-4">Loading streams from database...</p>
+            <p className="text-gray-400 mt-4">
+              {DJI_CONFIG.USE_DJI_CLOUD ? 'Loading devices from DJI server…' : 'Loading streams from database…'}
+            </p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
           <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
-            <p className="text-red-400">Failed to load streams: {error.message}</p>
+            <p className="text-red-400">Failed to load streams: {(error as Error)?.message}</p>
           </div>
         )}
 
@@ -123,7 +139,11 @@ export default function DashboardPage() {
         {!isConnected && !isLoading && (
           <div className="bg-yellow-900/20 border border-yellow-500 rounded-lg p-3 mb-6 flex items-center">
             <i className="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
-            <p className="text-yellow-400 text-sm">Disconnected from real-time updates. Attempting to reconnect...</p>
+            <p className="text-yellow-400 text-sm">
+              {DJI_CONFIG.USE_DJI_CLOUD
+                ? 'Cannot reach DJI server. Check that the backend is running.'
+                : 'Disconnected from real-time updates. Attempting to reconnect…'}
+            </p>
           </div>
         )}
 

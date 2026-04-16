@@ -20,7 +20,6 @@ export interface VideoCapacity {
 }
 
 export interface StartStreamRequest {
-  device_sn: string;
   video_id: string;               // combined identifier: "{device_sn}/{camera_index}/{video_index}"
   url_type: number;               // 0 = RTMP, 2 = WebRTC
   url: string;                    // destination stream URL
@@ -28,20 +27,17 @@ export interface StartStreamRequest {
 }
 
 export interface StopStreamRequest {
-  device_sn: string;
   video_id: string;
 }
 
 export interface UpdateStreamRequest {
-  device_sn: string;
   video_id: string;
   video_quality: number;
 }
 
 export interface SwitchStreamRequest {
-  device_sn: string;
   video_id: string;
-  camera_mode: number; // 0 = wide, 1 = zoom, 2 = IR thermal
+  video_type: string; // "normal" | "wide" | "IR" — matches VideoCapacity.video_type
 }
 
 export interface StreamResponse {

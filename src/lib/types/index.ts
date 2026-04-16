@@ -9,3 +9,4 @@ export * from './wayline';
 export * from './control';
 export * from './user';
 export * from './firmware';
+export * from './logs';

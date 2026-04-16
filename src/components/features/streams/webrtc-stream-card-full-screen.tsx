@@ -3,6 +3,7 @@
 import { WebRTCStream } from "@/config/webrtc-streams";
 import { useWebRTCStream } from "@/hooks/use-webrtc-stream";
 import { cn } from "@/lib/utils";
+import { StreamControlPanel } from "./StreamControlPanel";
 
 interface WebRTCStreamCardFullScreenProps {
   stream: WebRTCStream;
@@ -204,6 +205,9 @@ export function WebRTCStreamCardFullScreen({
             </p>
           </div>
         </div>
+
+        {/* DJI stream controls — lens, quality, start/stop (hidden for non-DJI or non-DRONE) */}
+        <StreamControlPanel stream={stream} />
       </div>
     </div>
   );

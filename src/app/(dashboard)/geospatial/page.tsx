@@ -1,7 +1,6 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Globe } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import GeoMap from "@/components/features/geospaital-map/geo-map";
 
 export default function GeospatialPage() {
@@ -22,7 +21,15 @@ export default function GeospatialPage() {
                   Integration with mapping services coming soon
                 </p>
               </div> */}
-            <GeoMap />
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center min-h-96 text-muted-foreground">
+                  Loading map...
+                </div>
+              }
+            >
+              <GeoMap />
+            </Suspense>
           </div>
         </CardContent>
       </Card>

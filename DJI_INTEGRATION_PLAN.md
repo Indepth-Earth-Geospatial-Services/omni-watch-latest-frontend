@@ -71,29 +71,29 @@ Phase 1 (Foundation)
 
 ## Phase 1 — Foundation
 
-> **Status:** [ ] Not Started
+> **Status:** [x] Complete
 
 **Goal:** API client, URL builder, TypeScript types, proxy Route Handler.
 No other phase can begin without this.
 
-### Files to Create
+### Files Created
 
 | File                                 | Purpose                                                                                                                                                                                |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/dji/config.ts`              | Reads all `NEXT_PUBLIC_*` env vars. Exports `BASE_URL`, `WORKSPACE_ID`, `DEVICE_SN`, and all 6 version prefix strings. Single source of truth — no other file reads env vars directly. |
-| `src/lib/dji/client.ts`              | Typed `djiRequest<T>()` wrapper. Attaches JWT, calls the proxy, normalises errors, retries once on 401.                                                                                |
-| `src/lib/dji/types/auth.ts`          | `LoginRequest`, `LoginResponse`, `RefreshResponse`                                                                                                                                     |
-| `src/lib/dji/types/device.ts`        | `DJIDevice`, `DJIDeviceTopology`, `DJIBoundDevicesResponse`, `DJIDeviceProperty`                                                                                                       |
-| `src/lib/dji/types/livestream.ts`    | `StreamCapacity`, `StartStreamRequest`, `StreamResponse`                                                                                                                               |
-| `src/lib/dji/types/hms.ts`           | `HMSMessage`, `HMSListResponse`                                                                                                                                                        |
-| `src/lib/dji/types/map.ts`           | `ElementGroup`, `MapElement`, `FlightArea`, `FlightAreaSyncRequest`                                                                                                                    |
-| `src/lib/dji/types/media.ts`         | `MediaFile`, `FastUploadResponse`, `STSCredentials`                                                                                                                                    |
-| `src/lib/dji/types/wayline.ts`       | `Wayline`, `FlightTask`, `JobStatus`                                                                                                                                                   |
-| `src/lib/dji/types/control.ts`       | `FlyToPointRequest`, `TakeoffRequest`, `DRCSession`                                                                                                                                    |
-| `src/lib/dji/types/user.ts`          | `DJIUser`, `UpdateUserRequest`                                                                                                                                                         |
-| `src/lib/dji/types/firmware.ts`      | `FirmwareRelease`, `OTARequest`                                                                                                                                                        |
-| `src/lib/dji/types/index.ts`         | Re-exports all types above                                                                                                                                                             |
-| `src/app/api/dji/[...path]/route.ts` | **Proxy Route Handler.** Transparently forwards all methods to `http://{IP}:{PORT}/...`, streams the response back, passes through status codes, normalises errors.                    |
+| `src/lib/dji/config.ts`              | Reads all `NEXT_PUBLIC_*` env vars. Exports `BASE_URL`, `WEBRTC_BASE_URL`, `WORKSPACE_ID`, `DEVICE_SN`, all 6 version prefix strings, `USE_DJI_CLOUD` flag. Single source of truth.  |
+| `src/lib/dji/client.ts`              | Typed `djiRequest<T>()` wrapper. Attaches JWT, calls the proxy, normalises errors, retries once on 401 with lazy `import('./auth-api')` to avoid circular dependency.                  |
+| `src/lib/types/auth.ts`              | `LoginRequest`, `LoginResponse`, `RefreshResponse` *(types live in `src/lib/types/`, not `src/lib/dji/types/`)*                                                                        |
+| `src/lib/types/device.ts`            | `DJIDevice`, `DJIDeviceTopology`, `DJIBoundDevicesResponse`, `DJIDeviceProperty`, `BindDeviceRequest`                                                                                  |
+| `src/lib/types/livestream.ts`        | `StreamCapacity`, `StartStreamRequest`, `StopStreamRequest`, `UpdateStreamRequest`, `SwitchStreamRequest`, `StreamResponse`                                                             |
+| `src/lib/types/hms.ts`               | `HMSMessage`, `HMSListResponse`                                                                                                                                                        |
+| `src/lib/types/map.ts`               | `ElementGroup`, `MapElement`, `AddElementRequest`, `FlightArea`, `AddFlightAreaRequest`, `SyncFlightAreaRequest`, `DeviceFlightAreaStatus`                                              |
+| `src/lib/types/media.ts`             | `MediaFile`, `FastUploadResponse`, `STSCredentials`                                                                                                                                    |
+| `src/lib/types/wayline.ts`           | `Wayline`, `FlightTask`, `JobStatus`                                                                                                                                                   |
+| `src/lib/types/control.ts`           | `FlyToPointRequest`, `TakeoffRequest`, `DRCSession`                                                                                                                                    |
+| `src/lib/types/user.ts`              | `DJIUser`, `UpdateUserRequest`                                                                                                                                                         |
+| `src/lib/types/firmware.ts`          | `FirmwareRelease`, `OTARequest`                                                                                                                                                        |
+| `src/lib/types/index.ts`             | Re-exports all types above                                                                                                                                                             |
+| `src/app/api/dji/[...path]/route.ts` | **Proxy Route Handler.** Forwards all methods to DJI server, streams responses back, strips hop-by-hop headers, 502 on failure.                                                        |
 
 ### Endpoints Consumed
 
@@ -107,21 +107,28 @@ None yet.
 
 ## Phase 2 — Authentication
 
-> **Status:** [ ] Not Started | **Depends on:** Phase 1
+> **Status:** [x] Complete | **Depends on:** Phase 1
 
-**Goal:** Wire up sign-in, JWT storage, silent token refresh, and middleware route protection.
+**Goal:** Wire up sign-in, JWT storage, silent token refresh, and route protection.
 
-### Files to Create / Modify
+### Files Created / Modified
 
 | File                              | Action | Purpose                                                                                                                                                                 |
 | --------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/dji/token-store.ts`      | Create | `getToken()`, `setToken(token, expiresAt)`, `clearToken()` — backed by `localStorage` with expiry timestamp. Swap to httpOnly cookies later without touching consumers. |
-| `src/lib/dji/auth-api.ts`         | Create | `loginDJI(username, password, flag)` → stores token. `refreshDJIToken()` → updates store.                                                                               |
-| `src/providers/AuthProvider.tsx`  | Create | Context with `{ user, isAuthenticated, login, logout, isLoading }`. Reads token on mount, fetches current user if token exists.                                         |
+| `src/lib/dji/token-store.ts`      | Create | `getToken()`, `setToken(token, expiresAt)`, `clearToken()` — two-layer: localStorage (real JWT) + `SameSite=Strict` cookie signal for Edge. SSR-guarded.               |
+| `src/lib/dji/auth-api.ts`         | Create | `loginDJI(username, password, flag)` → stores token. `refreshDJIToken()` → sends current token in `x-auth-token` header (required by server to identify session).      |
+| `src/providers/AuthProvider.tsx`  | Create | Context with `{ user, isAuthenticated, login, logout, isLoading, loginError }`. Proactive refresh timer fires 60 s before expiry.                                       |
 | `src/providers/Providers.tsx`     | Modify | Wrap `QueryProvider` inside `AuthProvider`.                                                                                                                             |
-| `src/middleware.ts`               | Create | Guards all `/(dashboard)/*` routes. Redirects unauthenticated → `/sign-in`. Redirects authenticated users away from `/sign-in` → `/dashboard`.                          |
-| `src/hooks/useAuth.ts`            | Create | `useLogin()` mutation, `useCurrentUser()` query. Re-exports auth context values.                                                                                        |
-| `src/app/(auth)/sign-in/page.tsx` | Modify | Replace `console.log` / `alert` stub → call `useLogin()`. Show loading state. Show server errors inline via `setError`. Redirect to `/dashboard` on success.            |
+| `src/proxy.ts`                    | Create | Next.js v16 route guard using `proxy` export (not `middleware.ts`). Guards 10 dashboard routes, bounces authenticated users away from `/sign-in`.                       |
+| `src/app/(auth)/sign-in/page.tsx` | Modify | Calls `useAuth().login()`, shows `loginError` inline, no `console.log`/`alert`, stable `PARTICLES` array, fixed `z.boolean()` (removed `.default(false)` Zod bug).     |
+
+### Endpoint Body/Response Fields (verified against docs)
+
+| Endpoint | Auth | Body | Notes |
+| --- | --- | --- | --- |
+| `POST /manage/api/v1/login` | None | `username`, `password`, `flag` | Login has NO x-auth-token header |
+| `POST /manage/api/v1/token/refresh` | `x-auth-token` | None | Refresh needs current token in header; no body required |
+| `GET /manage/api/v1/users/current` | `x-auth-token` | None | Path only |
 
 ### Endpoints Consumed
 
@@ -138,19 +145,37 @@ None yet.
 
 ## Phase 3 — Device Layer
 
-> **Status:** [ ] Not Started | **Depends on:** Phase 1, 2
+> **Status:** [x] Complete (⚠️ see contradictions below) | **Depends on:** Phase 1, 2
 
 **Goal:** Real device listing, binding, unbinding, and property control. Replaces old `drone-api.ts`.
 
-### Files to Create / Modify
+### Files Created / Modified
 
 | File                                                      | Action | Purpose                                                                                                                                                                                          |
 | --------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `src/lib/dji/device-api.ts`                               | Create | `getDJIDevices()`, `getDJIDevice()`, `bindDevice()`, `getBoundDevices()`, `unbindDevice()`, `setDeviceProperty()`, `getDeviceTopologies()`                                                       |
-| `src/hooks/useDJIDevices.ts`                              | Create | `useDJIDevices()` — 30s refetch, maps `DJIDevice[]` to `WebRTCStream` shape so existing stream cards work unchanged. `useBindDevice()`, `useUnbindDevice()`, `useSetDeviceProperty()` mutations. |
-| `src/components/features/devices/RegisterDeviceModal.tsx` | Modify | Call `useBindDevice()` when `NEXT_PUBLIC_USE_DJI_CLOUD=true`. Keep old flow as fallback.                                                                                                         |
-| `src/app/(dashboard)/dashboard/page.tsx`                  | Modify | Swap `useDronesWebSocket()` → `useDJIDevices()` when flag is set.                                                                                                                                |
-| `src/app/(dashboard)/live-feed/page.tsx`                  | Modify | Same swap as dashboard.                                                                                                                                                                          |
+| `src/hooks/useDJIDevices.ts`                              | Create | `useDJIDevices()` — 30s refetch, maps `DJIDevice[]` → `WebRTCStream` shape. `useBindDevice()`, `useUnbindDevice()`, `useSetDeviceProperty()` mutations. Livestream hooks also merged here.      |
+| `src/components/features/devices/RegisterDeviceModal.tsx` | Modify | Calls `useBindDevice()` when `USE_DJI_CLOUD=true` and `deviceType === 'DRONE'`. Old path kept for BODY CAM / CCTV.                                                                               |
+| `src/app/(dashboard)/dashboard/page.tsx`                  | Modify | Both `useDronesWebSocket()` and `useDJIDevices()` always called (Rules of Hooks); flag selects active result.                                                                                    |
+| `src/app/(dashboard)/live-feed/page.tsx`                  | Modify | Same hook-swap pattern. Removed 5 `console.log/error` calls. Edit Device button hidden when `USE_DJI_CLOUD=true`.                                                                                |
+
+### Endpoint Body/Query Fields (verified against docs)
+
+| Endpoint | Params / Body | Notes |
+| --- | --- | --- |
+| `GET /devices/{workspace_id}/devices` | Auth header only | Docs name this **"Get Device Topology"** — returns devices with topology relationships |
+| `GET /devices/{workspace_id}/devices/{device_sn}` | Path only | — |
+| `POST /devices/binding` | Body: `user_id`, `workspace_id`, `device_sn`, `child_device_sn` | ⚠️ **Contradiction:** original plan listed `sn`, `device_name`, `nickname` — WRONG. Correct fields per docs: `device_sn` (not `sn`), plus `user_id` and `child_device_sn`. `BindDeviceRequest` type needs fixing. |
+| `GET /devices/{workspace_id}/devices/bound` | Query: `page`, `page_size`, `domain` | ⚠️ Query params were missing from original plan. |
+| `DELETE /devices/{device_sn}/unbinding` | Path only | — |
+| `PUT /devices/{workspace_id}/devices/{device_sn}/property` | Body: `property key/value` | — |
+| `GET /workspaces/{workspace_id}/devices/topologies` | Auth header only | Docs place this under TSA section — returns remote/drone/payload relationship tree |
+
+### Outstanding Fixes — All Resolved
+
+- [x] **`BindDeviceRequest` type** in `src/lib/types/device.ts`: corrected to `user_id`, `workspace_id`, `device_sn`, `child_device_sn?`
+- [x] **`RegisterDeviceModal.tsx`**: bind call now sends correct fields; `user_id` sourced from `useAuth().user`
+- [x] **`getBoundDevices()`** in `device-api.ts`: now accepts optional `page`, `page_size`, `domain` query params
 
 ### Endpoints Consumed
 
@@ -171,19 +196,30 @@ None yet.
 
 ## Phase 4 — Livestream Layer
 
-> **Status:** [ ] Not Started | **Depends on:** Phase 1, 2, 3
+> **Status:** [x] Complete | **Depends on:** Phase 1, 2, 3
 
 **Goal:** Start/stop streams, switch camera lenses, update quality — all from the DJI API.
 
-### Files to Create / Modify
+### Files Created / Modified
 
-| File                                                     | Action | Purpose                                                                                                                       |
-| -------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/dji/livestream-api.ts`                          | Create | `getLiveCapacity()`, `startStream()`, `stopStream()`, `updateStreamQuality()`, `switchStreamCamera()`                         |
-| `src/hooks/useLivestream.ts`                             | Create | `useLiveCapacity()` (15s refetch), `useStartStream()`, `useStopStream()`, `useSwitchCamera()`, `useUpdateQuality()` mutations |
-| `src/components/features/streams/StreamControlPanel.tsx` | Create | Wide/Zoom/IR toggle buttons, quality selector (HD/SD), Start/Stop. Disabled when device is offline.                           |
-| `src/app/(dashboard)/live-feed/page.tsx`                 | Modify | Add `StreamControlPanel` inside fullscreen modal footer.                                                                      |
-| `src/app/(dashboard)/ai-detection/page.tsx`              | Modify | Add lens toggle (visible → IR thermal) using `useSwitchCamera()`.                                                             |
+| File                                                                    | Action | Purpose                                                                                                                                 |
+| ----------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/dji/livestream-api.ts`                                         | Create | `getLiveCapacity()`, `startStream()`, `stopStream()`, `updateStreamQuality()`, `switchStreamCamera()`                                   |
+| `src/hooks/useDJIDevices.ts`                                            | Modify | Livestream hooks merged here: `useLiveCapacity()`, `useStartStream()`, `useStopStream()`, `useUpdateStreamQuality()`, `useSwitchStreamCamera()` |
+| `src/components/features/streams/StreamControlPanel.tsx`                | Create | Normal/Wide/IR lens toggle, quality selector (Auto→4K), Start/Stop. Disabled when device offline or `USE_DJI_CLOUD=false`.              |
+| `src/components/features/streams/webrtc-stream-card-full-screen.tsx`    | Modify | `StreamControlPanel` added to bottom info panel (available in both live-feed and ai-detection full-screen modals).                      |
+
+### Request Body Fields (verified against docs)
+
+| Endpoint | Body fields |
+| --- | --- |
+| `POST /live/streams/start` | `video_id`, `url_type` (2=WebRTC), `url`, `video_quality` |
+| `POST /live/streams/stop`  | `video_id` |
+| `POST /live/streams/update` | `video_id`, `video_quality` |
+| `POST /live/streams/switch` | `video_id`, `video_type` (string: `"normal"` \| `"wide"` \| `"IR"`) |
+
+> ⚠️ `device_sn` is **not** in any request body — it is encoded inside `video_id` as `{device_sn}/{camera_index}/{video_index}`.
+> ⚠️ Switch uses `video_type` (string) NOT `camera_mode` (number). Original plan was wrong; corrected in implementation.
 
 ### Endpoints Consumed
 
@@ -195,25 +231,48 @@ None yet.
 
 ### Pages Powered
 
-- `/live-feed` — per-stream start/stop/quality controls
-- `/ai-detection` — thermal camera lens switch
+- `/live-feed` — per-stream start/stop/quality/lens controls via full-screen modal
+- `/ai-detection` — same controls available via full-screen modal
 
 ---
 
 ## Phase 5 — Geospatial Layer
 
-> **Status:** [ ] Not Started | **Depends on:** Phase 1, 2, 3
+> **Status:** [x] Complete | **Depends on:** Phase 1, 2, 3
 
 **Goal:** Live map elements, flight area CRUD, geofence sync to devices.
 
 ### Files to Create / Modify
 
-| File                                                 | Action | Purpose                                                                                                                                                                                                               |
-| ---------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/dji/map-api.ts`                             | Create | `getElementGroups()`, `addElement()`, `updateElement()`, `deleteElement()`, `getFlightAreas()`, `createFlightArea()`, `updateFlightArea()`, `deleteFlightArea()`, `syncFlightAreaToDevices()`, `getMapDeviceStatus()` |
-| `src/hooks/useMapElements.ts`                        | Create | `useElementGroups()`, `useFlightAreas()` (60s refetch), `useSyncFlightAreas()` mutation                                                                                                                               |
-| `src/components/features/geospaital-map/geo-map.tsx` | Modify | Replace `getAllStreams()` static data → `useDJIDevices()` for live positions. Add flight area polygon layers, draw-mode button, "Sync to Devices" button.                                                             |
-| `src/app/(dashboard)/geospatial/page.tsx`            | Modify | Wrap `GeoMap` in `Suspense` boundary.                                                                                                                                                                                 |
+| File                                                 | Action | Purpose                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/dji/map-api.ts`                             | Create | `getElementGroups()`, `addElement()`, `updateElement()`, `deleteElement()`, `deleteGroupElements()`, `getFlightAreas()`, `addFlightArea()`, `updateFlightArea()`, `deleteFlightArea()`, `syncFlightAreas()`, `getDeviceStatus()` |
+| `src/hooks/useMapElements.ts`                        | Create | `useElementGroups()`, `useAddElement()`, `useUpdateElement()`, `useDeleteElement()`, `useFlightAreas()`, `useAddFlightArea()`, `useUpdateFlightArea()`, `useDeleteFlightArea()`, `useSyncFlightAreas()`, `useDeviceFlightAreaStatus()` |
+| `src/components/features/geospaital-map/geo-map.tsx` | Modify | Replace `getAllStreams()` static data → `useDJIDevices()` for live positions. Add flight area polygon layers, "Sync to Devices" button (guarded by `USE_DJI_CLOUD`).                                                             |
+| `src/app/(dashboard)/geospatial/page.tsx`            | Modify | Wrap `GeoMap` in `Suspense` boundary.                                                                                                                                                                                            |
+
+### Request Body / Query Fields (verified against docs at cerulean-scone-58646f.netlify.app)
+
+**Map Elements**
+
+| Endpoint | Params / Body |
+| --- | --- |
+| `GET  /element-groups` | Query: `is_distributed`, `group_id` |
+| `POST /element-groups/{element_group_id}/elements` | Body (GeoJSON Feature): `id`, `name`, `resource` |
+| `PUT  /elements/{element_id}` | Path only — no body fields documented |
+| `DELETE /elements/{element_id}` | Path only |
+| `DELETE /element-groups/{element_group_id}/elements` | Path only |
+
+**Flight Areas**
+
+| Endpoint | Params / Body |
+| --- | --- |
+| `GET  /flight-areas` | None |
+| `POST /flight-area` | Body: `name`, `type`, `content` (Circle/Polygon geometry) |
+| `PUT  /flight-area/{area_id}` | Path only — no body fields documented |
+| `DELETE /flight-area/{area_id}` | Path only |
+| `POST /flight-area/sync` | Body: `device_sn[]` (array of serial numbers) |
+| `GET  /device-status` | None |
 
 ### Endpoints Consumed
 
@@ -542,11 +601,11 @@ None yet.
 
 | Phase | Description                                         | Status          |
 | ----- | --------------------------------------------------- | --------------- |
-| 1     | Foundation — API client, types, proxy Route Handler | [ ] Not Started |
-| 2     | Authentication — sign-in, JWT, middleware           | [ ] Not Started |
-| 3     | Device Layer — listing, binding, properties         | [ ] Not Started |
-| 4     | Livestream Layer — start/stop/switch/update         | [ ] Not Started |
-| 5     | Geospatial Layer — map elements, flight areas       | [ ] Not Started |
+| 1     | Foundation — API client, types, proxy Route Handler | [x] Complete    |
+| 2     | Authentication — sign-in, JWT, middleware           | [x] Complete    |
+| 3     | Device Layer — listing, binding, properties         | [x] Complete    |
+| 4     | Livestream Layer — start/stop/switch/update         | [x] Complete    |
+| 5     | Geospatial Layer — map elements, flight areas       | [x] Complete    |
 | 6     | Health & Logs — HMS, device log upload              | [ ] Not Started |
 | 7     | Waylines & Flight Tasks — upload, schedule, pause   | [ ] Not Started |
 | 8     | Media & Storage — gallery, STS upload               | [ ] Not Started |
@@ -556,4 +615,4 @@ None yet.
 
 ---
 
-_Last updated: 2026-04-13_
+_Last updated: 2026-04-16_
