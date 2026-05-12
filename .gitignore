@@ -20,9 +20,9 @@ Thumbs.db
 .env.*.local
 
 # IDE files
-.vscode/
 .idea/
 *.swp
+.vscode/*.code-snippets
 
 # Backups
 backup_original
@@ -31,6 +31,11 @@ backup_original
 
 # Coverage
 coverage/
+
+# Next.js
+.vercel
+*.tsbuildinfo
+next-env.d.ts
 
 #claude
 .claude/
