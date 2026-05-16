@@ -23,6 +23,7 @@ import {
 import type {
   GetElementGroupsParams,
   AddElementRequest,
+  UpdateElementRequest,
   MapElement,
   FlightArea,
   AddFlightAreaRequest,
@@ -147,7 +148,7 @@ export function useUpdateElement() {
       payload,
     }: {
       elementId: string;
-      payload: Partial<Pick<MapElement, 'name' | 'resource'>>;
+      payload: UpdateElementRequest;
     }) => updateElement(workspaceId, elementId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).elementGroups });

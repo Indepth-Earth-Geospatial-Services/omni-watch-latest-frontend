@@ -43,6 +43,14 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
+// ─── Stable particle positions ────────────────────────────────────────────────
+const PARTICLES = [...Array(20)].map((_, i) => ({
+  left: `${(i * 7 + 3) % 100}%`,
+  top: `${(i * 13 + 7) % 100}%`,
+  delay: `${(i * 0.4) % 5}s`,
+  duration: `${10 + (i * 0.5) % 10}s`,
+}));
+
 export default function SignUpPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,15 +94,15 @@ export default function SignUpPage() {
 
         {/* Floating particles */}
         <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
+          {PARTICLES.map((p, i) => (
             <div
               key={i}
               className="absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${10 + Math.random() * 10}s`,
+                left: p.left,
+                top: p.top,
+                animationDelay: p.delay,
+                animationDuration: p.duration,
               }}
             ></div>
           ))}

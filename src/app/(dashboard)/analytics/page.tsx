@@ -3,14 +3,20 @@
 import React, { useState, useEffect } from 'react'
 import { StatCard } from '@/components/features/metrics/stat-card'
 import { MainLayout } from '@/components/layout/main-layout'
-import { getAllStreams } from '@/config/webrtc-streams'
+import { feedData } from '@/lib/data'
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d')
   const [animateCharts, setAnimateCharts] = useState(false)
 
-  // Get stream data from config
-  const allStreams = getAllStreams()
+  // Use feedData as the source for analytics
+  const allStreams = feedData.map(drone => ({
+    id: drone.sn,
+    name: drone.name,
+    isOnline: drone.status === 'online',
+    feedType: drone.feedType,
+    startai: true // Default to true for visualization
+  }))
   const onlineStreams = allStreams.filter(s => s.isOnline)
   const totalStreams = allStreams.length
   const onlineCount = onlineStreams.length

@@ -139,7 +139,7 @@ export default function ThreatsPage() {
 
   return (
     <div className="bg-background text-foreground min-h-screen">
-      <MainLayout title="AI Threat Detection" subtitle="">
+      <MainLayout title="Threat Intelligence" subtitle="">
         <div className="space-y-6">
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -276,8 +276,8 @@ export default function ThreatsPage() {
                             <span>{threat.videoFeedId.startsWith('THM') ? 'Thermal Sensor' : 'Video Source'}: {threat.videoFeedId}</span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-brain"></i>
-                            <span>AI Detection</span>
+                            <i className="fas fa-microchip"></i>
+                            <span>Automated Analysis</span>
                           </div>
                         </div>
 

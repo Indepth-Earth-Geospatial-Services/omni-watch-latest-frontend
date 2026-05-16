@@ -9,12 +9,7 @@ export const feedData: DroneData[] = [
     battery: 85,
     direction: "NE",
     status: "online",
-    feedType: "DRONE",
-    hasAgoraStream: true,
-    appId: "08b35d883f6b439697f47a25ce621e24",
-    token: "0068c28ebb0db53423fb293ef3cd97b8796IACs5XGl+LjfUQsaM/BON0xbZ4Z751ARIQ8ed4GkFTJ5+3aeOnIh39v0IgB6jvZG0tXXaAQAAQBSEf5oAgBSEf5oAwBSEf5oBABSEf5o",
-    channel: "1581F5FJD238900D79WS",
-    agoraChannel: "1581F5FJD238900D79WS"
+    feedType: "DRONE"
   },
   {
     sn: "1581F6GKB23B4004008E",
@@ -24,12 +19,7 @@ export const feedData: DroneData[] = [
     battery: 67,
     direction: "SW",
     status: "online",
-    feedType: "BODY CAM",
-    hasAgoraStream: true,
-    appId: "08b35d883f6b439697f47a25ce621e24",
-    token: "0068c28ebb0db53423fb293ef3cd97b8796IABwgocLA7ZP5sdkpEd6huNq4co+BjxSs56xPPJwGxXFO0YUDk8h39v0IgB6jvZGq9nXaAQAAQArFf5oAgArFf5oAwArFf5oBAArFf5o",
-    channel: "1581F6GKB23B4004008E",
-    agoraChannel: "1581F6GKB23B4004008E"
+    feedType: "BODY CAM"
   },
   {
     sn: "1581F7GKB23B4004008F",
@@ -39,12 +29,7 @@ export const feedData: DroneData[] = [
     battery: 67,
     direction: "SW",
     status: "online",
-    feedType: "CCTV",
-    hasAgoraStream: true,
-    appId: "631ce9ab63034612ab47acaf2167a80a",
-    token: "007eJxTYNgj+Vny+dejj8wPRSTfytU96LHaukxxl7E7X7SNvEauyEwFBgtj46SkZCOj5ETzZJM00+SkVEtzk1SjNAsDiyTLFIPUc8dOZzQEMjKo5kxhYIRCEJ+LITkxV6G4pCg1MZeBAQD6YyFd",
-    channel: "cam stream",
-    agoraChannel: "cam stream"
+    feedType: "CCTV"
   },
   {
     sn: "1584441F5FJD238900D79WS",
@@ -54,12 +39,7 @@ export const feedData: DroneData[] = [
     battery: 85,
     direction: "NE",
     status: "online",
-    feedType: "DRONE",
-    hasAgoraStream: true,
-    appId: "833bbc22ca7c4f5cbe974e2f808b9d0e",
-    token: "007eJxTYPimzF1cdS/919wv2RFst+ZXv135pGj61I+Fsuz9f7hu/6pRYDCwSDI2TbGwME4zSzIxtjSzNE8zMU80Mk1ONTMyTDUy+aF6MaMhkJEhva6alZEBAkF8DoaUrEzdnMyyVAYGAJUyIyQ=",
-    channel: "dji-live",
-    agoraChannel: "dji-live"
+    feedType: "DRONE"
   },
   {
     sn: "1581F8GKB23B4004008G",
@@ -69,9 +49,7 @@ export const feedData: DroneData[] = [
     battery: 78,
     direction: "W",
     status: "offline",
-    feedType: "BODY CAM",
-    hasAgoraStream: false,
-    agoraChannel: null
+    feedType: "BODY CAM"
   },
   {
     sn: "1581F9GKB23B4004008H",
@@ -81,9 +59,7 @@ export const feedData: DroneData[] = [
     battery: 23,
     direction: "NW",
     status: "offline",
-    feedType: "CCTV",
-    hasAgoraStream: false,
-    agoraChannel: null
+    feedType: "CCTV"
   }
 ]
 

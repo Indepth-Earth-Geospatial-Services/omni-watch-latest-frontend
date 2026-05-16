@@ -1,13 +1,25 @@
-// Single source of truth for all DJI Cloud environment variables.
-// No other file should call process.env directly for DJI config.
+// Single source of truth for all OmniWatch & DJI Cloud configuration.
+// No other file should call process.env directly for these variables.
+
+// Helper to convert an HTTP URL to a WS URL
+const toWsUrl = (url: string) => url.replace(/^http/, 'ws');
+
+const OMNIWATCH_API_URL = process.env.NEXT_PUBLIC_OMNIWATCH_API_URL ?? 'http://34.35.12.123:8000';
+const DJI_API_URL = process.env.NEXT_PUBLIC_DJI_API_URL ?? 'http://35.222.89.171:6789';
 
 export const DJI_CONFIG = {
-  // Full base URL assembled from env vars — e.g. "http://192.168.1.10:6789"
-  BASE_URL: `http://${process.env.NEXT_PUBLIC_API_IP ?? 'localhost'}:${process.env.NEXT_PUBLIC_API_PORT ?? '6789'}`,
+  // DJI Cloud API Base
+  BASE_URL: DJI_API_URL,
 
-  // WebSocket base URL for the WebRTC signalling server — e.g. "ws://192.168.1.10:6080"
-  // Each device stream is at WEBRTC_BASE_URL/{device_sn}
-  WEBRTC_BASE_URL: `ws://${process.env.NEXT_PUBLIC_API_IP ?? 'localhost'}:${process.env.NEXT_PUBLIC_WEBRTC_PORT ?? '6080'}`,
+  // OmniWatch API Base (REST)
+  OMNIWATCH_API_URL,
+
+  // OmniWatch WebSocket Endpoint (Unified endpoint derived strictly from docs)
+  WS_URL: `${toWsUrl(OMNIWATCH_API_URL)}/api/v1/ws`,
+
+  // For legacy WebRTC references, point them to the documented WS endpoint
+  // if they require a specific URL string
+  WEBRTC_BASE_URL: `${toWsUrl(OMNIWATCH_API_URL)}/api/v1/ws`,
 
   WORKSPACE_ID: process.env.NEXT_PUBLIC_WORKSPACE_ID ?? '',
   DEVICE_SN: process.env.NEXT_PUBLIC_DEVICE_SN ?? '',
@@ -21,7 +33,7 @@ export const DJI_CONFIG = {
   CONTROL: process.env.NEXT_PUBLIC_CONTROL_VERSION ?? '/control/api/v1',
 
   // Feature flag: false = old drone-api.ts / useDrones.ts still runs unchanged.
-  // Set NEXT_PUBLIC_USE_DJI_CLOUD=true in .env.local to activate new DJI path.
+  // Set NEXT_PUBLIC_USE_DJI_CLOUD=true in .env to activate new path.
   USE_DJI_CLOUD: process.env.NEXT_PUBLIC_USE_DJI_CLOUD === 'true',
 } as const;
 

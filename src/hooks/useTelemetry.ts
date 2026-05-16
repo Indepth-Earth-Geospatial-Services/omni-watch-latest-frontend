@@ -1,5 +1,6 @@
 // hooks/useTelemetry.ts
 import { useEffect, useState } from "react";
+import { DJI_CONFIG } from "../lib/dji/config";
 import { io, Socket } from "socket.io-client";
 
 interface TelemetryData {
@@ -20,7 +21,7 @@ interface DroneUpdate {
   lastUpdate: number;
 }
 
-export function useTelemetry(serverUrl = process.env.NEXT_PUBLIC_TELEMETRY_SOCKET_URL || "") {
+export function useTelemetry(serverUrl = DJI_CONFIG.WS_URL) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [droneUpdates, setDroneUpdates] = useState<Map<string, DroneUpdate>>(
     new Map()

@@ -11,6 +11,7 @@ import type {
   GetElementGroupsParams,
   MapElement,
   AddElementRequest,
+  UpdateElementRequest,
   FlightArea,
   AddFlightAreaRequest,
   SyncFlightAreaRequest,
@@ -71,7 +72,7 @@ export function addElement(
 export function updateElement(
   workspaceId: string,
   elementId: string,
-  payload: Partial<Pick<MapElement, 'name' | 'resource'>>
+  payload: UpdateElementRequest
 ): Promise<void> {
   return djiRequest.put<void>(
     `${MAP}/workspaces/${workspaceId}/elements/${elementId}`,

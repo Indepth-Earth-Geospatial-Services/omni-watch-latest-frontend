@@ -11,7 +11,6 @@ import {
   Globe,
   AlertTriangle,
   Target,
-  Brain,
   TrendingUp,
   FileText,
   Users,
@@ -29,7 +28,6 @@ const navigation = [
   { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
   { name: 'Threat Detection', href: '/threats', icon: Target },
   { name: 'Control', href: '/control', icon: Settings },
-  { name: 'AI Detection', href: '/ai-detection', icon: Brain },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   {
     name: 'Reports',

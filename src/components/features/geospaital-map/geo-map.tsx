@@ -1,7 +1,7 @@
 "use client";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { useDJIDevices, useBoundDevices } from "@/hooks/useDJIDevices";
-import { useFlightAreas, useSyncFlightAreas } from "@/hooks/useMapElements";
+import { useFlightAreas, useSyncFlightAreas, useElementGroups } from "@/hooks/useMapElements";
 import { DJI_CONFIG } from "@/lib/dji/config";
 import { LayoutTemplate } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -11,11 +11,11 @@ import Map, {
   NavigationControl,
   Popup,
   MapRef,
+  Source,
+  Layer,
 } from "react-map-gl/maplibre";
-import {
-  getAllStreams,
-  WebRTCStream,
-} from "@/config/webrtc-streams";
+import { feedData } from "@/lib/data";
+import { UnifiedStream } from "@/lib/types";
 
 type DronePositionType = {
   longitude: number;
@@ -73,10 +73,33 @@ function GeoMap() {
   const { data: djiDevices = [] } = useDJIDevices();
   const { data: boundDevices = [] } = useBoundDevices();
   const { data: flightAreas = [] } = useFlightAreas();
+  const { data: elementGroups = [] } = useElementGroups();
   const { mutate: syncGeofences, isPending: isSyncing } = useSyncFlightAreas();
 
-  const staticDeviceList = getAllStreams();
-  const deviceList: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD ? djiDevices : staticDeviceList;
+  const [showElements, setShowElements] = useState(true);
+
+  // Use static data if DJI Cloud is disabled, mapping it to UnifiedStream structure
+  const deviceList: UnifiedStream[] = useMemo(() => {
+    if (DJI_CONFIG.USE_DJI_CLOUD) {
+      return djiDevices.map(device => ({
+        id: device.deviceSn,
+        name: device.deviceName,
+        type: "DRONE", // DJI devices are primarily drones in this context
+        isOnline: device.status,
+        raw: device,
+        metadata: { alias: device.nickname }
+      }));
+    }
+
+    return feedData.map(drone => ({
+      id: String(drone.sn),
+      name: drone.name,
+      type: drone.feedType,
+      isOnline: drone.status === 'online',
+      raw: {} as any, // Mock raw data
+      metadata: { alias: drone.name }
+    }));
+  }, [djiDevices]);
 
 
   const [selectedStyle, setSelectedStyle] = useState("dark");
@@ -217,6 +240,31 @@ function GeoMap() {
     [dronePositions]
   );
 
+  // Convert element groups to GeoJSON Features
+  const mapElementsGeoJSON = useMemo(() => {
+    const features: any[] = [];
+    elementGroups.forEach((group) => {
+      group.elements.forEach((el) => {
+        if (el.resource?.content) {
+          features.push({
+            ...el.resource.content,
+            id: el.id,
+            properties: {
+              ...el.resource.content.properties,
+              name: el.name,
+              groupId: group.id,
+              groupName: group.name,
+            },
+          });
+        }
+      });
+    });
+    return {
+      type: "FeatureCollection",
+      features,
+    };
+  }, [elementGroups]);
+
   return (
     <section className="h-[67dvh] relative w-full">
       {/* Map Component */}
@@ -233,6 +281,55 @@ function GeoMap() {
         {dronePositionsArray.map((drone) => (
           <PulseMarker key={drone.sn} drone={drone} onClick={flyToDrone} />
         ))}
+
+        {/* Map Elements (Points, Lines, Polygons from DJI Cloud) */}
+        {showElements && (
+          <Source id="map-elements" type="geojson" data={mapElementsGeoJSON as any}>
+            {/* Polygons */}
+            <Layer
+              id="map-elements-polygons"
+              type="fill"
+              filter={["==", "$type", "Polygon"]}
+              paint={{
+                "fill-color": ["get", "color"],
+                "fill-opacity": 0.3,
+              }}
+            />
+            <Layer
+              id="map-elements-polygons-outline"
+              type="line"
+              filter={["==", "$type", "Polygon"]}
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": 2,
+              }}
+            />
+            
+            {/* Lines */}
+            <Layer
+              id="map-elements-lines"
+              type="line"
+              filter={["==", "$type", "LineString"]}
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": 3,
+              }}
+            />
+
+            {/* Points (Circles) */}
+            <Layer
+              id="map-elements-points"
+              type="circle"
+              filter={["==", "$type", "Point"]}
+              paint={{
+                "circle-radius": 6,
+                "circle-color": ["get", "color"],
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#ffffff",
+              }}
+            />
+          </Source>
+        )}
 
         {/* Flight area markers — DJI geofences (shown when USE_DJI_CLOUD=true) */}
         {DJI_CONFIG.USE_DJI_CLOUD && flightAreas.map((area) => {
@@ -339,6 +436,20 @@ function GeoMap() {
           </select>
         </div>
 
+        {/* Layers Toggles */}
+        <div className="mb-4 space-y-2">
+          <label className="block text-sm font-medium mb-1">Layers</label>
+          <label className="flex items-center space-x-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showElements}
+              onChange={(e) => setShowElements(e.target.checked)}
+              className="rounded border-gray-700 bg-slate-800"
+            />
+            <span>Map Elements ({elementGroups.reduce((acc, g) => acc + g.elements.length, 0)})</span>
+          </label>
+        </div>
+
         {/* Info Panel */}
         <div className="mb-4 p-2 bg-neutral-950 rounded text-sm">
           {selectedDroneInfo ? (
@@ -393,7 +504,7 @@ function GeoMap() {
             <button
               onClick={() =>
                 syncGeofences({
-                  device_sn: boundDevices.map((d) => d.device_sn),
+                  device_sn: boundDevices.map((d) => d.deviceSn),
                 })
               }
               disabled={isSyncing || boundDevices.length === 0}

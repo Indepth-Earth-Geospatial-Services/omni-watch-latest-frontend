@@ -15,5 +15,7 @@
   },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "editor.fontSize": 18,
+  "files.autoSave": "afterDelay"
 }

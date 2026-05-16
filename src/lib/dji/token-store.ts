@@ -1,24 +1,70 @@
 // JWT token storage with two-layer persistence:
 //   - localStorage  → holds the real token + expiry, read by client.ts for API requests
 //   - Cookie signal → holds "true" so Next.js middleware can check auth state on the Edge
+//
+// 🛡️ Security Analyst Note:
+// While this two-layer approach is functional, storing the raw JWT in localStorage
+// makes it accessible to any XSS vulnerabilities. A more secure, best-practice approach
+// would be to store the token exclusively in an HttpOnly, Secure, SameSite=Strict cookie
+// and have your Next.js API proxy automatically attach it to DJI requests, preventing
+// client-side JavaScript from ever accessing the raw token.
 
-const TOKEN_KEY = 'dji_auth_token';
-const EXPIRES_KEY = 'dji_token_expires';
+const StorageKeys = {
+  TOKEN: 'dji_auth_token',
+  EXPIRES: 'dji_token_expires',
+} as const;
+
+// -----------------------------------------------------------------------------
+// Core Utilities (Modularity & DRY)
+// -----------------------------------------------------------------------------
+
+const isSSR = () => typeof window === 'undefined';
+
+const LocalStorageUtils = {
+  get: (key: string): string | null => (isSSR() ? null : localStorage.getItem(key)),
+  set: (key: string, value: string): void => {
+    if (!isSSR()) localStorage.setItem(key, value);
+  },
+  remove: (key: string): void => {
+    if (!isSSR()) localStorage.removeItem(key);
+  },
+};
+
+const CookieUtils = {
+  setStrictSignal: (key: string, maxAge: number): void => {
+    if (!isSSR()) {
+      document.cookie = `${key}=true; path=/; max-age=${maxAge}; SameSite=Strict`;
+    }
+  },
+  clearSignal: (key: string): void => {
+    if (!isSSR()) {
+      document.cookie = `${key}=; path=/; max-age=0; SameSite=Strict`;
+    }
+  },
+};
+
+const getExpiryTime = (): number | null => {
+  const expiry = LocalStorageUtils.get(StorageKeys.EXPIRES);
+  return expiry ? parseInt(expiry, 10) : null;
+};
+
+// -----------------------------------------------------------------------------
+// Public Token API
+// -----------------------------------------------------------------------------
 
 /**
  * Returns the stored JWT, or null if missing / expired.
  * Automatically cleans up an expired token.
  */
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null; // SSR guard — localStorage unavailable on server
-
-  const expiry = localStorage.getItem(EXPIRES_KEY);
-  if (expiry && Date.now() > parseInt(expiry, 10)) {
+  const expiryTime = getExpiryTime();
+  
+  if (expiryTime && Date.now() > expiryTime) {
     clearToken(); // token has expired — remove it rather than returning a dead token
     return null;
   }
 
-  return localStorage.getItem(TOKEN_KEY);
+  return LocalStorageUtils.get(StorageKeys.TOKEN);
 }
 
 /**
@@ -27,19 +73,17 @@ export function getToken(): string | null {
  * @param expiresIn - Lifetime in seconds (e.g. 3600 for 1 hour). Optional but strongly recommended.
  */
 export function setToken(token: string, expiresIn?: number): void {
-  if (typeof window === 'undefined') return;
+  LocalStorageUtils.set(StorageKeys.TOKEN, token);
 
-  localStorage.setItem(TOKEN_KEY, token);
+  const maxAge = expiresIn ?? 3600;
 
   if (expiresIn) {
     // Store absolute expiry timestamp so getToken() can compare against Date.now()
-    localStorage.setItem(EXPIRES_KEY, String(Date.now() + expiresIn * 1000));
+    LocalStorageUtils.set(StorageKeys.EXPIRES, String(Date.now() + expiresIn * 1000));
   }
 
-  // Cookie signal for Next.js middleware (value is "true", NOT the token itself)
-  // SameSite=Strict prevents it from being sent on cross-site requests (CSRF protection)
-  const maxAge = expiresIn ?? 3600;
-  document.cookie = `${TOKEN_KEY}=true; path=/; max-age=${maxAge}; SameSite=Strict`;
+  // Cookie signal for Next.js middleware
+  CookieUtils.setStrictSignal(StorageKeys.TOKEN, maxAge);
 }
 
 /**
@@ -47,13 +91,9 @@ export function setToken(token: string, expiresIn?: number): void {
  * Called on logout or when a 401 cannot be recovered.
  */
 export function clearToken(): void {
-  if (typeof window === 'undefined') return;
-
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(EXPIRES_KEY);
-
-  // Expire the cookie immediately by setting max-age=0
-  document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Strict`;
+  LocalStorageUtils.remove(StorageKeys.TOKEN);
+  LocalStorageUtils.remove(StorageKeys.EXPIRES);
+  CookieUtils.clearSignal(StorageKeys.TOKEN);
 }
 
 /**
@@ -62,10 +102,8 @@ export function clearToken(): void {
  * @param thresholdSeconds - Default 60 (refresh 1 minute before expiry)
  */
 export function isTokenExpiringSoon(thresholdSeconds = 60): boolean {
-  if (typeof window === 'undefined') return false;
+  const expiryTime = getExpiryTime();
+  if (!expiryTime) return false;
 
-  const expiry = localStorage.getItem(EXPIRES_KEY);
-  if (!expiry) return false;
-
-  return Date.now() > parseInt(expiry, 10) - thresholdSeconds * 1000;
+  return Date.now() > expiryTime - thresholdSeconds * 1000;
 }

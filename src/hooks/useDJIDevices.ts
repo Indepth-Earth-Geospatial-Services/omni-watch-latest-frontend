@@ -17,23 +17,13 @@ import {
   getDeviceTopologies,
   setDeviceProperty,
   unbindDevice,
+  updateDJIDevice,
+  deviceOTA,
 } from '@/lib/dji/device-api';
-import {
-  getLiveCapacity,
-  startStream,
-  stopStream,
-  updateStreamQuality,
-  switchStreamCamera,
-} from '@/lib/dji/livestream-api';
-import type { WebRTCStream } from '@/config/webrtc-streams';
 import type {
   BindDeviceRequest,
   DJIDevice,
   DJIDeviceProperty,
-  StartStreamRequest,
-  StopStreamRequest,
-  UpdateStreamRequest,
-  SwitchStreamRequest,
 } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
@@ -47,42 +37,18 @@ const deviceKeys = (workspaceId: string) => ({
   detail:     (sn: string) => ['dji', 'devices', workspaceId, 'detail', sn] as const,
 });
 
-const streamKeys = {
-  capacity: ['dji', 'live', 'capacity'] as const,
-};
-
 // ─── Transformer ──────────────────────────────────────────────────────────────
 
-// Maps a DJIDevice from the server into the WebRTCStream shape that all existing
-// stream cards and dashboard components already understand.
-function toWebRTCStream(device: DJIDevice): WebRTCStream {
-  const streamUrl = device.status
-    ? `${DJI_CONFIG.WEBRTC_BASE_URL}/${device.device_sn}`
-    : '';
-
-  return {
-    id:        device.device_sn,
-    name:      device.device_name,
-    streamUrl,
-    isOnline:  device.status,
-    feedType:  'DRONE',
-    startai:   false,
-    metadata: {
-      alias:       device.nickname || device.device_name,
-      description: `${device.device_type} · FW ${device.firmware_version}`,
-      webRTCUrl:   streamUrl,
-    },
-  };
-}
+// Transformers for DJI devices will be implemented here if needed.
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
 
 /**
- * Fetches all workspace devices and maps them to the WebRTCStream shape.
+ * Fetches all workspace devices.
  * Refetches every 30 seconds so online/offline status stays current.
  *
  * @example
- * const { data: streams = [], isLoading } = useDJIDevices();
+ * const { data: devices = [], isLoading } = useDJIDevices();
  */
 export function useDJIDevices() {
   const { user } = useAuth();
@@ -96,7 +62,6 @@ export function useDJIDevices() {
     refetchInterval:     30_000,
     refetchOnWindowFocus: true,
     staleTime:           10_000,
-    select: (devices) => devices.map(toWebRTCStream),
   });
 }
 
@@ -171,9 +136,27 @@ export function useBindDevice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: BindDeviceRequest) => bindDevice(payload),
+    mutationFn: (payload: BindDeviceRequest) => bindDevice(payload.deviceSn, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).all });
+    },
+  });
+}
+
+/**
+ * Updates basic device information (e.g. nickname).
+ */
+export function useUpdateDJIDevice() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceSn, payload }: { deviceSn: string; payload: Partial<DJIDevice> }) =>
+      updateDJIDevice(workspaceId, deviceSn, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
+      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).list });
     },
   });
 }
@@ -221,65 +204,15 @@ export function useSetDeviceProperty() {
   });
 }
 
-// ─── Livestream hooks ─────────────────────────────────────────────────────────
-
 /**
- * Fetches which devices can stream and what camera/lens options they expose.
- * Returns a Map keyed by device_sn for O(1) lookups in stream cards.
- * Only runs when USE_DJI_CLOUD=true.
+ * Initiates an OTA firmware update.
  */
-export function useLiveCapacity() {
-  return useQuery({
-    queryKey: streamKeys.capacity,
-    queryFn:  getLiveCapacity,
-    enabled:  DJI_CONFIG.USE_DJI_CLOUD,
-    refetchInterval:     30_000,
-    staleTime:           10_000,
-    select: (capacities) => new Map(capacities.map((c) => [c.device_sn, c])),
-  });
-}
+export function useDeviceOTA() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
-/**
- * Tells a DJI drone to start pushing video to a WebRTC signalling server.
- * Call this before connecting useWebRTCStream — the drone won't push until asked.
- *
- * @example
- * const { mutate: start } = useStartStream();
- * start({ video_id, url_type: 2, url: streamUrl, video_quality: 0 });
- */
-export function useStartStream() {
   return useMutation({
-    mutationFn: (payload: StartStreamRequest) => startStream(payload),
+    mutationFn: (payload: any[]) => deviceOTA(workspaceId, payload),
   });
 }
 
-/**
- * Stops an active DJI video stream.
- * Always call on component unmount to avoid the drone streaming to a dead URL.
- */
-export function useStopStream() {
-  return useMutation({
-    mutationFn: (payload: StopStreamRequest) => stopStream(payload),
-  });
-}
-
-/**
- * Changes the video quality of an already-running stream without restarting it.
- * video_quality: 0 = auto, 1 = smooth, 2 = SD, 3 = HD, 4 = ultra-HD
- */
-export function useUpdateStreamQuality() {
-  return useMutation({
-    mutationFn: (payload: UpdateStreamRequest) => updateStreamQuality(payload),
-  });
-}
-
-/**
- * Switches the active camera lens (normal / wide / IR) on a running stream.
- * The stream must already be started — call useStartStream() first.
- * video_type: "normal" | "wide" | "IR"
- */
-export function useSwitchStreamCamera() {
-  return useMutation({
-    mutationFn: (payload: SwitchStreamRequest) => switchStreamCamera(payload),
-  });
-}
