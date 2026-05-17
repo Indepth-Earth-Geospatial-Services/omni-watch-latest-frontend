@@ -2,7 +2,7 @@
 // All requests go through the Next.js proxy at /api/dji/... — never directly to the DJI server.
 //
 // Usage:
-//   import { djiRequest } from '@/lib/dji/client';
+//   import { djiRequest } from '@/lib/config/client';
 //   const devices = await djiRequest.get<DJIDevice[]>(DJI_URLS.devices.list(workspaceId));
 
 import axios, { AxiosError } from 'axios';
@@ -29,10 +29,14 @@ export class DJIApiError extends Error {
 /**
  * Core request function — attaches auth token, routes through the proxy, unwraps the DJI envelope.
  *
+ * On 401: silently refreshes the OmniWatch token (which reissues the DJI session token),
+ * then replays the request once. Requires the HttpOnly refresh-token cookie to be present
+ * in the browser — the auth proxy forwards it to OmniWatch on the refresh call.
+ *
  * @param method  - HTTP verb
  * @param path    - DJI API path (no base URL — proxy adds `/api/dji/` prefix automatically)
- * @param data    - Request body (axios serialises to JSON automatically)
- * @param retried - Internal flag: prevents infinite retry loops on 401
+ * @param data    - Request body
+ * @param retried - Internal flag: prevents infinite retry on 401
  */
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -65,11 +69,12 @@ async function request<T>(
 
     return envelope.data as T;
   } catch (err) {
-    // 401 → silent token refresh, then replay once
+    // 401 → refresh OmniWatch token (reissues DJI session), then replay once.
+    // The browser's HttpOnly refresh cookie is forwarded by the /api/auth/ proxy.
     if (err instanceof AxiosError && err.response?.status === 401 && !retried) {
       try {
-        const { refreshOmniWatchToken } = await import('@/lib/dji/auth-api');
-        await refreshOmniWatchToken();
+        const { authApi } = await import('@/services/authservice-layer/auth-api');
+        await authApi.refreshToken();
         return request<T>(method, path, data, true);
       } catch {
         throw new DJIApiError(401, 'Session expired. Please sign in again.');

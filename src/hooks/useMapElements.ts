@@ -58,6 +58,7 @@ export function useElementGroups(params?: GetElementGroupsParams) {
     queryKey: keys.elementGroups,
     queryFn: () => getElementGroups(workspaceId, params),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -79,6 +80,7 @@ export function useFlightAreas() {
     queryKey: keys.flightAreas,
     queryFn: () => getFlightAreas(workspaceId),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -100,6 +102,7 @@ export function useDeviceFlightAreaStatus() {
     queryKey: keys.deviceStatus,
     queryFn: () => getDeviceFlightAreaStatus(workspaceId),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });

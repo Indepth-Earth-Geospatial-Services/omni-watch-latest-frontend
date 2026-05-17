@@ -48,6 +48,7 @@ export function useDeviceLogs(
     queryKey: logKeys(workspaceId).modules(deviceSn ?? ''),
     queryFn: () => getDeviceLogs(workspaceId, deviceSn!, params),
     enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     staleTime: 30_000,
   });
 }
@@ -67,6 +68,7 @@ export function useUploadedLogs(deviceSn?: string, params?: UploadedLogsQueryPar
     queryKey: logKeys(workspaceId).uploaded(deviceSn ?? ''),
     queryFn: () => getUploadedLogs(workspaceId, deviceSn!, params),
     enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });

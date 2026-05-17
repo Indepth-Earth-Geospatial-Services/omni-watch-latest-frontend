@@ -3,6 +3,20 @@
 
 import { setToken, clearToken, getToken } from '@/lib/config/token-store';
 
+// Decode the `exp` claim from a JWT and return seconds until expiry.
+// No signature verification — we only need the lifetime for scheduling.
+function jwtExpiresIn(token: string): number | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.exp) return undefined;
+    const secondsLeft = payload.exp - Math.floor(Date.now() / 1000);
+    console.log(`[auth] JWT expires in ${secondsLeft}s (exp: ${new Date(payload.exp * 1000).toISOString()})`);
+    return Math.max(secondsLeft, 0);
+  } catch {
+    return undefined;
+  }
+}
+
 // ─── Response shapes ──────────────────────────────────────────────────────────
 
 // Every OmniWatch endpoint wraps its payload in this envelope — code 0 = success.
@@ -66,31 +80,44 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const authApi = {
   // POST /api/v1/auth/login
   login: async (email: string, pin: string): Promise<AuthTokenResponse> => {
+    console.log('[auth] login → POST /api/auth/login', { email });
     const data = await request<AuthTokenResponse>('/login', {
       method: 'POST',
       body: JSON.stringify({ email, pin }),
     });
-    setToken(data.access_token);
+    console.log('[auth] login ✓ — access_token received, workspace_id:', data.workspace_id);
+    const expiresIn = jwtExpiresIn(data.access_token);
+    setToken(data.access_token, expiresIn);
+    console.log('[auth] access_token stored in localStorage (key: dji_auth_token)');
     return data;
   },
 
   // POST /api/v1/auth/logout
   logout: async (): Promise<void> => {
+    console.log('[auth] logout → POST /api/auth/logout');
     try {
       await request<void>('/logout', { method: 'POST' });
     } finally {
       clearToken();
+      console.log('[auth] logout ✓ — token cleared');
     }
   },
 
   // GET /api/v1/auth/me
-  me: (): Promise<MeResponse> =>
-    request<MeResponse>('/me', { method: 'GET' }),
+  me: async (): Promise<MeResponse> => {
+    console.log('[auth] me → GET /api/auth/me');
+    const data = await request<MeResponse>('/me', { method: 'GET' });
+    console.log('[auth] me ✓ —', data);
+    return data;
+  },
 
   // POST /api/v1/auth/token/refresh
   refreshToken: async (): Promise<AuthTokenResponse> => {
+    console.log('[auth] refreshToken → POST /api/auth/token/refresh');
     const data = await request<AuthTokenResponse>('/token/refresh', { method: 'POST' });
-    setToken(data.access_token);
+    const expiresIn = jwtExpiresIn(data.access_token);
+    setToken(data.access_token, expiresIn);
+    console.log('[auth] refreshToken ✓ — new access_token stored');
     return data;
   },
 };

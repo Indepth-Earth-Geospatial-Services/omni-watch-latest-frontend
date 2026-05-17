@@ -107,3 +107,10 @@ export function isTokenExpiringSoon(thresholdSeconds = 60): boolean {
 
   return Date.now() > expiryTime - thresholdSeconds * 1000;
 }
+
+/** Returns seconds until the stored token expires, or null if unknown. */
+export function getTokenExpiresInSeconds(): number | null {
+  const expiryTime = getExpiryTime();
+  if (!expiryTime) return null;
+  return Math.max((expiryTime - Date.now()) / 1000, 0);
+}

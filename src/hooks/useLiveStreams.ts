@@ -27,6 +27,7 @@ export function useLiveCapacity() {
     queryKey: streamKeys.capacity,
     queryFn: getLiveCapacity,
     enabled: DJI_CONFIG.USE_DJI_CLOUD,
+    retry: false,
     refetchInterval: 30_000,
     staleTime: 10_000,
     // Map using 'sn' as per the new DJI documentation

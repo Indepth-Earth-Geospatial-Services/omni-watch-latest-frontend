@@ -33,10 +33,19 @@ async function forwardRequest(
 
     console.log(`[OmniWatch Proxy] ← ${res.status}`);
 
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { 'Content-Type': res.headers.get('Content-Type') ?? 'application/json' },
-    });
+    const responseHeaders = new Headers();
+    responseHeaders.set('Content-Type', res.headers.get('Content-Type') ?? 'application/json');
+
+    const setCookies: string[] =
+      typeof res.headers.getSetCookie === 'function'
+        ? res.headers.getSetCookie()
+        : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')!] : []);
+
+    for (const cookie of setCookies) {
+      responseHeaders.append('Set-Cookie', cookie);
+    }
+
+    return new NextResponse(text, { status: res.status, headers: responseHeaders });
   } catch (error) {
     console.error('[OmniWatch Proxy] Error:', error);
     return NextResponse.json({ detail: 'Failed to reach OmniWatch server.' }, { status: 503 });

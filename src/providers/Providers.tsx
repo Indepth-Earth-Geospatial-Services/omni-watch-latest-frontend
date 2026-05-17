@@ -10,8 +10,6 @@ import { AuthProvider } from "./AuthProvider";
 import QueryProvider from "./QueryProvider";
 import { ThemeProvider } from "./ThemeProvider";
 
-import { AutoLogin } from "@/components/dev/AutoLogin";
-
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
@@ -20,9 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange // prevents a flash of unstyled content on theme switch
     >
       <AuthProvider>
-        <AutoLogin>
-          <QueryProvider>{children}</QueryProvider>
-        </AutoLogin>
+        <QueryProvider>{children}</QueryProvider>
       </AuthProvider>
     </ThemeProvider>
   );

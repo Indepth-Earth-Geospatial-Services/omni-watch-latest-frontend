@@ -1,81 +1,60 @@
-// React Query hooks for DJI user management API.
-// Components import from here — never from user-api.ts directly.
+// React Query hooks for OmniWatch organization user management.
+// Routes through /api/omniwatch/ proxy (OmniWatch port 8002) — NOT the DJI Cloud server.
 //
-// Query key convention: ['dji', 'users', workspaceId, ...]
+// Query key convention: ['omniwatch', 'users', ...]
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/config/config';
-import {
-  getCurrentUser,
-  getWorkspaceUsers,
-  updateUser,
-} from '@/services/djiservice-layer/dji-service';
-import type { UpdateUserRequest } from '@/lib/types';
+import { organizationApi } from '@/services/authservice-layer/auth-service';
+import { authApi } from '@/services/authservice-layer/auth-api';
+import type { OrgUser, UpdateOrgUserRequest } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
-const userKeys = (workspaceId: string) => ({
-  all: ['dji', 'users', workspaceId] as const,
-  list: ['dji', 'users', workspaceId, 'list'] as const,
-  current: ['dji', 'users', 'current'] as const,
-});
+const userKeys = {
+  all: ['omniwatch', 'users'] as const,
+  list: ['omniwatch', 'users', 'list'] as const,
+  current: ['omniwatch', 'users', 'current'] as const,
+};
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
 
-/**
- * Fetches all users in the workspace with optional pagination.
- *
- * @example
- * const { data } = useWorkspaceUsers();
- * const users = data?.list ?? [];
- */
-export function useWorkspaceUsers(params?: { page?: number; page_size?: number }) {
-  const { user } = useAuth();
-  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
-
+/** Fetches all users in the authenticated organisation from OmniWatch. */
+export function useWorkspaceUsers() {
   return useQuery({
-    queryKey: userKeys(workspaceId).list,
-    queryFn: () => getWorkspaceUsers(workspaceId, params),
-    enabled: !!workspaceId,
+    queryKey: userKeys.list,
+    queryFn: () => organizationApi.listUsers(),
     staleTime: 30_000,
+    retry: 1,
   });
 }
 
-/**
- * Fetches the currently authenticated user's DJI profile.
- *
- * @example
- * const { data: currentUser } = useCurrentUser();
- */
+/** Returns the currently authenticated principal's org/workspace metadata. */
 export function useCurrentUser() {
   return useQuery({
-    queryKey: userKeys('').current,
-    queryFn: getCurrentUser,
+    queryKey: userKeys.current,
+    queryFn: () => authApi.me(),
     staleTime: 60_000,
+    retry: 1,
   });
 }
 
 // ─── Mutation hooks ───────────────────────────────────────────────────────────
 
 /**
- * Updates a user's profile fields.
- * On success: invalidates the workspace user list and current user queries.
+ * Updates an organisation user's profile fields.
+ * On success: invalidates the user list query.
  *
  * @example
  * const { mutate: update } = useUpdateUser();
- * update({ userId: 'abc', payload: { username: 'new-name' } });
+ * update({ userId: 'abc', payload: { full_name: 'New Name' } });
  */
 export function useUpdateUser() {
-  const { user } = useAuth();
-  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { userId: string; payload: UpdateUserRequest }>({
-    mutationFn: ({ userId, payload }) => updateUser(workspaceId, userId, payload),
+  return useMutation<OrgUser, Error, { userId: string; payload: UpdateOrgUserRequest }>({
+    mutationFn: ({ userId, payload }) => organizationApi.updateUser(userId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys(workspaceId).all });
-      queryClient.invalidateQueries({ queryKey: userKeys('').current });
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
   });
 }
