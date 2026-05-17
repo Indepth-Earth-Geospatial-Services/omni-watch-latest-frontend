@@ -6,7 +6,7 @@ export interface UnifiedStream {
   name: string;
   type: string;
   isOnline: boolean;
-  raw: DJIDevice;
+  raw: DJIDevice | object;
   metadata?: {
     alias?: string;
   };
