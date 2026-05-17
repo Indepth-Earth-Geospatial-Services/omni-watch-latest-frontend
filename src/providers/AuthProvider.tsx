@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // AuthProvider — wraps the entire app and answers one question from any component:
 // "Is there a logged-in user, and who are they?"
@@ -10,16 +10,9 @@
 //   4. After login → user state set, proactive refresh timer scheduled
 //   5. Timer fires 60s before expiry → silently exchanges token → reschedules
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
-import { loginDJI, logoutDJI, refreshDJIToken } from '@/lib/dji/auth-api';
+import { authApi } from '@/lib/dji/auth-api';
 import { djiRequest } from '@/lib/dji/client';
 import { DJI_CONFIG } from '@/lib/dji/config';
 import { clearToken, getToken } from '@/lib/dji/token-store';
@@ -37,7 +30,7 @@ interface AuthContextValue {
   /** Error message from the last failed login attempt */
   loginError: string | null;
   /** Call this from the sign-in form — throws on bad credentials */
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, pin: string) => Promise<void>;
   /** Clears the token and resets all state — call from any Sign Out button */
   logout: () => void;
 }
@@ -58,9 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Called on mount (to restore session) and after a successful login
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
     try {
-      const data = await djiRequest.get<CurrentUser>(
-        `${DJI_CONFIG.MANAGE}/users/current`
-      );
+      const data = await djiRequest.get<CurrentUser>(`${DJI_CONFIG.MANAGE}/users/current`);
       setUser(data);
       return true;
     } catch {
@@ -81,8 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     refreshTimerRef.current = setTimeout(async () => {
       try {
-        await refreshDJIToken();
-        // DJI server doesn't always return expires_in on refresh — default to 1 hour
+        await authApi.refreshToken();
         scheduleRefresh(3600);
       } catch {
         // Refresh failed (server offline, token already revoked) — force re-login
@@ -120,15 +110,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchCurrentUser, scheduleRefresh]);
 
   // ── login ────────────────────────────────────────────────────────────────
-  // Called by the sign-in form. loginDJI stores the token, then we fetch
+  // Called by the sign-in form. authApi.login stores the token, then we fetch
   // the current user so every component immediately has the full profile.
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (email: string, pin: string) => {
       setLoginError(null);
       try {
-        const response = await loginDJI(username, password);
+        await authApi.login(email, pin);
         await fetchCurrentUser();
-        scheduleRefresh(response.expires_in ?? 3600);
+        scheduleRefresh(3600);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Login failed';
         setLoginError(message);
@@ -140,7 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
-    logoutDJI();
+    authApi.logout().catch(() => {
+      /* ignore server errors on logout */
+    });
     setUser(null);
     setLoginError(null);
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);

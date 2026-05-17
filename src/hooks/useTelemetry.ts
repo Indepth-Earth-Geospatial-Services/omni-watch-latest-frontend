@@ -20,11 +20,17 @@ export interface ProcessedDroneData {
   longitude: number;
   altitude: number;
   heading: number;
+  direction: string; // compass rose label derived from heading, e.g. "NE"
   speed: number;
   online: boolean;
-  modeCode: number;        // 0 = standby/docked, 1 = in-flight
+  modeCode: number; // 0 = standby/docked, 1 = in-flight
   lastUpdate: number;
   isRecent: boolean;
+}
+
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+function headingToCompass(deg: number): string {
+  return COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -40,21 +46,22 @@ export function useTelemetry() {
     if (!state) return null;
 
     return {
-      battery:    state.battery_percent ?? 0,
-      latitude:   state.latitude        ?? 0,
-      longitude:  state.longitude       ?? 0,
-      altitude:   state.altitude        ?? 0,
-      heading:    state.heading         ?? 0,
-      speed:      state.horizontal_speed ?? 0,
-      online:     state.online_status,
-      modeCode:   state.mode_code,
+      battery: state.battery_percent ?? 0,
+      latitude: state.latitude ?? 0,
+      longitude: state.longitude ?? 0,
+      altitude: state.altitude ?? 0,
+      heading: state.heading ?? 0,
+      direction: headingToCompass(state.heading ?? 0),
+      speed: state.horizontal_speed ?? 0,
+      online: state.online_status,
+      modeCode: state.mode_code,
       lastUpdate: Date.now(),
-      isRecent:   true,
+      isRecent: true,
     };
   };
 
   return {
-    connectionStatus: isConnected ? 'connected' : 'disconnected' as const,
+    connectionStatus: isConnected ? 'connected' : ('disconnected' as const),
     droneUpdates: deviceStates,
     getDroneTelemetry,
     getProcessedDroneData,

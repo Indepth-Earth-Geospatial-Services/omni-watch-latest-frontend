@@ -5,6 +5,7 @@
 
 // Optional filters for GET /map/api/v1/workspaces/{workspace_id}/element-groups
 export interface GetElementGroupsParams {
+  [key: string]: unknown;
   is_distributed?: boolean; // filter by distributed flag
   group_id?: string;        // fetch a specific group only
 }

@@ -1,80 +1,79 @@
-// Authentication functions for the DJI Cloud API.
-// All requests go through the Next.js proxy at /api/dji/... — never directly to the DJI server.
+// OmniWatch Auth API — all requests go through the Next.js proxy at /api/auth
+// which forwards to http://34.35.12.123:8002/api/v1/auth/<path>
 
-import { DJI_CONFIG } from './config';
-import { setToken, clearToken, getToken } from './token-store';
-import type { LoginResponse, RefreshResponse } from '@/lib/types';
+import { setToken, clearToken, getToken } from '@/lib/dji/token-store';
 
-// LoginResponse and RefreshResponse are the canonical types from src/lib/types/auth.ts
-// Do not redefine them here — import to keep a single source of truth
-export type { LoginResponse, RefreshResponse };
+// ─── Response shapes (from Swagger) ──────────────────────────────────────────
 
-/**
- * Authenticates against the DJI server and stores the returned JWT.
- * Throws a descriptive error on bad credentials or server failure.
- *
- * @param username - DJI workspace username
- * @param password - Plain-text password (sent over HTTPS only — never logged)
- */
-export async function loginDJI(
-  username: string,
-  password: string
-): Promise<LoginResponse> {
-  const response = await fetch(`/api/dji${DJI_CONFIG.MANAGE}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password, flag: 0 }),
-  });
-
-  const json = await response.json();
-
-  // DJI envelope: { code: 0, message: "success", data: { ... } }
-  // Any code other than 0 is a failure — surface the server message to the UI
-  if (json.code !== 0) {
-    throw new Error(json.message ?? 'Login failed');
-  }
-
-  const data: LoginResponse = json.data;
-
-  // Persist the token so every subsequent API request can attach it
-  setToken(data.access_token, data.expires_in);
-
-  return data;
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
-/**
- * Exchanges the current JWT for a fresh one before it expires.
- * Called automatically by AuthProvider ~60 seconds before expiry.
- * On failure clears the token so the user is redirected to sign-in.
- */
-export async function refreshDJIToken(): Promise<void> {
-  const currentToken = getToken();
+export interface MeResponse {
+  principal_id: string;
+  principal_type: string;
+  org_id: string;
+  workspace_id: string;
+}
 
-  const response = await fetch(`/api/dji${DJI_CONFIG.MANAGE}/token/refresh`, {
-    method: 'POST',
+// ─── Internal fetch wrapper ───────────────────────────────────────────────────
+
+const PROXY = '/api/auth';
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${PROXY}${path}`, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
-      // The DJI server uses the current token to identify which session to refresh
-      ...(currentToken ? { 'x-auth-token': currentToken } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers as Record<string, string> ?? {}),
     },
   });
-
-  const json = await response.json();
-
-  if (json.code !== 0) {
-    clearToken(); // refresh failed — force the user back to sign-in
-    throw new Error(json.message ?? 'Token refresh failed');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(String(body.detail ?? `Auth request failed: ${res.status}`));
   }
-
-  const data: RefreshResponse = json.data;
-  setToken(data.access_token, data.expires_in);
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/**
- * Signs the user out locally.
- * The DJI API has no server-side session invalidation — JWTs are stateless.
- * Clearing the token client-side is sufficient; it will expire server-side naturally.
- */
-export function logoutDJI(): void {
-  clearToken();
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export const authApi = {
+  // POST /api/v1/auth/login
+  login: async (email: string, pin: string): Promise<AuthTokenResponse> => {
+    const data = await request<AuthTokenResponse>('/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, pin }),
+    });
+    setToken(data.access_token);
+    return data;
+  },
+
+  // POST /api/v1/auth/logout — revokes the HttpOnly refresh token cookie
+  logout: async (): Promise<void> => {
+    try {
+      await request<void>('/logout', { method: 'POST' });
+    } finally {
+      clearToken();
+    }
+  },
+
+  // GET /api/v1/auth/me
+  me: (): Promise<MeResponse> =>
+    request<MeResponse>('/me', { method: 'GET' }),
+
+  // POST /api/v1/auth/token/refresh — browser sends HttpOnly cookie automatically
+  refreshToken: async (): Promise<AuthTokenResponse> => {
+    const data = await request<AuthTokenResponse>('/token/refresh', { method: 'POST' });
+    setToken(data.access_token);
+    return data;
+  },
+};
+
+// Named export for the lazy import in client.ts 401 auto-retry
+export async function refreshOmniWatchToken(): Promise<void> {
+  await authApi.refreshToken();
 }

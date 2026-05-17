@@ -9,14 +9,17 @@ import { getToken } from './token-store';
 
 // DJI API response envelope — every endpoint returns this shape
 export interface DJIApiResponse<T> {
-  code: number;    // 0 = success, anything else = error
+  code: number; // 0 = success, anything else = error
   message: string;
   data?: T;
 }
 
 // Typed error so callers can check error.code for specific handling (401 → login, 502 → offline)
 export class DJIApiError extends Error {
-  constructor(public readonly code: number, message: string) {
+  constructor(
+    public readonly code: number,
+    message: string
+  ) {
     super(message);
     this.name = 'DJIApiError';
   }
@@ -28,11 +31,7 @@ export class DJIApiError extends Error {
  * @param options - Standard fetch RequestInit (method, body, extra headers)
  * @param retried - Internal flag: true = already attempted one token refresh, do not retry again
  */
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  retried = false
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
   const token = getToken();
 
   const headers: Record<string, string> = {
@@ -51,11 +50,8 @@ async function request<T>(
   // 401 → try a silent token refresh once, then replay the original request
   if (response.status === 401 && !retried) {
     try {
-      // Lazy import breaks the potential circular dependency:
-      // client.ts → auth-api.ts → token-store.ts (safe)
-      // auth-api.ts does NOT import client.ts, so no cycle
-      const { refreshDJIToken } = await import('./auth-api');
-      await refreshDJIToken();
+      const { refreshOmniWatchToken } = await import('@/lib/dji/auth-api');
+      await refreshOmniWatchToken();
       return request<T>(path, options, true); // retried = true — will not retry again
     } catch {
       throw new DJIApiError(401, 'Session expired. Please sign in again.');
@@ -74,8 +70,7 @@ async function request<T>(
 
 // Public API — four methods matching every HTTP verb the DJI server uses
 export const djiRequest = {
-  get: <T>(path: string) =>
-    request<T>(path, { method: 'GET' }),
+  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
 
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {

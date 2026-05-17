@@ -36,6 +36,7 @@ export interface DeviceLogsQueryParams {
 }
 
 export interface UploadedLogsQueryParams {
+  [key: string]: unknown;
   page?: number;
   status?: number;            // 0 = uploading, 1 = done, 2 = failed
   page_size?: number;

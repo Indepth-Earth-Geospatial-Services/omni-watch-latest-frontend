@@ -1,0 +1,50 @@
+// OmniWatch General Proxy — forwards non-auth OmniWatch traffic (projects, teams, workspaces)
+// to the backend at /api/v1/<path>.  The /api/auth proxy handles auth endpoints separately.
+
+import { NextRequest, NextResponse } from 'next/server';
+import { DJI_CONFIG } from '@/lib/dji/config';
+
+const BASE_URL = DJI_CONFIG.OMNIWATCH_API_URL;
+
+const HOP_BY_HOP = new Set(['host', 'connection', 'transfer-encoding', 'keep-alive', 'upgrade']);
+
+async function forwardRequest(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+): Promise<NextResponse> {
+  const { path } = await params;
+  const segments = path.join('/');
+  const { search } = new URL(request.url);
+  const targetUrl = `${BASE_URL}/api/v1/${segments}${search}`;
+
+  const forwardedHeaders: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    if (!HOP_BY_HOP.has(key.toLowerCase())) forwardedHeaders[key] = value;
+  });
+  forwardedHeaders['host'] = new URL(BASE_URL).host;
+
+  try {
+    const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+
+    console.log(`[OmniWatch Proxy] → ${request.method} ${targetUrl}`);
+
+    const res = await fetch(targetUrl, { method: request.method, headers: forwardedHeaders, body });
+    const text = await res.text();
+
+    console.log(`[OmniWatch Proxy] ← ${res.status}`);
+
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { 'Content-Type': res.headers.get('Content-Type') ?? 'application/json' },
+    });
+  } catch (error) {
+    console.error('[OmniWatch Proxy] Error:', error);
+    return NextResponse.json({ detail: 'Failed to reach OmniWatch server.' }, { status: 503 });
+  }
+}
+
+export const GET    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
+export const POST   = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
+export const PUT    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
+export const PATCH  = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
+export const DELETE = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);

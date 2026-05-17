@@ -1,30 +1,23 @@
-// Authentication types — login, token refresh, and current user profile
+// Authentication types for the OmniWatch Auth API
 
-export interface LoginRequest {
-  username: string;
-  password: string;
-  flag: number; // 0 = username/password authentication
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
-export interface LoginResponse {
-  access_token: string;
-  token_type: string;
-  expires_in?: number; // token lifetime in seconds, e.g. 3600
-  username: string;
+export interface MeResponse {
+  principal_id: string;
+  principal_type: string;
+  org_id: string;
   workspace_id: string;
 }
 
-export interface RefreshResponse {
-  access_token: string;
-  expires_in?: number;
-}
-
-// Shape returned by GET /manage/api/v1/users/current
+// Shape returned by GET /manage/api/v1/users/current (DJI Cloud API)
 export interface CurrentUser {
   user_id: string;
   username: string;
   user_type: number;       // 0 = regular user, 1 = admin
-  mqtt_username: string;   // used to connect to the MQTT broker for telemetry
+  mqtt_username: string;
   mqtt_password: string;
   mqtt_client_id: string;
   workspace_id: string;
