@@ -24,9 +24,6 @@ import type {
   DJIDeviceProperty,
   BindDeviceRequest,
   DeviceOTARequest,
-  DJIUser,
-  UpdateUserRequest,
-  WorkspaceUsersResponse,
   HMSMessage,
   HMSListResponse,
   HMSQueryParams,
@@ -112,30 +109,6 @@ export function setDeviceProperty(
 /** Initiates an OTA firmware update for one or more devices. */
 export function deviceOTA(workspaceId: string, payload: DeviceOTARequest[]): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.devices.ota(workspaceId), payload);
-}
-
-// ─── Users ────────────────────────────────────────────────────────────────────
-
-/** Lists all users in a workspace with optional pagination. */
-export function getWorkspaceUsers(
-  workspaceId: string,
-  params?: { page?: number; page_size?: number }
-): Promise<WorkspaceUsersResponse> {
-  return djiRequest.get<WorkspaceUsersResponse>(DJI_URLS.users.list(workspaceId, params));
-}
-
-/** Returns the currently authenticated DJI user's profile. */
-export function getCurrentUser(): Promise<DJIUser> {
-  return djiRequest.get<DJIUser>(DJI_URLS.users.current);
-}
-
-/** Updates a DJI user's profile fields. */
-export function updateUser(
-  workspaceId: string,
-  userId: string,
-  payload: UpdateUserRequest
-): Promise<void> {
-  return djiRequest.put<void>(DJI_URLS.users.update(workspaceId, userId), payload);
 }
 
 // ─── HMS (Health Monitoring System) ──────────────────────────────────────────

@@ -60,6 +60,7 @@ export function useDJIDevices() {
     queryKey: keys.list,
     queryFn: () => getDJIDevices(workspaceId),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
@@ -79,6 +80,7 @@ export function useDJIDevice(deviceSn: string | undefined) {
     queryKey: keys.detail(deviceSn ?? ''),
     queryFn: () => getDJIDevice(workspaceId, deviceSn!),
     enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     staleTime: 10_000,
   });
 }
@@ -96,6 +98,7 @@ export function useBoundDevices() {
     queryKey: keys.bound,
     queryFn: () => getBoundDevices(workspaceId, { domain: 0 }),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
@@ -116,6 +119,7 @@ export function useDeviceTopologies() {
     queryKey: keys.topologies,
     queryFn: () => getDeviceTopologies(workspaceId),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });

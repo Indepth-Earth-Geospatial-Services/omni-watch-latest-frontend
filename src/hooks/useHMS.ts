@@ -39,6 +39,7 @@ export function useWorkspaceHMS() {
     queryKey: hmsKeys(workspaceId).workspace,
     queryFn: () => getWorkspaceHMS(workspaceId),
     enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
@@ -60,6 +61,7 @@ export function useDeviceHMSUnread(deviceSn?: string) {
     queryKey: hmsKeys(workspaceId).device(deviceSn ?? ''),
     queryFn: () => getDeviceHMSUnread(workspaceId, deviceSn!),
     enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });

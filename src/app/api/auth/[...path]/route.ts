@@ -55,11 +55,32 @@ async function forwardRequest(
     console.log(`[Auth Proxy] ← ${authResponse.status} from ${targetUrl}`);
     console.log(`[Auth Proxy] Response body:`, responseText.substring(0, 500));
 
+    // Build response headers — forward Content-Type plus all Set-Cookie headers.
+    // Set-Cookie must be forwarded so the browser stores the HttpOnly refresh token
+    // cookie issued by OmniWatch on login. Without it, token refresh always fails.
+    const responseHeaders = new Headers();
+    responseHeaders.set('Content-Type', authResponse.headers.get('Content-Type') ?? 'application/json');
+
+    // getSetCookie() returns each Set-Cookie value as a separate string (Node 18+),
+    // avoiding the multi-cookie join bug in headers.get('set-cookie').
+    const setCookies: string[] =
+      typeof authResponse.headers.getSetCookie === 'function'
+        ? authResponse.headers.getSetCookie()
+        : (authResponse.headers.get('set-cookie') ? [authResponse.headers.get('set-cookie')!] : []);
+
+    console.log(`[Auth Proxy] Set-Cookie headers:`, setCookies);
+
+    for (const cookie of setCookies) {
+      // Strip Domain so the browser stores the cookie for THIS origin (Next.js app),
+      // not the backend IP. Without this, the browser scopes the cookie to the backend
+      // domain and never sends it on /api/auth/* requests — causing "Refresh token missing".
+      const rewritten = cookie.replace(/;\s*domain=[^;]*/gi, '');
+      responseHeaders.append('Set-Cookie', rewritten);
+    }
+
     return new NextResponse(responseText, {
       status: authResponse.status,
-      headers: {
-        'Content-Type': authResponse.headers.get('Content-Type') ?? 'application/json',
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error('Auth Proxy Error:', error);
