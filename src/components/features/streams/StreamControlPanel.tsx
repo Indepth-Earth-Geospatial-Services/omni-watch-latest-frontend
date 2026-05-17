@@ -9,11 +9,10 @@ import {
   useStopStream,
   useUpdateStreamQuality,
   useSwitchStreamCamera,
-} from "@/hooks/useDJIDevices";
-import type { WebRTCStream } from "@/config/webrtc-streams";
+} from "@/hooks/useLiveStreams";
 
 interface StreamControlPanelProps {
-  stream: WebRTCStream;
+  stream: any;
 }
 
 const QUALITY_OPTIONS = [
@@ -36,7 +35,7 @@ type LensValue = (typeof LENS_OPTIONS)[number]["value"];
 // Only renders for DJI DRONE streams when the DJI Cloud feature flag is on.
 // BODY CAM and CCTV streams have no DJI livestream API — return null for those.
 export function StreamControlPanel({ stream }: StreamControlPanelProps) {
-  const deviceSn = stream.id;
+  const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
   const [isStreaming, setIsStreaming]     = useState(false);
   const [quality, setQuality]             = useState(0);          // 0 = auto
@@ -52,23 +51,23 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
   const lensMutation    = useSwitchStreamCamera();
 
   // Build video_id from live capacity data when available; fall back to index 0.
-  // Format: "{device_sn}/{camera_index}/{video_index}"
   const capacity    = capacityMap?.get(deviceSn);
-  const firstCamera = capacity?.camera_list?.[0];
-  const firstVideo  = firstCamera?.video_list?.[0];
+  const firstCamera = capacity?.camerasList?.[0];
+  const firstVideo  = firstCamera?.videosList?.[0];
   const defaultVideoId = firstCamera && firstVideo
-    ? `${deviceSn}/${firstCamera.camera_index}/${firstVideo.video_index}`
-    : `${deviceSn}/0/0`;
+    ? firstVideo.id
+    : "0";
 
   const currentVideoId = activeVideoId ?? defaultVideoId;
-  const disabled = !stream.isOnline;
+  const disabled = !(stream.isOnline || stream.status);
   const isPending =
     startMutation.isPending  ||
     stopMutation.isPending   ||
     qualityMutation.isPending ||
     lensMutation.isPending;
 
-  if (!DJI_CONFIG.USE_DJI_CLOUD || stream.feedType !== "DRONE") {
+  const streamFeedType = stream.feedType || stream.type || stream.device_type;
+  if (!DJI_CONFIG.USE_DJI_CLOUD || streamFeedType !== "DRONE") {
     return null;
   }
 
@@ -76,9 +75,9 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
     startMutation.mutate(
       {
         video_id:      currentVideoId,
-        url_type:      2,              // WebRTC
-        url:           stream.streamUrl,
-        video_quality: quality,
+        url_type:      "2",              // WebRTC (string as per docs)
+        video_quality: String(quality),
+        videoType:     lens,
       },
       {
         onSuccess: () => {
@@ -91,7 +90,12 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
 
   const handleStop = () => {
     stopMutation.mutate(
-      { video_id: currentVideoId },
+      { 
+        video_id:      currentVideoId,
+        url_type:      "2",
+        video_quality: String(quality),
+        videoType:     lens,
+      },
       {
         onSuccess: () => {
           setIsStreaming(false);
@@ -106,7 +110,9 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
     if (isStreaming) {
       qualityMutation.mutate({
         video_id:      currentVideoId,
-        video_quality: newQuality,
+        url_type:      "2",
+        video_quality: String(newQuality),
+        videoType:     lens,
       });
     }
   };
@@ -115,8 +121,10 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
     setLens(newLens);
     if (isStreaming) {
       lensMutation.mutate({
-        video_id:   currentVideoId,
-        video_type: newLens,
+        video_id:      currentVideoId,
+        url_type:      "2",
+        video_quality: String(quality),
+        videoType:     newLens,
       });
     }
   };

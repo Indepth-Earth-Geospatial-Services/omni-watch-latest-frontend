@@ -6,21 +6,13 @@ export interface DroneAPIResponse {
   deviceSerialNumber: string;
   deviceName: string;
   deviceCategory: string;
-  isUsingAiDetection: boolean;
   streamIsOn: boolean;
   streamUrl: string;
-  webRTCUrl: string;
   metadata?: {
     alias?: string;
     description?: string;
   };
-  streamCredentials?: {
-    userName: string;
-    password: string;
-    port: string;
-  };
   cameras: string[];
-  detectionClasses?: number[]; // YOLO class IDs for AI detection
   incidents: any[];
   createdAt: string;
   updatedAt: string;
@@ -30,40 +22,25 @@ export interface CreateDronePayload {
   deviceSerialNumber: string;
   deviceName: string;
   deviceCategory: 'DRONE' | 'BODY CAM' | 'CCTV';
-  isUsingAiDetection: boolean;
   streamIsOn: boolean;
   streamUrl: string;
   metadata?: {
     alias?: string;
     description?: string;
   };
-  streamCredentials: {
-    userName: string;
-    password: string;
-    port: string;
-  };
   cameras?: string[];
-  detectionClasses?: number[]; // YOLO class IDs for AI detection
 }
 
 export interface UpdateDronePayload {
   deviceName?: string;
   deviceCategory?: string;
-  isUsingAiDetection?: boolean;
   streamIsOn?: boolean;
   streamUrl?: string;
-  webRTCUrl?: string;
   metadata?: {
     alias?: string;
     description?: string;
   };
-  streamCredentials?: {
-    userName?: string;
-    password?: string;
-    port?: string;
-  };
   cameras?: string[];
-  detectionClasses?: number[]; // YOLO class IDs for AI detection
   incidents?: any[];
 }
 

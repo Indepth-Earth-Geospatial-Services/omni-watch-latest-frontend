@@ -11,42 +11,60 @@ export interface GetElementGroupsParams {
 
 // ─── Map Elements ─────────────────────────────────────────────────────────────
 
-// A named collection of map elements (points, lines, polygons)
-export interface ElementGroup {
-  id: string;
-  name: string;
-  element_count: number;
-  create_time: number; // Unix timestamp ms
-  update_time: number;
-}
-
 // A single geographic feature (point of interest, route line, area polygon)
 export interface MapElement {
   id: string;
   name: string;
-  type: string;         // "point" | "line" | "polygon"
-  resource: unknown;    // GeoJSON geometry or resource descriptor from server
-  create_time: number;
-  update_time: number;
-  username: string;     // who created it
+  resource: {
+    type: number;
+    content: GeoJSONFeature;
+    user_name: string;
+  };
 }
 
 // Minimal GeoJSON feature shape — DJI uses this subset of the full GeoJSON spec
 export interface GeoJSONFeature {
   type: 'Feature';
+  properties: {
+    color: string;
+    clampToGround: boolean;
+  };
   geometry: {
     type: string;       // "Point" | "LineString" | "Polygon"
-    coordinates: unknown;
+    coordinates: number[] | number[][] | number[][][];
+    radius?: number;
   };
-  properties?: Record<string, unknown>;
+}
+
+// A named collection of map elements (points, lines, polygons)
+export interface ElementGroup {
+  id: string;
+  name: string;
+  type: number;         // 0 = Pilot Share Layer
+  elements: MapElement[];
+}
+
+// Response data for POST /element-groups/{element_group_id}/elements
+// The server only echoes back the new element's id — not the full element
+export interface AddElementResponse {
+  id: string;
 }
 
 // Body for POST /element-groups/{element_group_id}/elements
-// The server expects a GeoJSON Feature with DJI-specific fields
 export interface AddElementRequest {
   id: string;       // client-generated UUID for the element
   name: string;     // display name for the element
-  resource: unknown; // GeoJSON geometry or DJI resource descriptor
+  resource: {
+    type: number;
+    content: GeoJSONFeature;
+    user_name: string;
+  };
+}
+
+// Body for PUT /map/api/v1/workspaces/{workspace_id}/elements/{element_id}
+export interface UpdateElementRequest {
+  name: string;
+  content: GeoJSONFeature;
 }
 
 // ─── Flight Areas (Geofencing) ────────────────────────────────────────────────

@@ -96,6 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getToken();
 
     if (token) {
+      // Check for dev-mode auto-login user data first to avoid extra requests
+      const savedUser = localStorage.getItem('user');
+      if (savedUser && process.env.NEXT_PUBLIC_AUTO_LOGIN_ENABLED === 'true') {
+        setUser(JSON.parse(savedUser));
+        scheduleRefresh();
+        setIsLoading(false);
+        return;
+      }
+
       fetchCurrentUser().then((ok) => {
         if (ok) scheduleRefresh();
         setIsLoading(false);

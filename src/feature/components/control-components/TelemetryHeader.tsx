@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wind, Radio } from 'lucide-react';
+import { Wind } from 'lucide-react';
 
 interface TelemetryItemProps {
   label: string;
@@ -16,33 +16,44 @@ const TelemetryItem = ({
     <span className='text-[10px] font-normal tracking-widest text-[#8C90A0] uppercase font-poppins'>
       {label}
     </span>
-    <span
-      className={`text-xs text-[#E2E2E8] font-medium font-poppins ${valueClassName}`}
-    >
+    <span className={`text-xs text-[#E2E2E8] font-medium font-poppins ${valueClassName}`}>
       {value}
     </span>
   </div>
 );
 
-const TelemetryHeader = () => {
+interface TelemetryHeaderProps {
+  deviceName?: string;
+  cameraName?: string;
+  isStreaming?: boolean;
+}
+
+const TelemetryHeader = ({
+  deviceName,
+  cameraName,
+  isStreaming = false,
+}: TelemetryHeaderProps) => {
   return (
     <div className='flex items-center justify-between w-full h-14 px-6 bg-[#1A1C20] border border-[#42475426]/15 rounded-lg'>
-      {/* 1. Left Section: Core Mission Data */}
+      {/* Left Section: Core Mission Data */}
       <div className='flex items-center gap-x-10'>
         <TelemetryItem label='Mission' value='Alpha-7' />
         <TelemetryItem label='Dock ID' value='NestPoint-03' />
         <TelemetryItem
           label='Drone'
-          value='Raptor-07'
+          value={deviceName ?? '—'}
           valueClassName='text-blue-500'
         />
-        <TelemetryItem label='Operator' value='J. Okafor' />
-        <TelemetryItem label='Live Feed' value='Dock' />
+        <TelemetryItem label='Camera' value={cameraName ?? '—'} />
+        <TelemetryItem
+          label='Live Feed'
+          value={isStreaming ? 'Active' : 'Standby'}
+          valueClassName={isStreaming ? 'text-emerald-400' : 'text-zinc-500'}
+        />
       </div>
 
-      {/* 2. Right Section: Environmental & Status Data */}
+      {/* Right Section: Environmental & Status Data */}
       <div className='flex items-center gap-x-8'>
-        {/* Environmental Info */}
         <div className='flex items-center gap-2'>
           <Wind size={14} className='text-[#C2C6D7]' />
           <span className='text-xs font-normal font-poppins text-[#C2C6D7]'>
@@ -50,7 +61,6 @@ const TelemetryHeader = () => {
           </span>
         </div>
 
-        {/* Elapsed Time */}
         <div className='flex items-center gap-2'>
           <span className='text-[10px] font-normal font-poppins tracking-widest text-[#8C90A0] uppercase'>
             Elapsed
@@ -60,11 +70,26 @@ const TelemetryHeader = () => {
           </span>
         </div>
 
-        {/* Live Indicator */}
-        <div className='flex items-center gap-2 px-3 py-1 bg-[#FF0000]/10 border border-[#FF0000]/30 rounded'>
-          <div className='w-2 h-2 bg-[#FF0000] rounded-full animate-pulse shadow-[0px_0px_8px_0px_#FF000080]' />
-          <span className='text-[10px] font-bold font-poppins tracking-widest text-[#FF0000] uppercase'>
-            Live
+        <div
+          className={`flex items-center gap-2 px-3 py-1 rounded border transition-colors ${
+            isStreaming
+              ? 'bg-[#FF0000]/10 border-[#FF0000]/30'
+              : 'bg-zinc-800/50 border-zinc-700'
+          }`}
+        >
+          <div
+            className={`w-2 h-2 rounded-full ${
+              isStreaming
+                ? 'bg-[#FF0000] animate-pulse shadow-[0px_0px_8px_0px_#FF000080]'
+                : 'bg-zinc-600'
+            }`}
+          />
+          <span
+            className={`text-[10px] font-bold font-poppins tracking-widest uppercase ${
+              isStreaming ? 'text-[#FF0000]' : 'text-zinc-500'
+            }`}
+          >
+            {isStreaming ? 'Live' : 'Offline'}
           </span>
         </div>
       </div>

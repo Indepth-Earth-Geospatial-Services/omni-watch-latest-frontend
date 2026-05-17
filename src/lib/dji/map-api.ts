@@ -9,8 +9,9 @@ import { DJI_CONFIG } from './config';
 import type {
   ElementGroup,
   GetElementGroupsParams,
-  MapElement,
   AddElementRequest,
+  AddElementResponse,
+  UpdateElementRequest,
   FlightArea,
   AddFlightAreaRequest,
   SyncFlightAreaRequest,
@@ -55,8 +56,8 @@ export function addElement(
   workspaceId: string,
   groupId: string,
   payload: AddElementRequest
-): Promise<MapElement> {
-  return djiRequest.post<MapElement>(
+): Promise<AddElementResponse> {
+  return djiRequest.post<AddElementResponse>(
     `${MAP}/workspaces/${workspaceId}/element-groups/${groupId}/elements`,
     payload
   );
@@ -71,7 +72,7 @@ export function addElement(
 export function updateElement(
   workspaceId: string,
   elementId: string,
-  payload: Partial<Pick<MapElement, 'name' | 'resource'>>
+  payload: UpdateElementRequest
 ): Promise<void> {
   return djiRequest.put<void>(
     `${MAP}/workspaces/${workspaceId}/elements/${elementId}`,

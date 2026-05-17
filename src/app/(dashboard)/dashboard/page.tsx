@@ -1,93 +1,51 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { MainLayout } from '@/components/layout/main-layout'
-import { StatCard } from '@/components/features/metrics/stat-card'
-import { WebRTCStream } from '@/config/webrtc-streams'
-import { useDronesWebSocket } from '@/hooks/useDronesWebSocket'
-import { useDJIDevices } from '@/hooks/useDJIDevices'
-import { useWebRTCStream } from '@/hooks/use-webrtc-stream'
-import { DJI_CONFIG } from '@/lib/dji/config'
+import React from 'react';
+import { MainLayout } from '@/components/layout/main-layout';
+import { StatCard } from '@/components/features/metrics/stat-card';
+import { useDronesWebSocket } from '@/hooks/useDronesWebSocket';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { DJI_CONFIG } from '@/lib/dji/config';
+import { cn } from '@/lib/utils';
 
-// Compact stream card for dashboard (no modal, just shows video)
-function DashboardStreamCard({ stream }: { stream: WebRTCStream }) {
-  const { videoRef, isConnected, isLoading, loadingMessage } = useWebRTCStream({
-    streamUrl: stream.streamUrl,
-    isOnline: stream.isOnline,
-    autoPlay: true,
-  });
+import { UnifiedStream } from '@/lib/types';
 
-  const renderContent = () => {
-    if (!stream.isOnline) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-          <div className="text-center">
-            <i className="fas fa-video text-gray-600 text-3xl mb-2"></i>
-            <p className="text-sm text-gray-500">{stream.name}</p>
-            <div className="flex items-center justify-center mt-2">
-              <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-              <span className="text-xs text-red-400">OFFLINE</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (isLoading) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-          <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
-            <p className="text-xs text-green-400">{loadingMessage}</p>
-          </div>
-        </div>
-      );
-    }
-
-    return null; // Video will show
-  };
+// Compact stream card for dashboard (no modal, just shows placeholder for now)
+function DashboardStreamCard({ stream }: { stream: UnifiedStream }) {
+  const { id, name, type, isOnline } = stream;
 
   return (
     <div className="bg-card rounded-lg border border-gray-800 overflow-hidden group">
-      <div className="h-48 relative">
-        {/* WebRTC Video */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-        />
-
-        {/* Overlay content */}
-        {renderContent()}
+      <div className="h-48 relative bg-black flex items-center justify-center">
+        <div className="text-center p-4">
+          <i className={cn(
+            "fas text-3xl mb-2",
+            type === 'DRONE' ? 'fa-drone text-blue-500' :
+            type === 'BODY CAM' ? 'fa-video text-purple-500' : 'fa-camera text-green-500'
+          )}></i>
+          <p className="text-sm text-gray-400 font-medium truncate max-w-[200px]">{name}</p>
+          {!isOnline && (
+            <div className="flex items-center justify-center mt-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+              <span className="text-xs text-red-400 font-bold">OFFLINE</span>
+            </div>
+          )}
+        </div>
 
         {/* Device name overlay - bottom left */}
         <div className="absolute bottom-2 left-2 z-20">
           <div className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
             <i className="fas fa-video mr-1"></i>
-            {stream.name}
+            {id}
           </div>
         </div>
 
         {/* Live indicator - top right */}
-        {stream.isOnline && isConnected && (
+        {isOnline && (
           <div className="absolute top-2 right-2 z-20">
             <div className="flex items-center bg-green-600 bg-opacity-90 px-2 py-1 rounded text-xs font-bold">
               <div className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></div>
               <span className="text-white">LIVE</span>
-            </div>
-          </div>
-        )}
-
-        {/* AI Detection indicator - top left */}
-        {stream.startai && (
-          <div className="absolute top-2 left-2 z-20">
-            <div className="bg-purple-600 bg-opacity-90 text-white px-2 py-1 rounded text-xs font-bold flex items-center">
-              <i className="fas fa-brain mr-1"></i>
-              AI
             </div>
           </div>
         )}
@@ -102,18 +60,42 @@ export default function DashboardPage() {
   const wsResult  = useDronesWebSocket();
   const djiResult = useDJIDevices();
 
-  const allStreams: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD
-    ? (djiResult.data ?? [])
-    : (wsResult.drones ?? []);
+  const mapToUnified = React.useCallback((item: any): UnifiedStream => {
+    if ('deviceSn' in item) {
+      return {
+        id: item.deviceSn,
+        name: item.deviceName,
+        type: item.type,
+        isOnline: item.status,
+        raw: item,
+        metadata: { alias: item.nickname }
+      };
+    } else {
+      return {
+        id: item.deviceSerialNumber,
+        name: item.deviceName,
+        type: item.deviceCategory,
+        isOnline: item.streamIsOn,
+        raw: item,
+        metadata: item.metadata
+      };
+    }
+  }, []);
+
+  const allStreams: UnifiedStream[] = React.useMemo(() => {
+    const rawItems = DJI_CONFIG.USE_DJI_CLOUD
+      ? (djiResult.data ?? [])
+      : (wsResult.drones ?? []);
+    return rawItems.map(mapToUnified);
+  }, [djiResult.data, wsResult.drones, mapToUnified]);
 
   const isLoading  = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.isLoading  : wsResult.isLoading;
   const error      = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.error       : wsResult.error;
   // WebSocket has a live isConnected flag; DJI polling is "connected" whenever data exists
   const isConnected = DJI_CONFIG.USE_DJI_CLOUD ? !djiResult.isError   : wsResult.isConnected;
 
-  const onlineStreams = allStreams.filter((s: WebRTCStream) => s.isOnline);
   const totalStreams  = allStreams.length;
-  const onlineCount   = onlineStreams.length;
+  const onlineCount   = allStreams.filter((s) => s.isOnline).length;
 
   return (
     <div className="bg-background text-foreground min-h-screen">
@@ -282,7 +264,10 @@ export default function DashboardPage() {
                 {/* Video Feed Grid - Real WebRTC Streams */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {allStreams.map((stream) => (
-                    <DashboardStreamCard key={stream.id} stream={stream} />
+                    <DashboardStreamCard 
+                      key={stream.id} 
+                      stream={stream} 
+                    />
                   ))}
                 </div>
               </div>
@@ -353,7 +338,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-gray-800">
-                    <span className="text-sm text-gray-400">AI Detection</span>
+                    <span className="text-sm text-gray-400">Threat Detection</span>
                     <div className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-sm font-medium text-green-400">Active</span>

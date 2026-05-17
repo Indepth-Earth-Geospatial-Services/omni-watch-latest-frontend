@@ -12,6 +12,7 @@ import type {
   DJIBoundDevicesResponse,
   DJIDeviceProperty,
   BindDeviceRequest,
+  DeviceOTARequest,
 } from '@/lib/types';
 
 const { MANAGE } = DJI_CONFIG;
@@ -47,7 +48,7 @@ export function getDJIDevice(workspaceId: string, deviceSn: string): Promise<DJI
  */
 export function getBoundDevices(
   workspaceId: string,
-  params?: { page?: number; page_size?: number; domain?: number }
+  params: { domain: number; page?: number; page_size?: number }
 ): Promise<DJIBoundDevicesResponse> {
   const query = params
     ? '?' + new URLSearchParams(
@@ -75,13 +76,25 @@ export function getDeviceTopologies(workspaceId: string): Promise<DJIDeviceTopol
 // ─── Write operations ─────────────────────────────────────────────────────────
 
 /**
- * Binds a device (drone or dock) to the workspace so it can be managed.
- * Called from the Register Device modal when the user submits the SN + token.
+ * Updates basic device information (e.g. nickname, description).
  *
- * POST /manage/api/v1/devices/binding
+ * PUT /manage/api/v1/devices/{workspace_id}/devices/{device_sn}
  */
-export function bindDevice(payload: BindDeviceRequest): Promise<void> {
-  return djiRequest.post<void>(`${MANAGE}/devices/binding`, payload);
+export function updateDJIDevice(
+  workspaceId: string,
+  deviceSn: string,
+  payload: Partial<DJIDevice>
+): Promise<void> {
+  return djiRequest.put<void>(`${MANAGE}/devices/${workspaceId}/devices/${deviceSn}`, payload);
+}
+
+/**
+ * Binds a device (drone or dock) to the workspace so it can be managed.
+ *
+ * POST /manage/api/v1/devices/{device_sn}/binding
+ */
+export function bindDevice(deviceSn: string, payload: BindDeviceRequest): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/devices/${deviceSn}/binding`, payload);
 }
 
 /**
@@ -96,7 +109,6 @@ export function unbindDevice(deviceSn: string): Promise<void> {
 
 /**
  * Updates a configurable property on a device (e.g. RTH altitude, obstacle avoidance).
- * The `property` object shape varies by device model — see DJI Cloud API docs for full list.
  *
  * PUT /manage/api/v1/devices/{workspace_id}/devices/{device_sn}/property
  */
@@ -109,4 +121,13 @@ export function setDeviceProperty(
     `${MANAGE}/devices/${workspaceId}/devices/${deviceSn}/property`,
     property
   );
+}
+
+/**
+ * Initiates an Over-The-Air (OTA) firmware update for one or more devices.
+ *
+ * POST /manage/api/v1/devices/{workspace_id}/devices/ota
+ */
+export function deviceOTA(workspaceId: string, payload: DeviceOTARequest[]): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/devices/${workspaceId}/devices/ota`, payload);
 }

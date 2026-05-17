@@ -2,61 +2,37 @@
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getAllDrones, type DroneAPIResponse } from '../services/api/drone-api';
-import { WebRTCStream } from '../config/webrtc-streams';
-
-/**
- * Transform drone API response to WebRTCStream format
- */
-function transformDroneToStream(drone: DroneAPIResponse): WebRTCStream {
-  const webrtcUrl = drone.webRTCUrl || '';
-
-  // Build stream URLs
-  const baseStreamUrl = webrtcUrl.replace('http://', 'ws://').replace('https://', 'wss://');
-  const cleanStreamUrl = baseStreamUrl;
-  const aiStreamUrl = drone.isUsingAiDetection && baseStreamUrl
-    ? `${baseStreamUrl}/ai`
-    : '';
-
-  return {
-    id: drone.deviceSerialNumber,
-    name: drone.deviceName,
-    streamUrl: cleanStreamUrl,
-    isOnline: drone.streamIsOn,
-    feedType: (drone.deviceCategory as any) || 'DRONE',
-    startai: drone.isUsingAiDetection,
-    metadata: {
-      alias: drone.metadata?.alias || drone.deviceName,
-      description: drone.metadata?.description,
-      aiStreamUrl: aiStreamUrl,
-      webRTCUrl: drone.webRTCUrl,
-    },
-  };
-}
+import { DJI_CONFIG } from '../lib/dji/config';
+import { getToken } from '../lib/dji/token-store';
 
 interface UseDronesWebSocketOptions {
   subscribeToAll?: boolean;
   droneSerial?: string;
 }
-
 /**
  * Hook to fetch drones with WebSocket real-time updates
  * @param options - Configuration options
  */
 export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscribeToAll: true }) {
-  const [drones, setDrones] = useState<WebRTCStream[]>([]);
+  const [drones, setDrones] = useState<DroneAPIResponse[]>([]);
   const [rawDrones, setRawDrones] = useState<Map<string, DroneAPIResponse>>(new Map()); // Store full API data
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Initial fetch of all drones
+  // Initial fetch of all drones — skipped when DJI Cloud mode is active
   useEffect(() => {
+    if (DJI_CONFIG.USE_DJI_CLOUD) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchInitialDrones = async () => {
       try {
         setIsLoading(true);
         const dronesData = await getAllDrones();
-        setDrones(dronesData.map(transformDroneToStream));
+        setDrones(dronesData);
 
         // Store raw drone data for later use (e.g., editing)
         const rawMap = new Map<string, DroneAPIResponse>();
@@ -76,12 +52,17 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
     fetchInitialDrones();
   }, []);
 
-  // Setup WebSocket connection
+  // Setup WebSocket connection — skipped when DJI Cloud mode is active
   useEffect(() => {
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000';
+    if (DJI_CONFIG.USE_DJI_CLOUD) return;
+
+    // BASE_URL is the plain host:port — socket.io treats any path in the URL
+    // as a namespace, which would break the handshake. Use path option instead.
+    const WS_URL = DJI_CONFIG.BASE_URL;
 
     const socketInstance = io(WS_URL, {
       path: '/ws/events',
+      auth: { token: getToken() },
       transports: ['websocket', 'polling'],
     });
 
@@ -138,9 +119,9 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
       case 'drone.created':
         // Add new drone to the list
         setDrones((prev) => {
-          const exists = prev.some(d => d.id === data.drone.deviceSerialNumber);
+          const exists = prev.some(d => d.deviceSerialNumber === data.drone.deviceSerialNumber);
           if (exists) return prev;
-          return [...prev, transformDroneToStream(data.drone)];
+          return [...prev, data.drone];
         });
         // Store raw drone data
         setRawDrones((prev) => {
@@ -152,25 +133,22 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 
       case 'drone.updated':
       case 'drone.stream.status':
-      case 'drone.ai.detection.toggled':
-      case 'drone.detection.classes.changed':
         // Update existing drone
         setDrones((prev) => {
-          const index = prev.findIndex(d => d.id === data.serialNumber);
+          const index = prev.findIndex(d => d.deviceSerialNumber === data.serialNumber);
           if (index === -1) return prev;
 
           const updatedDrones = [...prev];
           // Use full data if available, otherwise merge partial changes
           if (data.full) {
-            updatedDrones[index] = transformDroneToStream(data.full);
+            updatedDrones[index] = data.full;
           } else {
-            // Merge partial updates (e.g., streamIsOn, streamUrl, isUsingAiDetection)
+            // Merge partial updates
             const existingDrone = updatedDrones[index];
             updatedDrones[index] = {
               ...existingDrone,
-              ...(data.streamIsOn !== undefined && { isOnline: data.streamIsOn }),
+              ...(data.streamIsOn !== undefined && { streamIsOn: data.streamIsOn }),
               ...(data.streamUrl && { streamUrl: data.streamUrl }),
-              ...(data.isUsingAiDetection !== undefined && { startai: data.isUsingAiDetection }),
             };
             console.log('[WebSocket] Merged partial update for:', data.serialNumber, data);
           }
@@ -188,7 +166,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 
       case 'drone.deleted':
         // Remove drone from the list
-        setDrones((prev) => prev.filter(d => d.id !== data.serialNumber));
+        setDrones((prev) => prev.filter(d => d.deviceSerialNumber !== data.serialNumber));
         // Remove from raw data
         setRawDrones((prev) => {
           const updated = new Map(prev);
@@ -207,7 +185,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
     try {
       setIsLoading(true);
       const dronesData = await getAllDrones();
-      setDrones(dronesData.map(transformDroneToStream));
+      setDrones(dronesData);
 
       // Update raw drone data
       const rawMap = new Map<string, DroneAPIResponse>();
@@ -236,7 +214,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
     isConnected,
     refresh,
     socket,
-    getRawDrone, // NEW: Get full drone data without API call
+    getRawDrone,
   };
 }
 
@@ -246,28 +224,10 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 export function useActiveDronesWebSocket() {
   const { drones, isLoading, error, isConnected, refresh, socket } = useDronesWebSocket({ subscribeToAll: true });
 
-  const activeDrones = drones.filter(drone => drone.isOnline);
+  const activeDrones = drones.filter(drone => drone.streamIsOn);
 
   return {
     drones: activeDrones,
-    isLoading,
-    error,
-    isConnected,
-    refresh,
-    socket,
-  };
-}
-
-/**
- * Hook to fetch drones with AI detection enabled with WebSocket updates
- */
-export function useAIDronesWebSocket() {
-  const { drones, isLoading, error, isConnected, refresh, socket } = useDronesWebSocket({ subscribeToAll: true });
-
-  const aiDrones = drones.filter(drone => drone.startai && drone.isOnline);
-
-  return {
-    drones: aiDrones,
     isLoading,
     error,
     isConnected,
@@ -285,7 +245,7 @@ export function useSingleDroneWebSocket(droneSerial: string) {
     droneSerial
   });
 
-  const drone = drones.find(d => d.id === droneSerial);
+  const drone = drones.find(d => d.deviceSerialNumber === droneSerial);
 
   return {
     drone,

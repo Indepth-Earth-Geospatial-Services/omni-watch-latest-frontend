@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -59,7 +59,9 @@ const PARTICLES = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SignInPage() {
+// ─── Internal Component ───────────────────────────────────────────────────────
+
+function SignInForm() {
   const { login, loginError, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -284,5 +286,17 @@ export default function SignInPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

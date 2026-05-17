@@ -7,11 +7,6 @@ export interface DroneData {
   direction: string;
   status: "online" | "offline";
   feedType: "DRONE" | "BODY CAM" | "CCTV";
-  hasAgoraStream: boolean;
-  appId?: string;
-  token?: string;
-  channel?: string;
-  agoraChannel?: string | null;
 }
 
 export interface IncidentData {
@@ -51,13 +46,6 @@ export interface Drone {
 
   // Token information
   hasToken: boolean;
-  appId: string | null;
-  token: string | null;
-  channel: string | null;
-  uid: string | null;
-  expire: string | null;
-  timeRemaining: number | null;
-  createdAt: number | null;
   lastAccessed: string | null;
 }
 
