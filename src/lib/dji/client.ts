@@ -3,18 +3,19 @@
 //
 // Usage:
 //   import { djiRequest } from '@/lib/dji/client';
-//   const devices = await djiRequest.get<DJIDevice[]>(`${DJI_CONFIG.MANAGE}/devices/...`);
+//   const devices = await djiRequest.get<DJIDevice[]>(DJI_URLS.devices.list(workspaceId));
 
+import axios, { AxiosError } from 'axios';
 import { getToken } from './token-store';
 
-// DJI API response envelope — every endpoint returns this shape
+// DJI API response envelope — every endpoint wraps its payload in this shape
 export interface DJIApiResponse<T> {
-  code: number; // 0 = success, anything else = error
+  code: number;    // 0 = success, anything else = error
   message: string;
   data?: T;
 }
 
-// Typed error so callers can check error.code for specific handling (401 → login, 502 → offline)
+// Typed error so callers can branch on error.code (401 → re-login, 502 → offline, etc.)
 export class DJIApiError extends Error {
   constructor(
     public readonly code: number,
@@ -26,67 +27,78 @@ export class DJIApiError extends Error {
 }
 
 /**
- * Core request function — attaches JWT, calls the proxy, unwraps the DJI envelope.
- * @param path    - DJI API path, e.g. "/manage/api/v1/login" (no base URL — proxy adds it)
- * @param options - Standard fetch RequestInit (method, body, extra headers)
- * @param retried - Internal flag: true = already attempted one token refresh, do not retry again
+ * Core request function — attaches auth token, routes through the proxy, unwraps the DJI envelope.
+ *
+ * @param method  - HTTP verb
+ * @param path    - DJI API path (no base URL — proxy adds `/api/dji/` prefix automatically)
+ * @param data    - Request body (axios serialises to JSON automatically)
+ * @param retried - Internal flag: prevents infinite retry loops on 401
  */
-async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+async function request<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  data?: unknown,
+  retried = false
+): Promise<T> {
   const token = getToken();
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    // Only attach the auth header when a valid token exists
-    ...(token ? { 'x-auth-token': token } : {}),
-    // Caller-supplied headers (e.g. custom Content-Type for file uploads) take precedence
-    ...((options.headers as Record<string, string>) ?? {}),
-  };
-
-  // All DJI paths are forwarded through the proxy — strip any leading slash first
+  // All DJI paths are forwarded through the Next.js proxy — strip any leading slash first
   const proxyPath = `/api/dji/${path.replace(/^\//, '')}`;
 
-  const response = await fetch(proxyPath, { ...options, headers });
+  try {
+    const res = await axios.request<DJIApiResponse<T>>({
+      method,
+      url: proxyPath,
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'x-auth-token': token } : {}),
+      },
+    });
 
-  // 401 → try a silent token refresh once, then replay the original request
-  if (response.status === 401 && !retried) {
-    try {
-      const { refreshOmniWatchToken } = await import('@/lib/dji/auth-api');
-      await refreshOmniWatchToken();
-      return request<T>(path, options, true); // retried = true — will not retry again
-    } catch {
-      throw new DJIApiError(401, 'Session expired. Please sign in again.');
+    const envelope = res.data;
+
+    // DJI signals errors via code !== 0 even on HTTP 200
+    if (envelope.code !== 0) {
+      throw new DJIApiError(envelope.code, envelope.message ?? 'Request failed');
     }
+
+    return envelope.data as T;
+  } catch (err) {
+    // 401 → silent token refresh, then replay once
+    if (err instanceof AxiosError && err.response?.status === 401 && !retried) {
+      try {
+        const { refreshOmniWatchToken } = await import('@/lib/dji/auth-api');
+        await refreshOmniWatchToken();
+        return request<T>(method, path, data, true);
+      } catch {
+        throw new DJIApiError(401, 'Session expired. Please sign in again.');
+      }
+    }
+
+    // Re-throw DJIApiError as-is (from the envelope check above)
+    if (err instanceof DJIApiError) throw err;
+
+    // Surface axios HTTP errors with a clean message
+    if (err instanceof AxiosError && err.response) {
+      throw new DJIApiError(err.response.status, err.message);
+    }
+
+    throw err;
   }
-
-  // Parse the DJI response envelope
-  const json: DJIApiResponse<T> = await response.json();
-
-  if (json.code !== 0) {
-    throw new DJIApiError(json.code, json.message ?? 'Request failed');
-  }
-
-  return json.data as T;
 }
 
 // Public API — four methods matching every HTTP verb the DJI server uses
 export const djiRequest = {
-  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  get: <T>(path: string) =>
+    request<T>('GET', path),
 
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'POST',
-      body: JSON.stringify(body ?? {}),
-    }),
+    request<T>('POST', path, body ?? {}),
 
   put: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'PUT',
-      body: JSON.stringify(body ?? {}),
-    }),
+    request<T>('PUT', path, body ?? {}),
 
   delete: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'DELETE',
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    }),
+    request<T>('DELETE', path, body),
 };
