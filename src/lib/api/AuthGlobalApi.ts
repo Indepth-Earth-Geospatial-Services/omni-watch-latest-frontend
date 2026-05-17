@@ -1,236 +1,150 @@
-// OmniWatch API — URL registry + API methods for all non-auth OmniWatch endpoints.
-// Auth endpoints (login/logout/me/refresh) live in src/lib/dji/auth-api.ts.
-//
-// All requests go through the Next.js proxies (both forward to http://34.35.12.123:8002):
-//   /api/auth/...      → OmniWatch /api/v1/auth/<path>   (auth-api.ts handles this)
-//   /api/omniwatch/... → OmniWatch /api/v1/<path>        (this file)
+/**
+ * @file AuthGlobalApi.ts
+ * @description Centralised URL registry for all OmniWatch backend endpoints.
+ *
+ * This file is a **pure URL registry** — it contains only URL strings and
+ * URL builder functions. No fetch logic, no side-effects.
+ *
+ * Fetch calls that consume these URLs live in `omniwatch-service.ts`.
+ *
+ * Proxy routing (Next.js → OmniWatch backend at http://34.35.12.123:8002):
+ *   /api/auth/*      → /api/v1/auth/<path>   (authentication endpoints)
+ *   /api/omniwatch/* → /api/v1/<path>        (all other endpoints)
+ *
+ * Usage:
+ *   import { API_URLS } from '@/lib/api';
+ *   const url = API_URLS.projects.detail('abc-123');
+ */
 
-import { getToken } from '@/lib/dji/token-store';
-import type {
-  CreateWorkspaceRequest,
-  CreateWorkspaceResponse,
-  Project,
-  ProjectBody,
-  ProjectDevice,
-  ProjectFlightArea,
-  AssignDeviceRequest,
-  AssignFlightAreaRequest,
-  TeamInviteRequest,
-  TeamInviteResponse,
-  AcceptInviteRequest,
-  AcceptInviteResponse,
-  RegisterAdminRequest,
-  RegisterAdminResponse,
-  HealthCheckResponse,
-  Organization,
-  UpdateOrganizationRequest,
-  OrgUser,
-  AddOrgUserRequest,
-  UpdateOrgUserRequest,
-  PaginatedResponse,
-  PageParams,
-} from '@/lib/types';
-
-// ─── URL registry ─────────────────────────────────────────────────────────────
+import type { PageParams } from '@/lib/types';
 
 const AUTH_PROXY = '/api/auth';
 const OMNI_PROXY = '/api/omniwatch';
 
-export const AUTH_URLS = {
-  login:         `${AUTH_PROXY}/login`,
-  logout:        `${AUTH_PROXY}/logout`,
-  me:            `${AUTH_PROXY}/me`,
-  refreshToken:  `${AUTH_PROXY}/token/refresh`,
-  acceptInvite:  `${AUTH_PROXY}/accept-invite/`,
-  registerAdmin: `${AUTH_PROXY}/register-admin/`,
-} as const;
+export const API_URLS = {
 
-export const OMNIWATCH_URLS = {
+  /**
+   * Authentication endpoints — proxied through /api/auth.
+   * Credentials flow: browser → Next.js proxy → OmniWatch /api/v1/auth/*
+   */
+  auth: {
+    /** POST — exchange email + PIN for access & refresh tokens */
+    login:         `${AUTH_PROXY}/login`,
+    /** POST — revoke the current session (HttpOnly refresh cookie cleared server-side) */
+    logout:        `${AUTH_PROXY}/logout`,
+    /** GET  — return the authenticated principal's org/workspace metadata */
+    me:            `${AUTH_PROXY}/me`,
+    /** POST — exchange refresh token (sent as HttpOnly cookie) for a new access token */
+    refreshToken:  `${AUTH_PROXY}/token/refresh`,
+    /** POST — validate an invitation token and provision DJI Web + Pilot accounts */
+    acceptInvite:  `${AUTH_PROXY}/accept-invite/`,
+    /** POST — provision the initial admin DJI accounts for a newly created workspace */
+    registerAdmin: `${AUTH_PROXY}/register-admin/`,
+  },
+
+  /**
+   * GET — verify that the OmniWatch server and both databases are reachable.
+   * Returns a map of service names to their current status strings.
+   */
   health: `${OMNI_PROXY}/health`,
+
+  /**
+   * Internal workspace management — requires the X-Internal-Secret gateway header.
+   * These endpoints are not exposed to regular users.
+   */
   workspace: {
+    /** POST — create a new DJI workspace on the OmniWatch backend */
     create: `${OMNI_PROXY}/internal/workspaces/`,
   },
+
+  /**
+   * Project endpoints — CRUD plus device and flight-area assignment.
+   * A project groups devices and wayline flight areas under a named context.
+   */
   projects: {
-    list:   `${OMNI_PROXY}/projects/`,
+    /**
+     * GET — paginated list of all projects belonging to the authenticated org.
+     * @param params - Optional page / page_size for cursor-based pagination.
+     */
+    list: (params?: PageParams) => {
+      const q = new URLSearchParams();
+      if (params?.page      !== undefined) q.set('page',      String(params.page));
+      if (params?.page_size !== undefined) q.set('page_size', String(params.page_size));
+      const s = q.toString();
+      return s ? `${OMNI_PROXY}/projects/?${s}` : `${OMNI_PROXY}/projects/`;
+    },
+
+    /** POST — create a new project (name + optional description) */
     create: `${OMNI_PROXY}/projects/`,
-    detail:             (id: string)               => `${OMNI_PROXY}/projects/${id}/`,
-    devices:            (id: string)               => `${OMNI_PROXY}/projects/${id}/devices/`,
-    assignDevice:       (id: string)               => `${OMNI_PROXY}/projects/${id}/devices/assign/`,
-    unassignDevice:     (id: string, sn: string)   => `${OMNI_PROXY}/projects/${id}/devices/${sn}/unassign/`,
-    assignFlightArea:   (id: string)               => `${OMNI_PROXY}/projects/${id}/flight-areas/assign/`,
-    unassignFlightArea: (id: string, wId: string)  => `${OMNI_PROXY}/projects/${id}/flight-areas/${wId}/unassign/`,
+
+    /**
+     * GET / PUT / PATCH / DELETE — operate on a single project by UUID.
+     * @param id - Project UUID.
+     */
+    detail: (id: string) => `${OMNI_PROXY}/projects/${id}/`,
+
+    /**
+     * GET — paginated list of devices currently assigned to a project.
+     * @param id     - Project UUID.
+     * @param params - Optional pagination params.
+     */
+    devices: (id: string, params?: PageParams) => {
+      const q = new URLSearchParams();
+      if (params?.page      !== undefined) q.set('page',      String(params.page));
+      if (params?.page_size !== undefined) q.set('page_size', String(params.page_size));
+      const s = q.toString();
+      return s
+        ? `${OMNI_PROXY}/projects/${id}/devices/?${s}`
+        : `${OMNI_PROXY}/projects/${id}/devices/`;
+    },
+
+    /** POST — assign a device (by serial number) to the project */
+    assignDevice: (id: string) =>
+      `${OMNI_PROXY}/projects/${id}/devices/assign/`,
+
+    /**
+     * DELETE — remove a device assignment from the project.
+     * @param id - Project UUID.
+     * @param sn - Device serial number to unassign.
+     */
+    unassignDevice: (id: string, sn: string) =>
+      `${OMNI_PROXY}/projects/${id}/devices/${sn}/unassign/`,
+
+    /** POST — link a wayline flight area to the project */
+    assignFlightArea: (id: string) =>
+      `${OMNI_PROXY}/projects/${id}/flight-areas/assign/`,
+
+    /**
+     * DELETE — remove a flight-area link from the project.
+     * @param id  - Project UUID.
+     * @param wId - Wayline ID to unassign.
+     */
+    unassignFlightArea: (id: string, wId: string) =>
+      `${OMNI_PROXY}/projects/${id}/flight-areas/${wId}/unassign/`,
   },
+
+  /**
+   * Team management — invitation flow for onboarding new workspace members.
+   */
   teams: {
+    /** POST — generate an invitation token and send it to the specified email */
     invite: `${OMNI_PROXY}/teams/invite/`,
   },
+
+  /**
+   * Organisation endpoints — read/update the caller's own org and manage staff.
+   * All calls are scoped to the authenticated user's organisation automatically.
+   */
   organization: {
+    /** GET / PATCH — retrieve or partially update the authenticated org's details */
     detail: `${OMNI_PROXY}/organization/`,
+    /** GET / POST — list all staff members or add a new one */
     users:  `${OMNI_PROXY}/organization/users/`,
-    user:   (userId: string) => `${OMNI_PROXY}/organization/users/${userId}/`,
+    /**
+     * PATCH — update a specific staff member's profile.
+     * @param userId - UUID of the staff member to update.
+     */
+    user: (userId: string) => `${OMNI_PROXY}/organization/users/${userId}/`,
   },
-} as const;
 
-// ─── Internal fetch wrapper ───────────────────────────────────────────────────
-
-async function request<T>(
-  url: string,
-  options: RequestInit = {},
-  extraHeaders: Record<string, string> = {}
-): Promise<T> {
-  const token = getToken();
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...extraHeaders,
-      ...(options.headers as Record<string, string> ?? {}),
-    },
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(String(body.detail ?? `Request failed: ${res.status}`));
-  }
-
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
-}
-
-function qs(params: PageParams): string {
-  const sp = new URLSearchParams();
-  if (params.page      !== undefined) sp.set('page',      String(params.page));
-  if (params.page_size !== undefined) sp.set('page_size', String(params.page_size));
-  const s = sp.toString();
-  return s ? `?${s}` : '';
-}
-
-// ─── Workspace API (internal — requires X-Internal-Secret) ───────────────────
-
-export const workspaceApi = {
-  create: (body: CreateWorkspaceRequest, internalSecret: string): Promise<CreateWorkspaceResponse> =>
-    request<CreateWorkspaceResponse>(
-      OMNIWATCH_URLS.workspace.create,
-      { method: 'POST', body: JSON.stringify(body) },
-      { 'X-Internal-Secret': internalSecret }
-    ),
-};
-
-// ─── Projects API ─────────────────────────────────────────────────────────────
-
-export const projectsApi = {
-  list: (params?: PageParams): Promise<PaginatedResponse<Project>> =>
-    request<PaginatedResponse<Project>>(
-      `${OMNIWATCH_URLS.projects.list}${qs(params ?? {})}`,
-      { method: 'GET' }
-    ),
-
-  create: (body: ProjectBody): Promise<Project> =>
-    request<Project>(OMNIWATCH_URLS.projects.create, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  get: (id: string): Promise<Project> =>
-    request<Project>(OMNIWATCH_URLS.projects.detail(id), { method: 'GET' }),
-
-  update: (id: string, body: ProjectBody): Promise<Project> =>
-    request<Project>(OMNIWATCH_URLS.projects.detail(id), {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-
-  patch: (id: string, body: Partial<ProjectBody>): Promise<Project> =>
-    request<Project>(OMNIWATCH_URLS.projects.detail(id), {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
-
-  delete: (id: string): Promise<void> =>
-    request<void>(OMNIWATCH_URLS.projects.detail(id), { method: 'DELETE' }),
-
-  listDevices: (id: string, params?: PageParams): Promise<PaginatedResponse<ProjectDevice>> =>
-    request<PaginatedResponse<ProjectDevice>>(
-      `${OMNIWATCH_URLS.projects.devices(id)}${qs(params ?? {})}`,
-      { method: 'GET' }
-    ),
-
-  assignDevice: (id: string, body: AssignDeviceRequest): Promise<ProjectDevice> =>
-    request<ProjectDevice>(OMNIWATCH_URLS.projects.assignDevice(id), {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  unassignDevice: (id: string, deviceSn: string): Promise<void> =>
-    request<void>(OMNIWATCH_URLS.projects.unassignDevice(id, deviceSn), { method: 'DELETE' }),
-
-  assignFlightArea: (id: string, body: AssignFlightAreaRequest): Promise<ProjectFlightArea> =>
-    request<ProjectFlightArea>(OMNIWATCH_URLS.projects.assignFlightArea(id), {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  unassignFlightArea: (id: string, waylineId: string): Promise<void> =>
-    request<void>(OMNIWATCH_URLS.projects.unassignFlightArea(id, waylineId), { method: 'DELETE' }),
-};
-
-// ─── Teams API ────────────────────────────────────────────────────────────────
-
-export const teamsApi = {
-  invite: (body: TeamInviteRequest): Promise<TeamInviteResponse> =>
-    request<TeamInviteResponse>(OMNIWATCH_URLS.teams.invite, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-};
-
-// ─── Auth Admin API ───────────────────────────────────────────────────────────
-
-export const authAdminApi = {
-  acceptInvite: (body: AcceptInviteRequest): Promise<AcceptInviteResponse> =>
-    request<AcceptInviteResponse>(AUTH_URLS.acceptInvite, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  registerAdmin: (body: RegisterAdminRequest): Promise<RegisterAdminResponse> =>
-    request<RegisterAdminResponse>(AUTH_URLS.registerAdmin, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-};
-
-// ─── Health API ───────────────────────────────────────────────────────────────
-
-export const healthApi = {
-  check: (): Promise<HealthCheckResponse> =>
-    request<HealthCheckResponse>(OMNIWATCH_URLS.health, { method: 'GET' }),
-};
-
-// ─── Organization API ─────────────────────────────────────────────────────────
-
-export const organizationApi = {
-  get: (): Promise<Organization> =>
-    request<Organization>(OMNIWATCH_URLS.organization.detail, { method: 'GET' }),
-
-  update: (body: UpdateOrganizationRequest): Promise<Organization> =>
-    request<Organization>(OMNIWATCH_URLS.organization.detail, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
-
-  listUsers: (): Promise<OrgUser[]> =>
-    request<OrgUser[]>(OMNIWATCH_URLS.organization.users, { method: 'GET' }),
-
-  addUser: (body: AddOrgUserRequest): Promise<OrgUser> =>
-    request<OrgUser>(OMNIWATCH_URLS.organization.users, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  updateUser: (userId: string, body: UpdateOrgUserRequest): Promise<OrgUser> =>
-    request<OrgUser>(OMNIWATCH_URLS.organization.user(userId), {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
 };

@@ -1,2 +1,3 @@
-export { AUTH_URLS, OMNIWATCH_URLS, workspaceApi, projectsApi, teamsApi, authAdminApi, healthApi, organizationApi } from './AuthGlobalApi';
+export { API_URLS } from './AuthGlobalApi';
 export { DJI_URLS } from './DJIGlobalApi';
+export { workspaceApi, projectsApi, teamsApi, authAdminApi, healthApi, organizationApi } from '@/services/omniwatch-service';
