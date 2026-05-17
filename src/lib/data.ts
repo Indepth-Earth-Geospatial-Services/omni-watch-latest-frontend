@@ -1,4 +1,23 @@
-import { DroneData, IncidentData } from '@/types'
+interface DroneData {
+  sn: string | number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  battery: number;
+  direction: string;
+  status: 'online' | 'offline';
+  feedType: 'DRONE' | 'BODY CAM' | 'CCTV';
+}
+
+interface IncidentData {
+  id: string;
+  title: string;
+  description: string;
+  status: 'OPEN' | 'RESOLVED' | 'IN PROGRESS' | 'MONITORING';
+  timestamp: string;
+  location: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
 
 export const feedData: DroneData[] = [
   {
