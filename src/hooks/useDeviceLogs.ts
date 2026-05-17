@@ -12,7 +12,7 @@ import {
   triggerLogUpload,
   cancelLogUpload,
   deleteLogFile,
-} from '@/lib/dji/device-logs-api';
+} from '@/services/dji-service';
 import type {
   TriggerLogUploadRequest,
   CancelLogUploadRequest,

@@ -7,7 +7,7 @@ import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { DJI_CONFIG } from '@/lib/dji/config';
 import { RegisterDeviceModal } from '@/components/features/devices/RegisterDeviceModal';
 import { EditDeviceModal } from '@/components/features/devices/EditDeviceModal';
-import { DroneAPIResponse } from '@/services/api/drone-api';
+import { DroneAPIResponse } from '@/hooks/useDronesWebSocket';
 import React, { useState, useMemo } from 'react';
 import { DJIDevice, UnifiedStream } from '@/lib/types';
 import { StreamControlPanel } from '@/components/features/streams/StreamControlPanel';

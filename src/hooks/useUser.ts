@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/dji/config';
-import { getCurrentUser, getWorkspaceUsers, updateUser } from '@/lib/dji/user-api';
+import { getCurrentUser, getWorkspaceUsers, updateUser } from '@/services/dji-service';
 import type { UpdateUserRequest } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────

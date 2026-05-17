@@ -2,7 +2,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createDrone, CreateDronePayload } from '@/services/api/drone-api';
+interface CreateDronePayload {
+  deviceSerialNumber: string;
+  deviceName: string;
+  deviceCategory: string;
+  streamIsOn: boolean;
+  streamUrl: string;
+  metadata: { alias: string; description: string };
+  cameras: string[];
+}
+
+// Stub — only reachable when USE_DJI_CLOUD=false (BODY CAM / CCTV legacy path).
+async function createDrone(_payload: CreateDronePayload): Promise<void> {}
 import { useUnregisteredDevices } from '@/hooks/useUnregisteredDevices';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBindDevice } from '@/hooks/useDJIDevices';

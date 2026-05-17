@@ -19,7 +19,7 @@ import {
   deleteFlightArea,
   syncFlightAreas,
   getDeviceFlightAreaStatus,
-} from '@/lib/dji/map-api';
+} from '@/services/dji-service';
 import type {
   GetElementGroupsParams,
   AddElementRequest,

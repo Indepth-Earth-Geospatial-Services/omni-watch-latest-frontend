@@ -6,7 +6,7 @@ import {
   stopStream,
   updateStreamQuality,
   switchStreamCamera,
-} from '@/lib/dji/livestream-api';
+} from '@/services/dji-service';
 import type {
   LiveStreamRequest,
 } from '@/lib/types';

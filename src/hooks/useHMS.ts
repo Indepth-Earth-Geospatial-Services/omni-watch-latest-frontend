@@ -11,7 +11,7 @@ import {
   getWorkspaceHMS,
   markHMSRead,
   getDeviceHMSUnread,
-} from '@/lib/dji/hms-api';
+} from '@/services/dji-service';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 

@@ -19,7 +19,7 @@ import {
   unbindDevice,
   updateDJIDevice,
   deviceOTA,
-} from '@/lib/dji/device-api';
+} from '@/services/dji-service';
 import type {
   BindDeviceRequest,
   DJIDevice,

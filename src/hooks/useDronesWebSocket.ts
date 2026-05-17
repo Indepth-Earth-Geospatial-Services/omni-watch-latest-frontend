@@ -1,9 +1,25 @@
-// WebSocket-based drone hook - replaces polling with real-time updates
+// Legacy WebSocket hook for the old drone backend (non-DJI-Cloud path).
+// All fetch calls and socket connections in this file are guarded by
+// `if (DJI_CONFIG.USE_DJI_CLOUD) return;` — they never run in production.
+// DroneAPIResponse is exported so live-feed/page.tsx and EditDeviceModal can type the legacy state.
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { getAllDrones, type DroneAPIResponse } from '../services/api/drone-api';
 import { DJI_CONFIG } from '../lib/dji/config';
 import { getToken } from '../lib/dji/token-store';
+
+export interface DroneAPIResponse {
+  deviceSerialNumber: string;
+  deviceName: string;
+  deviceCategory: string;
+  streamIsOn: boolean;
+  streamUrl: string;
+  metadata?: { alias?: string; description?: string };
+}
+
+// Stub — only reachable when USE_DJI_CLOUD=false.
+async function getAllDrones(): Promise<DroneAPIResponse[]> {
+  return [];
+}
 
 interface UseDronesWebSocketOptions {
   subscribeToAll?: boolean;
@@ -36,7 +52,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 
         // Store raw drone data for later use (e.g., editing)
         const rawMap = new Map<string, DroneAPIResponse>();
-        dronesData.forEach(drone => {
+        dronesData.forEach((drone: DroneAPIResponse) => {
           rawMap.set(drone.deviceSerialNumber, drone);
         });
         setRawDrones(rawMap);
@@ -189,7 +205,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 
       // Update raw drone data
       const rawMap = new Map<string, DroneAPIResponse>();
-      dronesData.forEach(drone => {
+      dronesData.forEach((drone: DroneAPIResponse) => {
         rawMap.set(drone.deviceSerialNumber, drone);
       });
       setRawDrones(rawMap);

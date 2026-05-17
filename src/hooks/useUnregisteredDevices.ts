@@ -1,7 +1,7 @@
-// Hook to fetch unregistered devices from telemetry socket
+// Hook to detect devices seen via telemetry socket that are not in the DJI workspace.
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { getAllDrones } from '@/services/api/drone-api';
+import { getDJIDevices } from '@/services/dji-service';
 import { DJI_CONFIG } from '@/lib/dji/config';
 import { getToken } from '@/lib/dji/token-store';
 
@@ -41,11 +41,9 @@ export function useUnregisteredDevices() {
     // So we receive TWO parameters: (droneData, sn)
     socketInstance.on('droneDataUpdate', async (droneData: any, sn: string) => {
       try {
-        // console.log('Received droneDataUpdate:', { sn, droneData });
-
-        // Fetch registered drones from database
-        const registeredDrones = await getAllDrones();
-        const registeredSerials = new Set(registeredDrones.map(d => d.deviceSerialNumber));
+        const workspaceId = DJI_CONFIG.WORKSPACE_ID;
+        const workspaceDevices = await getDJIDevices(workspaceId);
+        const registeredSerials = new Set(workspaceDevices.map(d => d.deviceSn));
 
         // Use the serial number parameter directly
         const serialNumber = sn;

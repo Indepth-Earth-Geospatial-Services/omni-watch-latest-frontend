@@ -2,7 +2,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { updateDrone, UpdateDronePayload, DroneAPIResponse } from '@/services/api/drone-api';
+import { DroneAPIResponse } from '@/hooks/useDronesWebSocket';
+
+interface UpdateDronePayload {
+  deviceName: string;
+  streamIsOn: boolean;
+  streamUrl: string;
+  metadata: { alias: string; description: string };
+  cameras: string[];
+}
+
+// Stub — EditDeviceModal is never shown when USE_DJI_CLOUD=true.
+async function updateDrone(_sn: string, _payload: UpdateDronePayload): Promise<void> {}
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface EditDeviceModalProps {
