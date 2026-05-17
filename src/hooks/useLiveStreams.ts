@@ -45,8 +45,8 @@ export function useLiveCapacity() {
  * start({ video_id, url_type: "2", video_quality: "0", videoType: "zoom" });
  */
 export function useStartStream() {
-  return useMutation({
-    mutationFn: (payload: LiveStreamRequest) => startStream(payload),
+  return useMutation<void, Error, LiveStreamRequest>({
+    mutationFn: (payload) => startStream(payload),
   });
 }
 
@@ -55,8 +55,8 @@ export function useStartStream() {
  * Always call on component unmount to avoid the drone streaming to a dead URL.
  */
 export function useStopStream() {
-  return useMutation({
-    mutationFn: (payload: LiveStreamRequest) => stopStream(payload),
+  return useMutation<void, Error, LiveStreamRequest>({
+    mutationFn: (payload) => stopStream(payload),
   });
 }
 
@@ -65,8 +65,8 @@ export function useStopStream() {
  * video_quality: 0 = auto, 1 = smooth, 2 = SD, 3 = HD, 4 = ultra-HD
  */
 export function useUpdateStreamQuality() {
-  return useMutation({
-    mutationFn: (payload: LiveStreamRequest) => updateStreamQuality(payload),
+  return useMutation<void, Error, LiveStreamRequest>({
+    mutationFn: (payload) => updateStreamQuality(payload),
   });
 }
 
@@ -75,7 +75,7 @@ export function useUpdateStreamQuality() {
  * The stream must already be started — call useStartStream() first.
  */
 export function useSwitchStreamCamera() {
-  return useMutation({
-    mutationFn: (payload: LiveStreamRequest) => switchStreamCamera(payload),
+  return useMutation<void, Error, LiveStreamRequest>({
+    mutationFn: (payload) => switchStreamCamera(payload),
   });
 }

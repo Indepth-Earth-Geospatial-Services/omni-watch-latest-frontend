@@ -9,8 +9,8 @@ import { DJI_CONFIG } from './config';
 import type {
   ElementGroup,
   GetElementGroupsParams,
-  MapElement,
   AddElementRequest,
+  AddElementResponse,
   UpdateElementRequest,
   FlightArea,
   AddFlightAreaRequest,
@@ -56,8 +56,8 @@ export function addElement(
   workspaceId: string,
   groupId: string,
   payload: AddElementRequest
-): Promise<MapElement> {
-  return djiRequest.post<MapElement>(
+): Promise<AddElementResponse> {
+  return djiRequest.post<AddElementResponse>(
     `${MAP}/workspaces/${workspaceId}/element-groups/${groupId}/elements`,
     payload
   );

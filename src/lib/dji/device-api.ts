@@ -48,7 +48,7 @@ export function getDJIDevice(workspaceId: string, deviceSn: string): Promise<DJI
  */
 export function getBoundDevices(
   workspaceId: string,
-  params?: { page?: number; page_size?: number; domain?: number }
+  params: { domain: number; page?: number; page_size?: number }
 ): Promise<DJIBoundDevicesResponse> {
   const query = params
     ? '?' + new URLSearchParams(

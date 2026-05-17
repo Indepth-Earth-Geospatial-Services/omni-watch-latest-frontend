@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getAllDrones } from '@/services/api/drone-api';
+import { DJI_CONFIG } from '@/lib/dji/config';
+import { getToken } from '@/lib/dji/token-store';
 
 export interface UnregisteredDevice {
   serialNumber: string;
@@ -10,8 +12,7 @@ export interface UnregisteredDevice {
   telemetryData?: any;
 }
 
-const TELEMETRY_SOCKET_URL = process.env.NEXT_PUBLIC_TELEMETRY_SOCKET_URL || "";
-console.log('Connecting to telemetry server:', TELEMETRY_SOCKET_URL);
+const TELEMETRY_SOCKET_URL = process.env.NEXT_PUBLIC_TELEMETRY_SOCKET_URL || DJI_CONFIG.BASE_URL;
 
 export function useUnregisteredDevices() {
   const [unregisteredDevices, setUnregisteredDevices] = useState<UnregisteredDevice[]>([]);
@@ -19,8 +20,9 @@ export function useUnregisteredDevices() {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    // Connect to telemetry socket
     const socketInstance = io(TELEMETRY_SOCKET_URL, {
+      path: '/ws/events',
+      auth: { token: getToken() },
       transports: ['websocket', 'polling'],
     });
 

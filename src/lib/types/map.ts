@@ -44,6 +44,12 @@ export interface ElementGroup {
   elements: MapElement[];
 }
 
+// Response data for POST /element-groups/{element_group_id}/elements
+// The server only echoes back the new element's id — not the full element
+export interface AddElementResponse {
+  id: string;
+}
+
 // Body for POST /element-groups/{element_group_id}/elements
 export interface AddElementRequest {
   id: string;       // client-generated UUID for the element

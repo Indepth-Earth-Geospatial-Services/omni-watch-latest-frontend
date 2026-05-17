@@ -23,8 +23,8 @@ import {
 import type {
   GetElementGroupsParams,
   AddElementRequest,
+  AddElementResponse,
   UpdateElementRequest,
-  MapElement,
   FlightArea,
   AddFlightAreaRequest,
   SyncFlightAreaRequest,
@@ -120,9 +120,8 @@ export function useAddElement() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ groupId, payload }: { groupId: string; payload: AddElementRequest }) =>
-      addElement(workspaceId, groupId, payload),
+  return useMutation<AddElementResponse, Error, { groupId: string; payload: AddElementRequest }>({
+    mutationFn: ({ groupId, payload }) => addElement(workspaceId, groupId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).elementGroups });
     },
@@ -142,14 +141,8 @@ export function useUpdateElement() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      elementId,
-      payload,
-    }: {
-      elementId: string;
-      payload: UpdateElementRequest;
-    }) => updateElement(workspaceId, elementId, payload),
+  return useMutation<void, Error, { elementId: string; payload: UpdateElementRequest }>({
+    mutationFn: ({ elementId, payload }) => updateElement(workspaceId, elementId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).elementGroups });
     },
@@ -169,8 +162,8 @@ export function useDeleteElement() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (elementId: string) => deleteElement(workspaceId, elementId),
+  return useMutation<void, Error, string>({
+    mutationFn: (elementId) => deleteElement(workspaceId, elementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).elementGroups });
     },
@@ -190,8 +183,8 @@ export function useDeleteGroupElements() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (groupId: string) => deleteGroupElements(workspaceId, groupId),
+  return useMutation<void, Error, string>({
+    mutationFn: (groupId) => deleteGroupElements(workspaceId, groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).elementGroups });
     },
@@ -213,8 +206,8 @@ export function useAddFlightArea() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (payload: AddFlightAreaRequest) => addFlightArea(workspaceId, payload),
+  return useMutation<FlightArea, Error, AddFlightAreaRequest>({
+    mutationFn: (payload) => addFlightArea(workspaceId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).flightAreas });
     },
@@ -234,14 +227,8 @@ export function useUpdateFlightArea() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      areaId,
-      payload,
-    }: {
-      areaId: string;
-      payload: Partial<Pick<FlightArea, 'name' | 'status' | 'content'>>;
-    }) => updateFlightArea(workspaceId, areaId, payload),
+  return useMutation<void, Error, { areaId: string; payload: Partial<Pick<FlightArea, 'name' | 'status' | 'content'>> }>({
+    mutationFn: ({ areaId, payload }) => updateFlightArea(workspaceId, areaId, payload),
     onSuccess: () => {
       const keys = mapKeys(workspaceId);
       queryClient.invalidateQueries({ queryKey: keys.flightAreas });
@@ -263,8 +250,8 @@ export function useDeleteFlightArea() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (areaId: string) => deleteFlightArea(workspaceId, areaId),
+  return useMutation<void, Error, string>({
+    mutationFn: (areaId) => deleteFlightArea(workspaceId, areaId),
     onSuccess: () => {
       const keys = mapKeys(workspaceId);
       queryClient.invalidateQueries({ queryKey: keys.flightAreas });
@@ -286,8 +273,8 @@ export function useSyncFlightAreas() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (payload: SyncFlightAreaRequest) => syncFlightAreas(workspaceId, payload),
+  return useMutation<void, Error, SyncFlightAreaRequest>({
+    mutationFn: (payload) => syncFlightAreas(workspaceId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mapKeys(workspaceId).deviceStatus });
     },

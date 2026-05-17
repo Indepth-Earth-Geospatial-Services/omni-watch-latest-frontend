@@ -153,7 +153,7 @@ function GeoMap() {
     if (hasChanges) {
       setDronePositions(updatedPositions);
     }
-  }, [droneUpdates, getProcessedDroneData]);
+  }, [droneUpdates, getProcessedDroneData, deviceList]);
 
   // Get selected drone info for info panel
   const selectedDroneInfo = useMemo(() => {
@@ -273,7 +273,7 @@ function GeoMap() {
         {...viewState}
         onMove={(evt) => setViewState(evt.viewState)}
         mapStyle={styles[selectedStyle]}
-        style={{ width: "100%", height: "87vh" }}
+        style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-left" />
 

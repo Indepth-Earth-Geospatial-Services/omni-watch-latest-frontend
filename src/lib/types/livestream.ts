@@ -1,5 +1,4 @@
 import { DJIDevice } from "./device";
-import { DroneAPIResponse } from "@/services/api/drone-api";
 
 // Unified stream structure for UI consistency across Dashboard and Live Feed
 export interface UnifiedStream {
@@ -7,7 +6,7 @@ export interface UnifiedStream {
   name: string;
   type: string;
   isOnline: boolean;
-  raw: DroneAPIResponse | DJIDevice;
+  raw: DJIDevice;
   metadata?: {
     alias?: string;
   };
@@ -42,8 +41,4 @@ export interface LiveStreamRequest {
   url_type: string;
   video_id: string;
   video_quality: string;
-}
-
-export interface StreamResponse {
-  result: number; // 0 = success
 }

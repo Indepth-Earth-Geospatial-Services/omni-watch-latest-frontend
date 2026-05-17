@@ -24,6 +24,7 @@ import type {
   BindDeviceRequest,
   DJIDevice,
   DJIDeviceProperty,
+  DeviceOTARequest,
 } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ export function useBoundDevices() {
 
   return useQuery({
     queryKey: keys.bound,
-    queryFn:  () => getBoundDevices(workspaceId),
+    queryFn:  () => getBoundDevices(workspaceId, { domain: 0 }),
     enabled:  !!workspaceId,
     refetchInterval:     30_000,
     refetchOnWindowFocus: true,
@@ -135,8 +136,8 @@ export function useBindDevice() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (payload: BindDeviceRequest) => bindDevice(payload.deviceSn, payload),
+  return useMutation<void, Error, BindDeviceRequest>({
+    mutationFn: (payload) => bindDevice(payload.deviceSn, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).all });
     },
@@ -151,9 +152,8 @@ export function useUpdateDJIDevice() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ deviceSn, payload }: { deviceSn: string; payload: Partial<DJIDevice> }) =>
-      updateDJIDevice(workspaceId, deviceSn, payload),
+  return useMutation<void, Error, { deviceSn: string; payload: Partial<DJIDevice> }>({
+    mutationFn: ({ deviceSn, payload }) => updateDJIDevice(workspaceId, deviceSn, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).list });
@@ -174,8 +174,8 @@ export function useUnbindDevice() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (deviceSn: string) => unbindDevice(deviceSn),
+  return useMutation<void, Error, string>({
+    mutationFn: (deviceSn) => unbindDevice(deviceSn),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).all });
     },
@@ -195,9 +195,8 @@ export function useSetDeviceProperty() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ deviceSn, property }: { deviceSn: string; property: DJIDeviceProperty }) =>
-      setDeviceProperty(workspaceId, deviceSn, property),
+  return useMutation<void, Error, { deviceSn: string; property: DJIDeviceProperty }>({
+    mutationFn: ({ deviceSn, property }) => setDeviceProperty(workspaceId, deviceSn, property),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
     },
@@ -211,8 +210,8 @@ export function useDeviceOTA() {
   const { user } = useAuth();
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
-  return useMutation({
-    mutationFn: (payload: any[]) => deviceOTA(workspaceId, payload),
+  return useMutation<void, Error, DeviceOTARequest[]>({
+    mutationFn: (payload) => deviceOTA(workspaceId, payload),
   });
 }
 

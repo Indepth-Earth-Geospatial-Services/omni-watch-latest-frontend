@@ -3,172 +3,114 @@
 import React, { useState } from "react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { StatCard } from "@/components/features/metrics/stat-card";
+import { useWorkspaceUsers, useUpdateUser } from "@/hooks/useUser";
+import type { DJIUser, UpdateUserRequest } from "@/lib/types";
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: "ADMIN" | "COMMANDER" | "ANALYST" | "OPERATOR";
-  status: "active" | "inactive";
-  lastLogin: string;
-  created: string;
-  initials: string;
-  avatarColor: string;
+const PAGE_SIZE = 10;
+
+const AVATAR_COLORS = [
+  "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500",
+  "bg-red-500", "bg-orange-500", "bg-pink-500", "bg-teal-500",
+];
+
+function getInitials(username: string | undefined | null): string {
+  if (!username) return "??";
+  const parts = username.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return username.substring(0, 2).toUpperCase();
 }
 
-const sampleUsers: User[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@isr.mil",
-    role: "ADMIN",
-    status: "active",
-    lastLogin: "2 hours ago",
-    created: "Jan 15, 2025",
-    initials: "JD",
-    avatarColor: "bg-blue-500",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@isr.mil",
-    role: "COMMANDER",
-    status: "active",
-    lastLogin: "1 day ago",
-    created: "Jan 10, 2025",
-    initials: "JS",
-    avatarColor: "bg-green-500",
-  },
-  {
-    id: 3,
-    name: "Mike Brown",
-    email: "mike.brown@isr.mil",
-    role: "ANALYST",
-    status: "active",
-    lastLogin: "3 hours ago",
-    created: "Dec 22, 2024",
-    initials: "MB",
-    avatarColor: "bg-yellow-500",
-  },
-  {
-    id: 4,
-    name: "Lisa Wilson",
-    email: "lisa.wilson@isr.mil",
-    role: "OPERATOR",
-    status: "inactive",
-    lastLogin: "2 weeks ago",
-    created: "Nov 18, 2024",
-    initials: "LW",
-    avatarColor: "bg-orange-500",
-  },
-];
+function getAvatarColor(userId: string | undefined | null): string {
+  if (!userId) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (const ch of userId) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [typeFilter, setTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Form state
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-  const [userRole, setUserRole] = useState("");
-  const [userPassword, setUserPassword] = useState("");
-  const [userActive, setUserActive] = useState(true);
+  const [editTarget, setEditTarget] = useState<DJIUser | null>(null);
+  const [editUsername, setEditUsername] = useState("");
+  const [editUserType, setEditUserType] = useState("");
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "ADMIN":
-        return "bg-red-500";
-      case "COMMANDER":
-        return "bg-purple-500";
-      case "ANALYST":
-        return "bg-blue-500";
-      case "OPERATOR":
-        return "bg-gray-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    return status === "active" ? "bg-green-500" : "bg-red-500";
-  };
-
-  const handleAddUser = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const formData = {
-      name: userName,
-      email: userEmail,
-      role: userRole,
-      password: userPassword,
-      active: userActive,
-    };
-
-    console.log("Adding user:", formData);
-    alert("User added successfully!");
-
-    // Reset form
-    setShowAddModal(false);
-    setUserName("");
-    setUserEmail("");
-    setUserRole("");
-    setUserPassword("");
-    setUserActive(true);
-  };
-
-  const filteredUsers = sampleUsers.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesStatus =
-      statusFilter === "all" || user.status === statusFilter;
-
-    return matchesSearch && matchesRole && matchesStatus;
+  const { data, isLoading, error } = useWorkspaceUsers({
+    page: currentPage,
+    page_size: PAGE_SIZE,
   });
+  const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
+
+  const users = data?.list ?? [];
+  const totalUsers = data?.pagination.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
+  const mqttEnabledCount = users.filter((u) => u.mqttUsername).length;
+
+  const userTypes = Array.from(new Set(users.map((u) => u.userType).filter((t) => !!t?.trim())));
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = user.username
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === "all" || user.userType === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  function openEdit(user: DJIUser) {
+    setEditTarget(user);
+    setEditUsername(user.username);
+    setEditUserType(user.userType);
+  }
+
+  function closeEdit() {
+    setEditTarget(null);
+  }
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    const payload: UpdateUserRequest = {
+      username: editUsername,
+      userType: editUserType,
+    };
+    updateUser({ userId: editTarget.userId, payload }, { onSuccess: closeEdit });
+  }
+
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1).slice(
+    Math.max(0, currentPage - 2),
+    Math.min(totalPages, currentPage + 1)
+  );
 
   return (
     <div className="bg-background text-foreground min-h-screen">
       <MainLayout title="User Management" subtitle="">
         <div className="space-y-6">
-          {/* Add User Button */}
-          <div className="flex items-center justify-end">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            >
-              <i className="fas fa-plus mr-2"></i>Add New User
-            </button>
-          </div>
-
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StatCard
               title="Total Users"
-              value="24"
+              value={isLoading ? "..." : String(totalUsers)}
               icon="fas fa-users"
               color="blue"
             />
             <StatCard
-              title="Active Users"
-              value="21"
-              icon="fas fa-user-check"
+              title="MQTT Enabled"
+              value={isLoading ? "..." : String(mqttEnabledCount)}
+              icon="fas fa-satellite-dish"
               color="green"
-            />
-            <StatCard
-              title="Inactive Users"
-              value="3"
-              icon="fas fa-user-times"
-              color="orange"
-            />
-            <StatCard
-              title="Recent Logins"
-              value="12"
-              icon="fas fa-clock"
-              color="purple"
             />
           </div>
 
@@ -178,40 +120,38 @@ export default function UsersPage() {
               <i className="fas fa-filter text-blue-500"></i>
               <h3 className="text-lg font-semibold">Filters & Search</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
                 <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 <input
                   type="text"
                   placeholder="Search users..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-md text-foreground placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Roles</option>
-                <option value="ADMIN">Admin</option>
-                <option value="COMMANDER">Commander</option>
-                <option value="ANALYST">Analyst</option>
-                <option value="OPERATOR">Operator</option>
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="all">All Types</option>
+                {userTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
               <div className="flex items-center justify-end">
                 <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
-                  24 users found
+                  {totalUsers} users found
                 </span>
               </div>
             </div>
@@ -227,169 +167,179 @@ export default function UsersPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-800">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      Role
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      Last Login
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      Created
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-300">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-700/50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-8 h-8 ${user.avatarColor} rounded-full flex items-center justify-center`}
-                          >
-                            <span className="text-white text-sm font-medium">
-                              {user.initials}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-100">
-                              {user.name}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {user.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-xs ${getRoleColor(
-                            user.role
-                          )} text-white px-2 py-1 rounded`}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-xs ${getStatusColor(
-                            user.status
-                          )} text-white px-2 py-1 rounded`}
-                        >
-                          {user.status === "active" ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-300">
-                        {user.lastLogin}
-                      </td>
-                      <td className="px-4 py-3 text-gray-300">
-                        {user.created}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-2">
-                          <button className="p-1 hover:bg-gray-600 rounded">
-                            <i className="fas fa-edit text-blue-400 text-sm"></i>
-                          </button>
-                          <button className="p-1 hover:bg-gray-600 rounded">
-                            <i className="fas fa-trash text-red-400 text-sm"></i>
-                          </button>
-                        </div>
-                      </td>
+              {error ? (
+                <div className="p-8 text-center text-red-400">
+                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                  Failed to load users: {(error as Error).message}
+                </div>
+              ) : isLoading ? (
+                <div className="p-8 text-center text-gray-400">
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                  Loading users...
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        User
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        Workspace
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        MQTT
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        Created
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-300">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-4 py-8 text-center text-gray-400"
+                        >
+                          No users found
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((user, idx) => (
+                        <tr key={user.userId ?? `user-${idx}`} className="hover:bg-gray-700/50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-8 h-8 ${getAvatarColor(user.userId)} rounded-full flex items-center justify-center`}
+                              >
+                                <span className="text-white text-sm font-medium">
+                                  {getInitials(user.username)}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-100">
+                                  {user.username}
+                                </div>
+                                <div className="text-xs text-gray-400 font-mono">
+                                  {user.userId}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                              {user.userType || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-300">
+                            {user.workspaceName || "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {user.mqttUsername ? (
+                              <span className="text-xs bg-green-700 text-green-200 px-2 py-1 rounded">
+                                Configured
+                              </span>
+                            ) : (
+                              <span className="text-xs bg-gray-700 text-gray-400 px-2 py-1 rounded">
+                                None
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-300">
+                            {formatDate(user.createTime)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => openEdit(user)}
+                              className="p-1 hover:bg-gray-600 rounded"
+                              title="Edit user"
+                            >
+                              <i className="fas fa-edit text-blue-400 text-sm"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
-              <div className="text-sm text-gray-400">
-                Showing 1 to 4 of 24 users
+            {!isLoading && !error && totalUsers > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
+                <div className="text-sm text-gray-400">
+                  Showing{" "}
+                  {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalUsers)}–
+                  {Math.min(currentPage * PAGE_SIZE, totalUsers)} of {totalUsers}{" "}
+                  users
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-600 rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 text-sm rounded ${
+                        currentPage === page
+                          ? "bg-blue-500 text-white"
+                          : "border border-gray-600 hover:bg-gray-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-600 rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-600 rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  className={`px-3 py-1 text-sm rounded ${
-                    currentPage === 1
-                      ? "bg-blue-500 text-white"
-                      : "border border-gray-600 hover:bg-gray-700"
-                  }`}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => setCurrentPage(2)}
-                  className={`px-3 py-1 text-sm rounded ${
-                    currentPage === 2
-                      ? "bg-blue-500 text-white"
-                      : "border border-gray-600 hover:bg-gray-700"
-                  }`}
-                >
-                  2
-                </button>
-                <button
-                  onClick={() => setCurrentPage(3)}
-                  className={`px-3 py-1 text-sm rounded ${
-                    currentPage === 3
-                      ? "bg-blue-500 text-white"
-                      : "border border-gray-600 hover:bg-gray-700"
-                  }`}
-                >
-                  3
-                </button>
-                <button
-                  onClick={() => setCurrentPage(Math.min(3, currentPage + 1))}
-                  disabled={currentPage === 3}
-                  className="px-3 py-1 text-sm border border-gray-600 rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Add User Modal */}
-        {showAddModal && (
+        {/* Edit User Modal */}
+        {editTarget && (
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
             <div className="bg-card p-6 rounded-lg border border-gray-800 w-full max-w-md mx-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Add New User</h3>
+                <h3 className="text-lg font-semibold">Edit User</h3>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeEdit}
                   className="p-1 hover:bg-gray-700 rounded"
                 >
                   <i className="fas fa-times text-gray-400"></i>
                 </button>
               </div>
 
-              <form onSubmit={handleAddUser} className="space-y-4">
+              <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Full Name
+                    Username
                   </label>
                   <input
                     type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
                     className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -397,74 +347,30 @@ export default function UsersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Email Address
+                    User Type
                   </label>
                   <input
-                    type="email"
-                    value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
+                    type="text"
+                    value={editUserType}
+                    onChange={(e) => setEditUserType(e.target.value)}
                     className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Role
-                  </label>
-                  <select
-                    value={userRole}
-                    onChange={(e) => setUserRole(e.target.value)}
-                    className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select Role</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="COMMANDER">Commander</option>
-                    <option value="ANALYST">Analyst</option>
-                    <option value="OPERATOR">Operator</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Temporary Password
-                  </label>
-                  <input
-                    type="password"
-                    value={userPassword}
-                    onChange={(e) => setUserPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="userActive"
-                    checked={userActive}
-                    onChange={(e) => setUserActive(e.target.checked)}
-                    className="rounded"
-                  />
-                  <label htmlFor="userActive" className="text-sm text-gray-300">
-                    Active User
-                  </label>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={closeEdit}
                     className="px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    disabled={isUpdating}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
                   >
-                    Add User
+                    {isUpdating ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>

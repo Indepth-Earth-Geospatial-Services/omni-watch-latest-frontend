@@ -25,10 +25,10 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Gauge },
   { name: 'Live Feeds', href: '/live-feed', icon: Video },
   { name: 'Geospatial Map', href: '/geospatial', icon: Globe },
-  { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
-  { name: 'Threat Detection', href: '/threats', icon: Target },
+  // { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
+  // { name: 'Threat Detection', href: '/threats', icon: Target },
   { name: 'Control', href: '/control', icon: Settings },
-  { name: 'Analytics', href: '/analytics', icon: TrendingUp },
+  // { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   {
     name: 'Reports',
     href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',

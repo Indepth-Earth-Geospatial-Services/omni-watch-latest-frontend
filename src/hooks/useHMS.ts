@@ -80,8 +80,8 @@ export function useMarkHMSRead() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (deviceSn: string) => markHMSRead(workspaceId, deviceSn),
+  return useMutation<void, Error, string>({
+    mutationFn: (deviceSn) => markHMSRead(workspaceId, deviceSn),
     onSuccess: (_data, deviceSn) => {
       const keys = hmsKeys(workspaceId);
       queryClient.invalidateQueries({ queryKey: keys.workspace });

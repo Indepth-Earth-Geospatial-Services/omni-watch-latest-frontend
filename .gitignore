@@ -1,6 +1,7 @@
 # Node.js dependencies
 node_modules/
 .next/
+
 # Build output
 dist/
 build/
@@ -37,9 +38,13 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
-#claude
+# claude
 .claude/
 
 # mcp
 .mcp.json
 .playwright-mcp/
+
+# Development Bypass Files
+src/components/dev/
+DEV_AUTO_LOGIN.md

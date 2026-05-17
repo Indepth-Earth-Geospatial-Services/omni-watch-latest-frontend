@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getAllDrones, type DroneAPIResponse } from '../services/api/drone-api';
 import { DJI_CONFIG } from '../lib/dji/config';
+import { getToken } from '../lib/dji/token-store';
 
 interface UseDronesWebSocketOptions {
   subscribeToAll?: boolean;
@@ -20,8 +21,13 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Initial fetch of all drones
+  // Initial fetch of all drones — skipped when DJI Cloud mode is active
   useEffect(() => {
+    if (DJI_CONFIG.USE_DJI_CLOUD) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchInitialDrones = async () => {
       try {
         setIsLoading(true);
@@ -46,12 +52,17 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
     fetchInitialDrones();
   }, []);
 
-  // Setup WebSocket connection
+  // Setup WebSocket connection — skipped when DJI Cloud mode is active
   useEffect(() => {
-    const WS_URL = DJI_CONFIG.WS_URL;
+    if (DJI_CONFIG.USE_DJI_CLOUD) return;
+
+    // BASE_URL is the plain host:port — socket.io treats any path in the URL
+    // as a namespace, which would break the handshake. Use path option instead.
+    const WS_URL = DJI_CONFIG.BASE_URL;
 
     const socketInstance = io(WS_URL, {
       path: '/ws/events',
+      auth: { token: getToken() },
       transports: ['websocket', 'polling'],
     });
 

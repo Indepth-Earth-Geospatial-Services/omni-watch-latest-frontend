@@ -22,8 +22,8 @@ export function getLiveCapacity(): Promise<LiveCapacity[]> {
  *
  * POST /manage/api/v1/live/streams/start
  */
-export function startStream(payload: LiveStreamRequest): Promise<Record<string, unknown>> {
-  return djiRequest.post<Record<string, unknown>>(`${MANAGE}/live/streams/start`, payload);
+export function startStream(payload: LiveStreamRequest): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/live/streams/start`, payload);
 }
 
 /**
@@ -31,8 +31,8 @@ export function startStream(payload: LiveStreamRequest): Promise<Record<string, 
  *
  * POST /manage/api/v1/live/streams/stop
  */
-export function stopStream(payload: LiveStreamRequest): Promise<Record<string, unknown>> {
-  return djiRequest.post<Record<string, unknown>>(`${MANAGE}/live/streams/stop`, payload);
+export function stopStream(payload: LiveStreamRequest): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/live/streams/stop`, payload);
 }
 
 /**
@@ -40,8 +40,8 @@ export function stopStream(payload: LiveStreamRequest): Promise<Record<string, u
  *
  * POST /manage/api/v1/live/streams/update
  */
-export function updateStreamQuality(payload: LiveStreamRequest): Promise<Record<string, unknown>> {
-  return djiRequest.post<Record<string, unknown>>(`${MANAGE}/live/streams/update`, payload);
+export function updateStreamQuality(payload: LiveStreamRequest): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/live/streams/update`, payload);
 }
 
 /**
@@ -49,6 +49,6 @@ export function updateStreamQuality(payload: LiveStreamRequest): Promise<Record<
  *
  * POST /manage/api/v1/live/streams/switch
  */
-export function switchStreamCamera(payload: LiveStreamRequest): Promise<Record<string, unknown>> {
-  return djiRequest.post<Record<string, unknown>>(`${MANAGE}/live/streams/switch`, payload);
+export function switchStreamCamera(payload: LiveStreamRequest): Promise<void> {
+  return djiRequest.post<void>(`${MANAGE}/live/streams/switch`, payload);
 }

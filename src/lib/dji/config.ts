@@ -15,7 +15,7 @@ export const DJI_CONFIG = {
   OMNIWATCH_API_URL,
 
   // OmniWatch WebSocket Endpoint (Unified endpoint derived strictly from docs)
-  WS_URL: `${toWsUrl(OMNIWATCH_API_URL)}/api/v1/ws`,
+  WS_URL: `${toWsUrl(DJI_API_URL)}/api/v1/ws`,
 
   // For legacy WebRTC references, point them to the documented WS endpoint
   // if they require a specific URL string
