@@ -1,8 +1,13 @@
 // Authentication types for the OmniWatch Auth API
 
 export interface AuthTokenResponse {
+  username: string;
+  user_id: string;
+  workspace_id: string;
+  user_type: number;
+  mqtt_username: string;
+  mqtt_password: string;
   access_token: string;
-  refresh_token: string;
 }
 
 export interface MeResponse {
