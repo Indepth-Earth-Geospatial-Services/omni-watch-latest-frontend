@@ -15,7 +15,7 @@
  *   4. Auto-retries once on 401 after a silent OmniWatch token refresh
  */
 
-import { djiRequest } from '@/lib/dji/client';
+import { djiRequest } from '@/lib/config/client';
 import { DJI_URLS } from '@/lib/api';
 import type {
   DJIDevice,
@@ -257,7 +257,10 @@ export function addElement(
   groupId: string,
   payload: AddElementRequest
 ): Promise<AddElementResponse> {
-  return djiRequest.post<AddElementResponse>(DJI_URLS.map.addElement(workspaceId, groupId), payload);
+  return djiRequest.post<AddElementResponse>(
+    DJI_URLS.map.addElement(workspaceId, groupId),
+    payload
+  );
 }
 
 /** Updates an existing map element's name, geometry, or properties. */

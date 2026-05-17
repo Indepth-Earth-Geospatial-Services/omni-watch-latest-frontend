@@ -5,15 +5,19 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
-import { getCurrentUser, getWorkspaceUsers, updateUser } from '@/services/dji-service';
+import { DJI_CONFIG } from '@/lib/config/config';
+import {
+  getCurrentUser,
+  getWorkspaceUsers,
+  updateUser,
+} from '@/services/djiservice-layer/dji-service';
 import type { UpdateUserRequest } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const userKeys = (workspaceId: string) => ({
-  all:     ['dji', 'users', workspaceId] as const,
-  list:    ['dji', 'users', workspaceId, 'list'] as const,
+  all: ['dji', 'users', workspaceId] as const,
+  list: ['dji', 'users', workspaceId, 'list'] as const,
   current: ['dji', 'users', 'current'] as const,
 });
 
@@ -32,8 +36,8 @@ export function useWorkspaceUsers(params?: { page?: number; page_size?: number }
 
   return useQuery({
     queryKey: userKeys(workspaceId).list,
-    queryFn:  () => getWorkspaceUsers(workspaceId, params),
-    enabled:  !!workspaceId,
+    queryFn: () => getWorkspaceUsers(workspaceId, params),
+    enabled: !!workspaceId,
     staleTime: 30_000,
   });
 }
@@ -47,7 +51,7 @@ export function useWorkspaceUsers(params?: { page?: number; page_size?: number }
 export function useCurrentUser() {
   return useQuery({
     queryKey: userKeys('').current,
-    queryFn:  getCurrentUser,
+    queryFn: getCurrentUser,
     staleTime: 60_000,
   });
 }

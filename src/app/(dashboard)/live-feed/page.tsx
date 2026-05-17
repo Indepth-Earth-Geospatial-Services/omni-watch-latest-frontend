@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import Modal from '@/components/Modal';
 import { useDronesWebSocket } from '@/hooks/useDronesWebSocket';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import { RegisterDeviceModal } from '@/components/features/devices/RegisterDeviceModal';
 import { EditDeviceModal } from '@/components/features/devices/EditDeviceModal';
 import { DroneAPIResponse } from '@/hooks/useDronesWebSocket';

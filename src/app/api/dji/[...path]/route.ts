@@ -10,13 +10,19 @@
 //   Proxy    →  http://localhost:6789/manage/api/v1/login
 
 import { NextRequest, NextResponse } from 'next/server';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 
 // Single source of truth — BASE_URL comes from config.ts, not rebuilt here
 const DJI_BASE_URL = DJI_CONFIG.BASE_URL;
 
 // Headers that must not be forwarded — they are connection-level, not application-level
-const HOP_BY_HOP_HEADERS = new Set(['host', 'connection', 'transfer-encoding', 'keep-alive', 'upgrade']);
+const HOP_BY_HOP_HEADERS = new Set([
+  'host',
+  'connection',
+  'transfer-encoding',
+  'keep-alive',
+  'upgrade',
+]);
 
 async function forwardRequest(
   request: NextRequest,
@@ -39,9 +45,7 @@ async function forwardRequest(
 
   try {
     // Body is only read for methods that carry one — GET/HEAD have no body
-    const body = ['GET', 'HEAD'].includes(request.method)
-      ? undefined
-      : await request.text();
+    const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
 
     const djResponse = await fetch(targetUrl, {
       method: request.method,
@@ -79,6 +83,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ pat
   return forwardRequest(request, context);
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
   return forwardRequest(request, context);
 }

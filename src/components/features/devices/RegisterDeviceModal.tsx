@@ -17,7 +17,7 @@ async function createDrone(_payload: CreateDronePayload): Promise<void> {}
 import { useUnregisteredDevices } from '@/hooks/useUnregisteredDevices';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBindDevice } from '@/hooks/useDJIDevices';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface RegisterDeviceModalProps {

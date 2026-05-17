@@ -2,7 +2,7 @@
 // to the backend at /api/v1/<path>.  The /api/auth proxy handles auth endpoints separately.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 
 const BASE_URL = DJI_CONFIG.OMNIWATCH_API_URL;
 
@@ -43,8 +43,13 @@ async function forwardRequest(
   }
 }
 
-export const GET    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
-export const POST   = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
-export const PUT    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
-export const PATCH  = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
-export const DELETE = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => forwardRequest(req, ctx);
+export const GET = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) =>
+  forwardRequest(req, ctx);
+export const POST = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) =>
+  forwardRequest(req, ctx);
+export const PUT = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) =>
+  forwardRequest(req, ctx);
+export const PATCH = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) =>
+  forwardRequest(req, ctx);
+export const DELETE = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) =>
+  forwardRequest(req, ctx);

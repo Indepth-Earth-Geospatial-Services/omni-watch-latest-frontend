@@ -5,14 +5,14 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   getDeviceLogs,
   getUploadedLogs,
   triggerLogUpload,
   cancelLogUpload,
   deleteLogFile,
-} from '@/services/dji-service';
+} from '@/services/djiservice-layer/dji-service';
 import type {
   TriggerLogUploadRequest,
   CancelLogUploadRequest,
@@ -23,8 +23,8 @@ import type {
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const logKeys = (workspaceId: string) => ({
-  all:      ['dji', 'logs', workspaceId] as const,
-  modules:  (deviceSn: string) => ['dji', 'logs', workspaceId, deviceSn, 'modules'] as const,
+  all: ['dji', 'logs', workspaceId] as const,
+  modules: (deviceSn: string) => ['dji', 'logs', workspaceId, deviceSn, 'modules'] as const,
   uploaded: (deviceSn: string) => ['dji', 'logs', workspaceId, deviceSn, 'uploaded'] as const,
 });
 
@@ -46,8 +46,8 @@ export function useDeviceLogs(
 
   return useQuery({
     queryKey: logKeys(workspaceId).modules(deviceSn ?? ''),
-    queryFn:  () => getDeviceLogs(workspaceId, deviceSn!, params),
-    enabled:  !!workspaceId && !!deviceSn,
+    queryFn: () => getDeviceLogs(workspaceId, deviceSn!, params),
+    enabled: !!workspaceId && !!deviceSn,
     staleTime: 30_000,
   });
 }
@@ -59,19 +59,16 @@ export function useDeviceLogs(
  * @example
  * const { data: logs = [], isLoading } = useUploadedLogs(device.deviceSn);
  */
-export function useUploadedLogs(
-  deviceSn?: string,
-  params?: UploadedLogsQueryParams
-) {
+export function useUploadedLogs(deviceSn?: string, params?: UploadedLogsQueryParams) {
   const { user } = useAuth();
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
   return useQuery({
-    queryKey:        logKeys(workspaceId).uploaded(deviceSn ?? ''),
-    queryFn:         () => getUploadedLogs(workspaceId, deviceSn!, params),
-    enabled:         !!workspaceId && !!deviceSn,
+    queryKey: logKeys(workspaceId).uploaded(deviceSn ?? ''),
+    queryFn: () => getUploadedLogs(workspaceId, deviceSn!, params),
+    enabled: !!workspaceId && !!deviceSn,
     refetchInterval: 30_000,
-    staleTime:       15_000,
+    staleTime: 15_000,
   });
 }
 

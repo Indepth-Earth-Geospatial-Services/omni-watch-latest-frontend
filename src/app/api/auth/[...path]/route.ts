@@ -5,12 +5,18 @@
 //   - All auth-related calls (login, me, refresh) share this handler
 
 import { NextRequest, NextResponse } from 'next/server';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 
 // The Auth Backend URL from our central config
 const AUTH_BASE_URL = DJI_CONFIG.OMNIWATCH_API_URL;
 
-const HOP_BY_HOP_HEADERS = new Set(['host', 'connection', 'transfer-encoding', 'keep-alive', 'upgrade']);
+const HOP_BY_HOP_HEADERS = new Set([
+  'host',
+  'connection',
+  'transfer-encoding',
+  'keep-alive',
+  'upgrade',
+]);
 
 async function forwardRequest(
   request: NextRequest,
@@ -33,10 +39,8 @@ async function forwardRequest(
   try {
     const targetHost = new URL(AUTH_BASE_URL).host;
     forwardedHeaders['host'] = targetHost;
-    
-    const body = ['GET', 'HEAD'].includes(request.method)
-      ? undefined
-      : await request.text();
+
+    const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
 
     console.log(`[Auth Proxy] → ${request.method} ${targetUrl}`);
     console.log(`[Auth Proxy] Request body:`, body);
@@ -60,7 +64,10 @@ async function forwardRequest(
   } catch (error) {
     console.error('Auth Proxy Error:', error);
     return NextResponse.json(
-      { code: 503, message: 'Failed to reach Auth server. Check that the Django backend is running.' },
+      {
+        code: 503,
+        message: 'Failed to reach Auth server. Check that the Django backend is running.',
+      },
       { status: 503 }
     );
   }
@@ -78,6 +85,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ pat
   return forwardRequest(request, context);
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
   return forwardRequest(request, context);
 }

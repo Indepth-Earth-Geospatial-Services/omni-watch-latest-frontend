@@ -13,9 +13,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { authApi } from '@/lib/dji/auth-api';
-import { djiRequest } from '@/lib/dji/client';
-import { DJI_CONFIG } from '@/lib/dji/config';
-import { clearToken, getToken } from '@/lib/dji/token-store';
+import { djiRequest } from '@/lib/config/client';
+import { DJI_CONFIG } from '@/lib/config/config';
+import { clearToken, getToken } from '@/lib/config/token-store';
 import type { CurrentUser } from '@/lib/types';
 
 // ─── Context shape ────────────────────────────────────────────────────────────

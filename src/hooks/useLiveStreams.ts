@@ -1,15 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   getLiveCapacity,
   startStream,
   stopStream,
   updateStreamQuality,
   switchStreamCamera,
-} from '@/services/dji-service';
-import type {
-  LiveStreamRequest,
-} from '@/lib/types';
+} from '@/services/djiservice-layer/dji-service';
+import type { LiveStreamRequest } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -27,10 +25,10 @@ const streamKeys = {
 export function useLiveCapacity() {
   return useQuery({
     queryKey: streamKeys.capacity,
-    queryFn:  getLiveCapacity,
-    enabled:  DJI_CONFIG.USE_DJI_CLOUD,
-    refetchInterval:     30_000,
-    staleTime:           10_000,
+    queryFn: getLiveCapacity,
+    enabled: DJI_CONFIG.USE_DJI_CLOUD,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
     // Map using 'sn' as per the new DJI documentation
     select: (capacities) => new Map(capacities.map((c) => [c.sn, c])),
   });

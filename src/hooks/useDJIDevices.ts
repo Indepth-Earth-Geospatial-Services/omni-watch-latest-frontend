@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   bindDevice,
   getBoundDevices,
@@ -19,7 +19,7 @@ import {
   unbindDevice,
   updateDJIDevice,
   deviceOTA,
-} from '@/services/dji-service';
+} from '@/services/djiservice-layer/dji-service';
 import type {
   BindDeviceRequest,
   DJIDevice,
@@ -31,11 +31,11 @@ import type {
 
 // Takes workspaceId so keys are scoped per workspace — safe for multi-tenant use
 const deviceKeys = (workspaceId: string) => ({
-  all:        ['dji', 'devices', workspaceId] as const,
-  list:       ['dji', 'devices', workspaceId, 'list'] as const,
-  bound:      ['dji', 'devices', workspaceId, 'bound'] as const,
+  all: ['dji', 'devices', workspaceId] as const,
+  list: ['dji', 'devices', workspaceId, 'list'] as const,
+  bound: ['dji', 'devices', workspaceId, 'bound'] as const,
   topologies: ['dji', 'devices', workspaceId, 'topologies'] as const,
-  detail:     (sn: string) => ['dji', 'devices', workspaceId, 'detail', sn] as const,
+  detail: (sn: string) => ['dji', 'devices', workspaceId, 'detail', sn] as const,
 });
 
 // ─── Transformer ──────────────────────────────────────────────────────────────
@@ -58,11 +58,11 @@ export function useDJIDevices() {
 
   return useQuery({
     queryKey: keys.list,
-    queryFn:  () => getDJIDevices(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     30_000,
+    queryFn: () => getDJIDevices(workspaceId),
+    enabled: !!workspaceId,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    staleTime:           10_000,
+    staleTime: 10_000,
   });
 }
 
@@ -77,8 +77,8 @@ export function useDJIDevice(deviceSn: string | undefined) {
 
   return useQuery({
     queryKey: keys.detail(deviceSn ?? ''),
-    queryFn:  () => getDJIDevice(workspaceId, deviceSn!),
-    enabled:  !!workspaceId && !!deviceSn,
+    queryFn: () => getDJIDevice(workspaceId, deviceSn!),
+    enabled: !!workspaceId && !!deviceSn,
     staleTime: 10_000,
   });
 }
@@ -94,11 +94,11 @@ export function useBoundDevices() {
 
   return useQuery({
     queryKey: keys.bound,
-    queryFn:  () => getBoundDevices(workspaceId, { domain: 0 }),
-    enabled:  !!workspaceId,
-    refetchInterval:     30_000,
+    queryFn: () => getBoundDevices(workspaceId, { domain: 0 }),
+    enabled: !!workspaceId,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    staleTime:           10_000,
+    staleTime: 10_000,
     select: (response) => response.list,
   });
 }
@@ -114,10 +114,10 @@ export function useDeviceTopologies() {
 
   return useQuery({
     queryKey: keys.topologies,
-    queryFn:  () => getDeviceTopologies(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     60_000,
-    staleTime:           30_000,
+    queryFn: () => getDeviceTopologies(workspaceId),
+    enabled: !!workspaceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -155,7 +155,9 @@ export function useUpdateDJIDevice() {
   return useMutation<void, Error, { deviceSn: string; payload: Partial<DJIDevice> }>({
     mutationFn: ({ deviceSn, payload }) => updateDJIDevice(workspaceId, deviceSn, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
+      queryClient.invalidateQueries({
+        queryKey: deviceKeys(workspaceId).detail(variables.deviceSn),
+      });
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).list });
     },
   });
@@ -198,7 +200,9 @@ export function useSetDeviceProperty() {
   return useMutation<void, Error, { deviceSn: string; property: DJIDeviceProperty }>({
     mutationFn: ({ deviceSn, property }) => setDeviceProperty(workspaceId, deviceSn, property),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
+      queryClient.invalidateQueries({
+        queryKey: deviceKeys(workspaceId).detail(variables.deviceSn),
+      });
     },
   });
 }
@@ -214,4 +218,3 @@ export function useDeviceOTA() {
     mutationFn: (payload) => deviceOTA(workspaceId, payload),
   });
 }
-

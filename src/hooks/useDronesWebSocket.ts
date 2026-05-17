@@ -4,8 +4,8 @@
 // DroneAPIResponse is exported so live-feed/page.tsx and EditDeviceModal can type the legacy state.
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { DJI_CONFIG } from '../lib/dji/config';
-import { getToken } from '../lib/dji/token-store';
+import { DJI_CONFIG } from '../lib/config/config';
+import { getToken } from '../lib/config/token-store';
 
 export interface DroneAPIResponse {
   deviceSerialNumber: string;
@@ -135,7 +135,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
       case 'drone.created':
         // Add new drone to the list
         setDrones((prev) => {
-          const exists = prev.some(d => d.deviceSerialNumber === data.drone.deviceSerialNumber);
+          const exists = prev.some((d) => d.deviceSerialNumber === data.drone.deviceSerialNumber);
           if (exists) return prev;
           return [...prev, data.drone];
         });
@@ -151,7 +151,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
       case 'drone.stream.status':
         // Update existing drone
         setDrones((prev) => {
-          const index = prev.findIndex(d => d.deviceSerialNumber === data.serialNumber);
+          const index = prev.findIndex((d) => d.deviceSerialNumber === data.serialNumber);
           if (index === -1) return prev;
 
           const updatedDrones = [...prev];
@@ -182,7 +182,7 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
 
       case 'drone.deleted':
         // Remove drone from the list
-        setDrones((prev) => prev.filter(d => d.deviceSerialNumber !== data.serialNumber));
+        setDrones((prev) => prev.filter((d) => d.deviceSerialNumber !== data.serialNumber));
         // Remove from raw data
         setRawDrones((prev) => {
           const updated = new Map(prev);
@@ -219,9 +219,12 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
   }, []);
 
   // Helper to get raw drone data by serial number
-  const getRawDrone = useCallback((serialNumber: string): DroneAPIResponse | undefined => {
-    return rawDrones.get(serialNumber);
-  }, [rawDrones]);
+  const getRawDrone = useCallback(
+    (serialNumber: string): DroneAPIResponse | undefined => {
+      return rawDrones.get(serialNumber);
+    },
+    [rawDrones]
+  );
 
   return {
     drones,
@@ -238,9 +241,11 @@ export function useDronesWebSocket(options: UseDronesWebSocketOptions = { subscr
  * Hook to fetch only active drones (streamIsOn === true) with WebSocket updates
  */
 export function useActiveDronesWebSocket() {
-  const { drones, isLoading, error, isConnected, refresh, socket } = useDronesWebSocket({ subscribeToAll: true });
+  const { drones, isLoading, error, isConnected, refresh, socket } = useDronesWebSocket({
+    subscribeToAll: true,
+  });
 
-  const activeDrones = drones.filter(drone => drone.streamIsOn);
+  const activeDrones = drones.filter((drone) => drone.streamIsOn);
 
   return {
     drones: activeDrones,
@@ -258,10 +263,10 @@ export function useActiveDronesWebSocket() {
 export function useSingleDroneWebSocket(droneSerial: string) {
   const { drones, isLoading, error, isConnected, refresh, socket } = useDronesWebSocket({
     subscribeToAll: false,
-    droneSerial
+    droneSerial,
   });
 
-  const drone = drones.find(d => d.deviceSerialNumber === droneSerial);
+  const drone = drones.find((d) => d.deviceSerialNumber === droneSerial);
 
   return {
     drone,

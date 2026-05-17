@@ -6,7 +6,7 @@
 //   import { DJI_URLS } from '@/lib/api';
 //   const data = await djiRequest.get(DJI_URLS.devices.list(workspaceId));
 
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import type {
   HMSQueryParams,
   DeviceLogsQueryParams,
@@ -29,37 +29,32 @@ function qs(params: Record<string, unknown>): string {
 }
 
 export const DJI_URLS = {
-
   // ── Auth / Session ──────────────────────────────────────────────────────────
   auth: {
-    login:       `${MANAGE}/login`,
-    refresh:     `${MANAGE}/refresh`,
-    logout:      `${MANAGE}/logout`,
+    login: `${MANAGE}/login`,
+    refresh: `${MANAGE}/refresh`,
+    logout: `${MANAGE}/logout`,
     currentUser: `${MANAGE}/users/current`,
   },
 
   // ── Devices ─────────────────────────────────────────────────────────────────
   devices: {
-    list: (workspaceId: string) =>
-      `${MANAGE}/devices/${workspaceId}/devices`,
+    list: (workspaceId: string) => `${MANAGE}/devices/${workspaceId}/devices`,
 
-    detail: (workspaceId: string, sn: string) =>
-      `${MANAGE}/devices/${workspaceId}/devices/${sn}`,
+    detail: (workspaceId: string, sn: string) => `${MANAGE}/devices/${workspaceId}/devices/${sn}`,
 
     bound: (workspaceId: string, params: { domain: number; page?: number; page_size?: number }) =>
       `${MANAGE}/devices/${workspaceId}/devices/bound${qs(params)}`,
 
-    topologies: (workspaceId: string) =>
-      `${MANAGE}/workspaces/${workspaceId}/devices/topologies`,
+    topologies: (workspaceId: string) => `${MANAGE}/workspaces/${workspaceId}/devices/topologies`,
 
-    bind:   (sn: string) => `${MANAGE}/devices/${sn}/binding`,
+    bind: (sn: string) => `${MANAGE}/devices/${sn}/binding`,
     unbind: (sn: string) => `${MANAGE}/devices/${sn}/unbinding`,
 
     property: (workspaceId: string, sn: string) =>
       `${MANAGE}/devices/${workspaceId}/devices/${sn}/property`,
 
-    ota: (workspaceId: string) =>
-      `${MANAGE}/devices/${workspaceId}/devices/ota`,
+    ota: (workspaceId: string) => `${MANAGE}/devices/${workspaceId}/devices/ota`,
   },
 
   // ── Users ───────────────────────────────────────────────────────────────────
@@ -79,13 +74,13 @@ export const DJI_URLS = {
       const base = `${MANAGE}/devices/${workspaceId}/devices/hms`;
       if (!params) return base;
       const sp = new URLSearchParams();
-      if (params.language)                  sp.set('language',    params.language);
-      if (params.message)                   sp.set('message',     params.message);
-      if (params.page    !== undefined)     sp.set('page',        String(params.page));
-      if (params.level   !== undefined)     sp.set('level',       String(params.level));
-      if (params.page_size !== undefined)   sp.set('page_size',   String(params.page_size));
-      if (params.begin_time !== undefined)  sp.set('begin_time',  String(params.begin_time));
-      if (params.end_time !== undefined)    sp.set('end_time',    String(params.end_time));
+      if (params.language) sp.set('language', params.language);
+      if (params.message) sp.set('message', params.message);
+      if (params.page !== undefined) sp.set('page', String(params.page));
+      if (params.level !== undefined) sp.set('level', String(params.level));
+      if (params.page_size !== undefined) sp.set('page_size', String(params.page_size));
+      if (params.begin_time !== undefined) sp.set('begin_time', String(params.begin_time));
+      if (params.end_time !== undefined) sp.set('end_time', String(params.end_time));
       if (params.update_time !== undefined) sp.set('update_time', String(params.update_time));
       params.device_sn?.forEach((sn) => sp.append('device_sn', sn));
       const s = sp.toString();
@@ -99,10 +94,10 @@ export const DJI_URLS = {
   // ── Livestream ──────────────────────────────────────────────────────────────
   live: {
     capacity: `${MANAGE}/live/capacity`,
-    start:    `${MANAGE}/live/streams/start`,
-    stop:     `${MANAGE}/live/streams/stop`,
-    update:   `${MANAGE}/live/streams/update`,
-    switch:   `${MANAGE}/live/streams/switch`,
+    start: `${MANAGE}/live/streams/start`,
+    stop: `${MANAGE}/live/streams/stop`,
+    update: `${MANAGE}/live/streams/update`,
+    switch: `${MANAGE}/live/streams/switch`,
   },
 
   // ── Device Logs ─────────────────────────────────────────────────────────────
@@ -143,17 +138,14 @@ export const DJI_URLS = {
     groupElements: (workspaceId: string, groupId: string) =>
       `${MAP}/workspaces/${workspaceId}/element-groups/${groupId}/elements`,
 
-    flightAreas: (workspaceId: string) =>
-      `${MAP}/workspaces/${workspaceId}/flight-areas`,
+    flightAreas: (workspaceId: string) => `${MAP}/workspaces/${workspaceId}/flight-areas`,
 
     flightArea: (workspaceId: string, areaId: string) =>
       `${MAP}/workspaces/${workspaceId}/flight-area/${areaId}`,
 
-    addFlightArea: (workspaceId: string) =>
-      `${MAP}/workspaces/${workspaceId}/flight-area`,
+    addFlightArea: (workspaceId: string) => `${MAP}/workspaces/${workspaceId}/flight-area`,
 
-    syncFlightAreas: (workspaceId: string) =>
-      `${MAP}/workspaces/${workspaceId}/flight-area/sync`,
+    syncFlightAreas: (workspaceId: string) => `${MAP}/workspaces/${workspaceId}/flight-area/sync`,
 
     deviceFlightAreaStatus: (workspaceId: string) =>
       `${MAP}/workspaces/${workspaceId}/device-status`,
@@ -161,23 +153,17 @@ export const DJI_URLS = {
 
   // ── Dock / Flight Control ───────────────────────────────────────────────────
   dock: {
-    payloadCommand: (sn: string) =>
-      `${CONTROL}/devices/${sn}/payload/commands`,
+    payloadCommand: (sn: string) => `${CONTROL}/devices/${sn}/payload/commands`,
 
     job: (sn: string, serviceIdentifier: string) =>
       `${CONTROL}/devices/${sn}/jobs/${serviceIdentifier}`,
 
-    takeoffToPoint: (sn: string) =>
-      `${CONTROL}/devices/${sn}/jobs/takeoff-to-point`,
+    takeoffToPoint: (sn: string) => `${CONTROL}/devices/${sn}/jobs/takeoff-to-point`,
 
-    flyToPoint: (sn: string) =>
-      `${CONTROL}/devices/${sn}/jobs/fly-to-point`,
+    flyToPoint: (sn: string) => `${CONTROL}/devices/${sn}/jobs/fly-to-point`,
 
-    payloadAuthority: (sn: string) =>
-      `${CONTROL}/devices/${sn}/authority/payload`,
+    payloadAuthority: (sn: string) => `${CONTROL}/devices/${sn}/authority/payload`,
 
-    flightAuthority: (sn: string) =>
-      `${CONTROL}/devices/${sn}/authority/flight`,
+    flightAuthority: (sn: string) => `${CONTROL}/devices/${sn}/authority/flight`,
   },
-
 } as const;

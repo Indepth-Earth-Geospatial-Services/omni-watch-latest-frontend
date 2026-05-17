@@ -15,7 +15,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
-import { getToken } from '@/lib/dji/token-store';
+import { getToken } from '@/lib/config/token-store';
 import { API_URLS } from '@/lib/api/AuthGlobalApi';
 import type {
   CreateWorkspaceRequest,
@@ -103,7 +103,10 @@ export const workspaceApi = {
    * @param body           - Workspace name, description, and platform identifier.
    * @param internalSecret - Value for the `X-Internal-Secret` header (gateway token).
    */
-  create: (body: CreateWorkspaceRequest, internalSecret: string): Promise<CreateWorkspaceResponse> =>
+  create: (
+    body: CreateWorkspaceRequest,
+    internalSecret: string
+  ): Promise<CreateWorkspaceResponse> =>
     request<CreateWorkspaceResponse>('POST', API_URLS.workspace.create, body, {
       'X-Internal-Secret': internalSecret,
     }),
@@ -140,8 +143,7 @@ export const projectsApi = {
    *
    * @param id - Project UUID.
    */
-  get: (id: string): Promise<Project> =>
-    request<Project>('GET', API_URLS.projects.detail(id)),
+  get: (id: string): Promise<Project> => request<Project>('GET', API_URLS.projects.detail(id)),
 
   /**
    * Replace a project's details (full update).
@@ -166,8 +168,7 @@ export const projectsApi = {
    *
    * @param id - Project UUID.
    */
-  delete: (id: string): Promise<void> =>
-    request<void>('DELETE', API_URLS.projects.detail(id)),
+  delete: (id: string): Promise<void> => request<void>('DELETE', API_URLS.projects.detail(id)),
 
   /**
    * List devices currently assigned to a project, with optional pagination.
@@ -278,8 +279,7 @@ export const healthApi = {
    *
    * @returns A map of service names to their current status strings.
    */
-  check: (): Promise<HealthCheckResponse> =>
-    request<HealthCheckResponse>('GET', API_URLS.health),
+  check: (): Promise<HealthCheckResponse> => request<HealthCheckResponse>('GET', API_URLS.health),
 };
 
 // ─── Organization API ─────────────────────────────────────────────────────────
@@ -294,8 +294,7 @@ export const organizationApi = {
   /**
    * Retrieve the authenticated user's organization profile.
    */
-  get: (): Promise<Organization> =>
-    request<Organization>('GET', API_URLS.organization.detail),
+  get: (): Promise<Organization> => request<Organization>('GET', API_URLS.organization.detail),
 
   /**
    * Partially update the organization's profile.
@@ -308,8 +307,7 @@ export const organizationApi = {
   /**
    * List all staff members belonging to the organization.
    */
-  listUsers: (): Promise<OrgUser[]> =>
-    request<OrgUser[]>('GET', API_URLS.organization.users),
+  listUsers: (): Promise<OrgUser[]> => request<OrgUser[]>('GET', API_URLS.organization.users),
 
   /**
    * Add a new staff member to the organization.

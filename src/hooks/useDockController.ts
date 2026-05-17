@@ -9,7 +9,7 @@ import {
   cancelFlyToPoint,
   requestPayloadAuthority,
   requestFlightAuthority,
-} from '@/services/dji-service';
+} from '@/services/djiservice-layer/dji-service';
 import type {
   PayloadCommandRequest,
   JobActionRequest,

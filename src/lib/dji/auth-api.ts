@@ -1,7 +1,7 @@
 // OmniWatch Auth API — all requests go through the Next.js proxy at /api/auth
 // which forwards to http://34.35.12.123:8002/api/v1/auth/<path>
 
-import { setToken, clearToken, getToken } from '@/lib/dji/token-store';
+import { setToken, clearToken, getToken } from '@/lib/config/token-store';
 
 // ─── Response shapes (from Swagger) ──────────────────────────────────────────
 
@@ -28,7 +28,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers as Record<string, string> ?? {}),
+      ...((options.headers as Record<string, string>) ?? {}),
     },
   });
   if (!res.ok) {
@@ -62,8 +62,7 @@ export const authApi = {
   },
 
   // GET /api/v1/auth/me
-  me: (): Promise<MeResponse> =>
-    request<MeResponse>('/me', { method: 'GET' }),
+  me: (): Promise<MeResponse> => request<MeResponse>('/me', { method: 'GET' }),
 
   // POST /api/v1/auth/token/refresh — browser sends HttpOnly cookie automatically
   refreshToken: async (): Promise<AuthTokenResponse> => {

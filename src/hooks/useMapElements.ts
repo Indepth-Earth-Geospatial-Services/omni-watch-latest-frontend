@@ -6,7 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   getElementGroups,
   addElement,
@@ -19,7 +19,7 @@ import {
   deleteFlightArea,
   syncFlightAreas,
   getDeviceFlightAreaStatus,
-} from '@/services/dji-service';
+} from '@/services/djiservice-layer/dji-service';
 import type {
   GetElementGroupsParams,
   AddElementRequest,
@@ -33,10 +33,10 @@ import type {
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const mapKeys = (workspaceId: string) => ({
-  all:           ['dji', 'map', workspaceId] as const,
+  all: ['dji', 'map', workspaceId] as const,
   elementGroups: ['dji', 'map', workspaceId, 'element-groups'] as const,
-  flightAreas:   ['dji', 'map', workspaceId, 'flight-areas'] as const,
-  deviceStatus:  ['dji', 'map', workspaceId, 'device-status'] as const,
+  flightAreas: ['dji', 'map', workspaceId, 'flight-areas'] as const,
+  deviceStatus: ['dji', 'map', workspaceId, 'device-status'] as const,
 });
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
@@ -56,10 +56,10 @@ export function useElementGroups(params?: GetElementGroupsParams) {
 
   return useQuery({
     queryKey: keys.elementGroups,
-    queryFn:  () => getElementGroups(workspaceId, params),
-    enabled:  !!workspaceId,
-    refetchInterval:     60_000,
-    staleTime:           30_000,
+    queryFn: () => getElementGroups(workspaceId, params),
+    enabled: !!workspaceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -77,10 +77,10 @@ export function useFlightAreas() {
 
   return useQuery({
     queryKey: keys.flightAreas,
-    queryFn:  () => getFlightAreas(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     60_000,
-    staleTime:           30_000,
+    queryFn: () => getFlightAreas(workspaceId),
+    enabled: !!workspaceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -98,10 +98,10 @@ export function useDeviceFlightAreaStatus() {
 
   return useQuery({
     queryKey: keys.deviceStatus,
-    queryFn:  () => getDeviceFlightAreaStatus(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     30_000,
-    staleTime:           15_000,
+    queryFn: () => getDeviceFlightAreaStatus(workspaceId),
+    enabled: !!workspaceId,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
   });
 }
 
@@ -227,7 +227,11 @@ export function useUpdateFlightArea() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { areaId: string; payload: Partial<Pick<FlightArea, 'name' | 'status' | 'content'>> }>({
+  return useMutation<
+    void,
+    Error,
+    { areaId: string; payload: Partial<Pick<FlightArea, 'name' | 'status' | 'content'>> }
+  >({
     mutationFn: ({ areaId, payload }) => updateFlightArea(workspaceId, areaId, payload),
     onSuccess: () => {
       const keys = mapKeys(workspaceId);

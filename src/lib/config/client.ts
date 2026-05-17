@@ -10,7 +10,7 @@ import { getToken } from './token-store';
 
 // DJI API response envelope — every endpoint wraps its payload in this shape
 export interface DJIApiResponse<T> {
-  code: number;    // 0 = success, anything else = error
+  code: number; // 0 = success, anything else = error
   message: string;
   data?: T;
 }
@@ -90,15 +90,11 @@ async function request<T>(
 
 // Public API — four methods matching every HTTP verb the DJI server uses
 export const djiRequest = {
-  get: <T>(path: string) =>
-    request<T>('GET', path),
+  get: <T>(path: string) => request<T>('GET', path),
 
-  post: <T>(path: string, body?: unknown) =>
-    request<T>('POST', path, body ?? {}),
+  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 
-  put: <T>(path: string, body?: unknown) =>
-    request<T>('PUT', path, body ?? {}),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
 
-  delete: <T>(path: string, body?: unknown) =>
-    request<T>('DELETE', path, body),
+  delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
 };

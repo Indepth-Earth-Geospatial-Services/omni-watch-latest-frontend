@@ -2,7 +2,7 @@
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices, useBoundDevices } from '@/hooks/useDJIDevices';
 import { useFlightAreas, useSyncFlightAreas, useElementGroups } from '@/hooks/useMapElements';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import { LayoutTemplate } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
