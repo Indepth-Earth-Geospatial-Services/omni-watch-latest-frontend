@@ -25,8 +25,10 @@ async function forwardRequest(
   const { path } = await params;
   const segments = path.join('/');
 
-  const { search } = new URL(request.url);
-  const targetUrl = `${AUTH_BASE_URL}/api/v1/auth/${segments}${search}`;
+  const { pathname, search } = new URL(request.url);
+  // Preserve trailing slash so Django doesn't 301-redirect POST→GET
+  const trailingSlash = pathname.endsWith('/') ? '/' : '';
+  const targetUrl = `${AUTH_BASE_URL}/api/v1/auth/${segments}${trailingSlash}${search}`;
 
   const forwardedHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => {
@@ -59,14 +61,19 @@ async function forwardRequest(
     // Set-Cookie must be forwarded so the browser stores the HttpOnly refresh token
     // cookie issued by OmniWatch on login. Without it, token refresh always fails.
     const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', authResponse.headers.get('Content-Type') ?? 'application/json');
+    responseHeaders.set(
+      'Content-Type',
+      authResponse.headers.get('Content-Type') ?? 'application/json'
+    );
 
     // getSetCookie() returns each Set-Cookie value as a separate string (Node 18+),
     // avoiding the multi-cookie join bug in headers.get('set-cookie').
     const setCookies: string[] =
       typeof authResponse.headers.getSetCookie === 'function'
         ? authResponse.headers.getSetCookie()
-        : (authResponse.headers.get('set-cookie') ? [authResponse.headers.get('set-cookie')!] : []);
+        : authResponse.headers.get('set-cookie')
+          ? [authResponse.headers.get('set-cookie')!]
+          : [];
 
     console.log(`[Auth Proxy] Set-Cookie headers:`, setCookies);
 

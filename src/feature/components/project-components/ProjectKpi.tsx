@@ -1,23 +1,33 @@
 'use client';
 
 import React from 'react';
-import KPIItem from '../layout/KpiItems';
 import { Plus } from 'lucide-react';
+import KPIItem from '../layout/KpiItems';
+import { useProjects } from '@/hooks/useProjects';
 
-const ProjectHeader = () => {
+interface ProjectHeaderProps {
+  onNewProject: () => void;
+}
+
+const ProjectHeader = ({ onNewProject }: ProjectHeaderProps) => {
+  const { data } = useProjects();
+
+  const totalProjects = data?.pagination?.total ?? 0;
+  const activeProjects = (data?.list ?? []).filter((p) => p.devices.length > 0).length;
+
   return (
     <div className='flex items-center justify-between w-[calc(100%-4rem)] h-[70px] px-6 bg-[#1A1C20] backdrop-blur-md border border-[#424754] rounded-sm overflow-hidden my-2 mx-8'>
-      {/* 1. Metrics Grid */}
+      {/* Metrics */}
       <div className='flex items-center'>
-        <KPIItem label='Total Projects' value={8} valueClass='text-[#1C93FF]' />
-        {/* <KPIItem label='Device Online' value={14} />
-        <KPIItem label='Dock' value={3} /> */}
-        {/* <KPIItem label='Active' value={2} valueClass='text-[#FF4D4D]' /> */}
-        {/* <KPIItem label='Offline' value='4.2' unit='km²' valueClass='text-[#45F0CF]' /> */}
+        <KPIItem label='Total Projects' value={totalProjects} valueClass='text-[#1C93FF]' />
+        <KPIItem label='With Devices' value={activeProjects} valueClass='text-emerald-400' />
       </div>
 
-      {/* 2. Live Indicator (Right-aligned) */}
-      <button className='flex gap-2 justify-center items-center bg-[#518DFF] text-white py-2 px-4 rounded-sm hover:bg-[#1C93FF]/80 focus:outline-none focus:ring-2 focus:ring-blue-500'>
+      {/* New Project button */}
+      <button
+        onClick={onNewProject}
+        className='flex gap-2 justify-center items-center bg-[#518DFF] text-white py-2 px-4 rounded-sm hover:bg-[#1C93FF]/80 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm font-semibold'
+      >
         <Plus size={14} />
         New Project
       </button>

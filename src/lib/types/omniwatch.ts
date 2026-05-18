@@ -2,11 +2,23 @@
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
+// Legacy DRF shape — kept for reference but not used by OmniWatch endpoints
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+// Actual paginated shape returned by OmniWatch list endpoints:
+//   { list: T[], pagination: { page, total, page_size } }
+export interface OmniWatchPage<T> {
+  list: T[];
+  pagination: {
+    page: number;
+    total: number;
+    page_size: number;
+  };
 }
 
 export interface PageParams {

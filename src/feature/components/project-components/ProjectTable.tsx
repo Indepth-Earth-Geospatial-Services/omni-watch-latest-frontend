@@ -1,181 +1,93 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Pencil,
   Trash2,
   PlaneTakeoff,
-  Home,
+  Layers,
   ChevronLeft,
   ChevronRight,
   Download,
   Archive,
+  FolderOpen,
+  AlertCircle,
+  Loader2, // used in loading / error states above the table
 } from 'lucide-react';
+
 import { ProjectTabType } from './ProjectTabs';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ProjectStatus = 'ONLINE' | 'OFFLINE' | 'WARNING';
-
-interface Project {
-  id: string;
-  name: string;
-  model: string;
-  serialNo: string;
-  firmware: string;
-  firmwareUpdate: boolean;
-  workspace: string;
-  status: ProjectStatus;
-  archived: boolean;
-  drones?: number;
-  docks?: number;
-}
-
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const projects: Project[] = [
-  {
-    id: '1',
-    name: 'Project Falcon',
-    model: 'DJI Matrice 350 RTK',
-    serialNo: 'SN-8829A',
-    firmware: 'v4.2.1',
-    firmwareUpdate: false,
-    workspace: 'Alpha Zone',
-    status: 'ONLINE',
-    archived: false,
-    drones: 3,
-  },
-  {
-    id: '2',
-    name: 'Operation Dawnwatch',
-    model: 'Autel Dragonfish',
-    serialNo: 'SN-DF221',
-    firmware: 'v3.9.0',
-    firmwareUpdate: true,
-    workspace: 'Beta Sector',
-    status: 'WARNING',
-    archived: false,
-    drones: 2,
-  },
-  {
-    id: '3',
-    name: 'Night Owl Perimeter',
-    model: 'DJI Dock 2',
-    serialNo: 'SN-DK990',
-    firmware: 'v1.0.5',
-    firmwareUpdate: false,
-    workspace: 'Gamma Grid',
-    status: 'OFFLINE',
-    archived: false,
-    drones: 8,
-    docks: 4,
-  },
-  {
-    id: '4',
-    name: 'Border Scan Echo',
-    model: 'Freefly Astro',
-    serialNo: 'SN-FF402',
-    firmware: 'v2.1.0',
-    firmwareUpdate: false,
-    workspace: 'Delta Line',
-    status: 'ONLINE',
-    archived: false,
-    drones: 5,
-    docks: 3,
-  },
-  {
-    id: '5',
-    name: 'Urban Mapping V2',
-    model: 'Skydio X10',
-    serialNo: 'SN-SK10X',
-    firmware: 'v1.0.0',
-    firmwareUpdate: false,
-    workspace: 'City Core',
-    status: 'ONLINE',
-    archived: false,
-    drones: 3,
-  },
-  {
-    id: '6',
-    name: 'Coastal Survey Alpha',
-    model: 'DJI Matrice 30T',
-    serialNo: 'SN-M30T1',
-    firmware: 'v5.1.2',
-    firmwareUpdate: true,
-    workspace: 'Harbor West',
-    status: 'WARNING',
-    archived: false,
-    drones: 4,
-    docks: 2,
-  },
-  {
-    id: '7',
-    name: 'Archive: Grid Sweep 01',
-    model: 'DJI Phantom 4 RTK',
-    serialNo: 'SN-P4RT7',
-    firmware: 'v2.0.0',
-    firmwareUpdate: false,
-    workspace: 'North Field',
-    status: 'OFFLINE',
-    archived: true,
-    drones: 1,
-  },
-];
+import { useProjects, useDeleteProject } from '@/hooks/useProjects';
+import { useProject } from '@/providers/ProjectProvider';
+import DeleteConfirmModal from './DeleteConfirmModal';
+import type { Project } from '@/lib/types';
 
 const PAGE_SIZE = 5;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const statusBorderColor: Record<ProjectStatus, string> = {
-  ONLINE: 'border-l-emerald-500',
-  WARNING: 'border-l-yellow-500',
-  OFFLINE: 'border-l-red-500',
-};
-
-const statusDot: Record<ProjectStatus, string> = {
-  ONLINE: 'bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.7)]',
-  WARNING: 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.7)]',
-  OFFLINE: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]',
-};
-
-const statusText: Record<ProjectStatus, string> = {
-  ONLINE: 'text-emerald-400',
-  WARNING: 'text-yellow-400',
-  OFFLINE: 'text-red-400',
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface ProjectTableProps {
   activeTab: ProjectTabType;
   searchQuery?: string;
+  onEditProject?: (project: Project) => void;
 }
 
-const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTableProps) => {
+  const router = useRouter();
+  const { activeProject, setActiveProject, clearActiveProject } = useProject();
+  const { data, isLoading, error } = useProjects();
+  const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
 
-  // Filter by tab
-  const tabFiltered = projects.filter((p) => {
-    if (activeTab === 'All') return !p.archived;
-    if (activeTab === 'Active') return !p.archived && p.status === 'ONLINE';
-    if (activeTab === 'Archived') return p.archived;
-    // if (activeTab === 'Offline') return !p.archived && p.status === 'OFFLINE';
+  // Reset to page 1 whenever the tab or search changes
+  useEffect(() => {
+    setPage(1);
+    setSelected(new Set());
+  }, [activeTab, searchQuery]);
+
+  const allProjects = data?.list ?? [];
+
+  // Tab filtering — mapped to real Project shape (no status/archived field from API)
+  const tabFiltered = allProjects.filter((p) => {
+    if (activeTab === 'All') return true;
+    if (activeTab === 'Active') return p.devices.length > 0;
+    if (activeTab === 'Offline') return p.devices.length === 0;
+    if (activeTab === 'Archived') return false; // no archived field in API yet
     return true;
   });
 
-  // Filter by search
+  // Search by name or description
   const filtered = tabFiltered.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.workspace.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const allChecked = paginated.length > 0 && selected.size === paginated.length;
+
+  const handleOpenProject = (project: Project) => {
+    setActiveProject(project);
+    router.push('/dashboard');
+  };
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return;
+    const deletingActive = activeProject?.id === pendingDelete.id;
+    deleteProject(pendingDelete.id, {
+      onSuccess: () => {
+        if (deletingActive) clearActiveProject();
+      },
+      onSettled: () => setPendingDelete(null),
+    });
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -193,8 +105,32 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
     }
   };
 
-  const allChecked = paginated.length > 0 && selected.size === paginated.length;
+  // ── Loading ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className='flex flex-col w-[calc(100%-2rem)] mx-4'>
+        <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 items-center justify-center gap-3'>
+          <Loader2 className='w-7 h-7 text-[#1C93FF] animate-spin' />
+          <span className='text-sm text-zinc-500'>Loading projects…</span>
+        </div>
+      </div>
+    );
+  }
 
+  // ── Error ────────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className='flex flex-col w-[calc(100%-2rem)] mx-4'>
+        <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 items-center justify-center gap-3'>
+          <AlertCircle className='w-8 h-8 text-red-400' />
+          <span className='text-sm text-zinc-400'>Failed to load projects</span>
+          <span className='text-xs text-zinc-600 max-w-[300px] text-center'>{error.message}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Table ────────────────────────────────────────────────────────────────────
   return (
     <div className='flex flex-col w-[calc(100%-2rem)] mx-4 font-poppins'>
       {/* Bulk action bar */}
@@ -217,10 +153,9 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
         </div>
       )}
 
-      {/* Table */}
       <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 overflow-hidden'>
         <div className='flex-1 overflow-y-auto overflow-x-auto'>
-          <table className='w-full text-left border-collapse min-w-[900px]'>
+          <table className='w-full text-left border-collapse min-w-[860px]'>
             <thead className='sticky top-0 z-10'>
               <tr className='border-b border-[#424754] bg-[#1E2024]'>
                 <th className='px-4 py-4 w-10'>
@@ -231,7 +166,7 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
                     className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
                   />
                 </th>
-                {['Name', 'Model', 'Serial No', 'Firmware', 'Workspace', 'Status', 'Actions'].map(
+                {['Name', 'Description', 'Devices', 'Flight Areas', 'Created', 'Actions'].map(
                   (col) => (
                     <th
                       key={col}
@@ -246,17 +181,38 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
             <tbody className='divide-y divide-zinc-800/40'>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='px-4 py-12 text-center text-sm text-zinc-600'>
-                    No projects found.
+                  <td colSpan={7} className='px-4 py-16 text-center'>
+                    <div className='flex flex-col items-center gap-2'>
+                      <FolderOpen className='w-8 h-8 text-zinc-700' />
+                      <span className='text-sm text-zinc-600'>
+                        {searchQuery
+                          ? 'No projects match your search.'
+                          : activeTab === 'Archived'
+                            ? 'No archived projects.'
+                            : 'No projects yet. Create one to get started.'}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 paginated.map((project) => {
                   const isChecked = selected.has(project.id);
+                  const hasDevices = project.devices.length > 0;
+                  const isActiveProject = activeProject?.id === project.id;
+                  const borderColor = isActiveProject
+                    ? 'border-l-[#1C93FF]'
+                    : hasDevices
+                      ? 'border-l-emerald-500'
+                      : 'border-l-zinc-700';
+                  const isBeingDeleted = isDeleting && pendingDelete?.id === project.id;
+
                   return (
                     <tr
                       key={project.id}
-                      className={`border-l-2 ${statusBorderColor[project.status]} transition-colors hover:bg-white/[0.02] ${isChecked ? 'bg-[#1C93FF]/5' : ''}`}
+                      className={`border-l-2 ${borderColor} transition-colors hover:bg-white/[0.02]
+                        ${isActiveProject ? 'bg-[#1C93FF]/[0.04]' : ''}
+                        ${isChecked ? 'bg-[#1C93FF]/5' : ''}
+                        ${isBeingDeleted ? 'opacity-40 pointer-events-none' : ''}`}
                     >
                       {/* Checkbox */}
                       <td className='px-4 py-4'>
@@ -271,81 +227,101 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
                       {/* Name */}
                       <td className='px-4 py-4'>
                         <div className='flex flex-col gap-1'>
-                          <div className='flex items-center gap-2'>
+                          <div className='flex items-center gap-2 flex-wrap'>
                             <span className='text-sm font-bold text-zinc-100'>{project.name}</span>
-                            <Link
-                              href='/dashboard'
-                              className='px-2.5 py-1.5 text-[10px] font-bold text-white bg-[#1C93FF] rounded hover:bg-[#1C93FF]/80 transition-colors'
+
+                            {/* Active session badge */}
+                            {isActiveProject && (
+                              <span className='inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/25 rounded-full'>
+                                <span className='w-1.5 h-1.5 rounded-full bg-[#1C93FF] animate-pulse' />
+                                Active Session
+                              </span>
+                            )}
+
+                            <button
+                              onClick={() => handleOpenProject(project)}
+                              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded transition-colors ${
+                                isActiveProject
+                                  ? 'text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/30 hover:bg-[#1C93FF]/20'
+                                  : 'text-white bg-[#1C93FF] hover:bg-[#1C93FF]/80'
+                              }`}
                             >
-                              Open Project
-                            </Link>
+                              <FolderOpen size={10} />
+                              {isActiveProject ? 'Resume' : 'Open'}
+                            </button>
                           </div>
-                          <div className='flex items-center gap-3'>
-                            {project.drones && (
-                              <span className='flex items-center gap-1 text-[10px] text-zinc-500'>
-                                <PlaneTakeoff size={10} /> {project.drones} Drones
-                              </span>
-                            )}
-                            {project.docks && (
-                              <span className='flex items-center gap-1 text-[10px] text-zinc-500'>
-                                <Home size={10} /> {project.docks} Docks
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Model */}
-                      <td className='px-4 py-4'>
-                        <span className='text-sm text-zinc-300'>{project.model}</span>
-                      </td>
-
-                      {/* Serial No */}
-                      <td className='px-4 py-4'>
-                        <span className='text-sm font-mono text-zinc-400'>{project.serialNo}</span>
-                      </td>
-
-                      {/* Firmware */}
-                      <td className='px-4 py-4'>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border
-                            ${
-                              project.firmwareUpdate
-                                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-                                : 'bg-zinc-800/60 border-zinc-700 text-zinc-400'
-                            }`}
-                        >
-                          {project.firmware}
-                          {project.firmwareUpdate ? ' (Update)' : ''}
-                        </span>
-                      </td>
-
-                      {/* Workspace */}
-                      <td className='px-4 py-4'>
-                        <span className='text-sm text-zinc-300'>{project.workspace}</span>
-                      </td>
-
-                      {/* Status */}
-                      <td className='px-4 py-4'>
-                        <div className='flex items-center gap-2'>
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full ${statusDot[project.status]}`}
-                          />
-                          <span
-                            className={`text-[11px] font-bold tracking-wider ${statusText[project.status]}`}
-                          >
-                            {project.status}
+                          <span className='text-[10px] font-mono text-zinc-700'>
+                            {project.id.slice(0, 8)}…
                           </span>
                         </div>
+                      </td>
+
+                      {/* Description */}
+                      <td className='px-4 py-4 max-w-[220px]'>
+                        {project.description ? (
+                          <span className='text-sm text-zinc-400 line-clamp-2'>
+                            {project.description}
+                          </span>
+                        ) : (
+                          <span className='text-sm text-zinc-700 italic'>—</span>
+                        )}
+                      </td>
+
+                      {/* Devices */}
+                      <td className='px-4 py-4'>
+                        <div className='flex items-center gap-1.5'>
+                          <PlaneTakeoff size={12} className='text-zinc-500' />
+                          <span
+                            className={`text-sm font-semibold tabular-nums ${
+                              hasDevices ? 'text-emerald-400' : 'text-zinc-600'
+                            }`}
+                          >
+                            {project.devices.length}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Flight Areas */}
+                      <td className='px-4 py-4'>
+                        <div className='flex items-center gap-1.5'>
+                          <Layers size={12} className='text-zinc-500' />
+                          <span
+                            className={`text-sm font-semibold tabular-nums ${
+                              project.flight_areas.length > 0 ? 'text-cyan-400' : 'text-zinc-600'
+                            }`}
+                          >
+                            {project.flight_areas.length}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Created */}
+                      <td className='px-4 py-4'>
+                        <span className='text-sm text-zinc-400'>
+                          {new Date(project.created_at).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
                       </td>
 
                       {/* Actions */}
                       <td className='px-4 py-4'>
                         <div className='flex items-center gap-1'>
-                          <button className='p-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors'>
+                          <button
+                            onClick={() => onEditProject?.(project)}
+                            title='Edit project'
+                            className='p-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors'
+                          >
                             <Pencil size={13} />
                           </button>
-                          <button className='p-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-colors'>
+                          <button
+                            onClick={() => setPendingDelete(project)}
+                            disabled={isDeleting}
+                            title='Delete project'
+                            className='p-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                          >
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -358,7 +334,7 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
           </table>
         </div>
 
-        {/* Footer: count + pagination — pinned to bottom */}
+        {/* Footer: count + pagination */}
         <div className='flex-shrink-0 flex items-center justify-between px-6 py-3.5 border-t border-zinc-800/50 bg-[#191C22]'>
           <span className='text-[11px] text-zinc-500'>
             Showing <span className='text-zinc-300 font-semibold'>{paginated.length}</span> of{' '}
@@ -396,6 +372,13 @@ const ProjectTable = ({ activeTab, searchQuery = '' }: ProjectTableProps) => {
           </div>
         </div>
       </div>
+
+      <DeleteConfirmModal
+        project={pendingDelete}
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   );
 };
