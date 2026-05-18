@@ -9,9 +9,7 @@ import {
   Gauge,
   Video,
   Globe,
-  AlertTriangle,
-  Target,
-  TrendingUp,
+  FolderOpen,
   FileText,
   Users,
   Terminal,
@@ -21,14 +19,10 @@ import {
 import { useAuth } from '@/providers/AuthProvider';
 
 const navigation = [
-  { name: 'Feature', href: '/member', icon: Gauge },
   { name: 'Dashboard', href: '/dashboard', icon: Gauge },
   { name: 'Live Feeds', href: '/live-feed', icon: Video },
   { name: 'Geospatial Map', href: '/geospatial', icon: Globe },
-  // { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
-  // { name: 'Threat Detection', href: '/threats', icon: Target },
   { name: 'Control', href: '/control', icon: Settings },
-  // { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   {
     name: 'Reports',
     href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',
@@ -37,6 +31,8 @@ const navigation = [
   { name: 'User Management', href: '/users', icon: Users },
   { name: 'System Logs', href: '/logs', icon: Terminal },
 ];
+
+const projectsLink = { name: 'Projects', href: '/projects', icon: FolderOpen };
 
 interface SidebarProps {
   className?: string;
@@ -96,6 +92,22 @@ export function Sidebar({ className }: SidebarProps) {
           );
         })}
       </nav>
+
+      {/* Projects shortcut — separated from main nav, above the user footer */}
+      <div className='border-t border-border'>
+        <Link
+          href={projectsLink.href}
+          className={cn(
+            'flex items-center px-4 py-3 text-sm font-medium rounded-none transition-colors',
+            pathname === projectsLink.href
+              ? 'bg-graybg border-l-2 border-sky-500 text-foreground'
+              : 'text-muted-foreground hover:bg-graybg hover:text-foreground'
+          )}
+        >
+          <projectsLink.icon className='mr-3 h-4 w-4' />
+          {projectsLink.name}
+        </Link>
+      </div>
 
       {/* User footer */}
       <div className='p-4 border-t border-border space-y-3'>

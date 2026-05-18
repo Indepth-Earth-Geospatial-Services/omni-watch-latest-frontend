@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { ProjectContextBar } from "./project-context-bar";
 import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
@@ -39,6 +40,10 @@ export function MainLayout({ children, title, subtitle }: MainLayoutProps) {
           subtitle={subtitle}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
+        {/* Project context bar — shows active project name and a switch button.
+            Renders only when a project is selected (guard in layout.tsx ensures this
+            is always the case for dashboard pages). */}
+        <ProjectContextBar />
         <main className="p-6">{children}</main>
       </div>
     </div>

@@ -86,7 +86,7 @@ export function useDJIDevice(deviceSn: string | undefined) {
 }
 
 /**
- * Fetches only devices that are bound to the workspace.
+ * Fetches only bound drones (domain 0) for the workspace.
  * Used in the Live Feed page to show which devices can stream.
  */
 export function useBoundDevices() {
@@ -105,6 +105,7 @@ export function useBoundDevices() {
     select: (response) => response.list,
   });
 }
+
 
 /**
  * Fetches the full device topology tree (dock → drone → RC).

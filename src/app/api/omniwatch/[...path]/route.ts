@@ -15,7 +15,9 @@ async function forwardRequest(
   const { path } = await params;
   const segments = path.join('/');
   const { search } = new URL(request.url);
-  const targetUrl = `${BASE_URL}/api/v1/${segments}${search}`;
+  // Always append trailing slash — Django 301-redirects paths without one,
+  // and fetch() downgrades POST→GET on redirect, breaking mutations.
+  const targetUrl = `${BASE_URL}/api/v1/${segments}/${search}`;
 
   const forwardedHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => {
@@ -24,14 +26,22 @@ async function forwardRequest(
   forwardedHeaders['host'] = new URL(BASE_URL).host;
 
   try {
-    const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+    // DELETE and GET/HEAD must not carry a body — some backends reject them
+    const NO_BODY = ['GET', 'HEAD', 'DELETE'];
+    const body = NO_BODY.includes(request.method) ? undefined : await request.text();
 
     console.log(`[OmniWatch Proxy] → ${request.method} ${targetUrl}`);
 
     const res = await fetch(targetUrl, { method: request.method, headers: forwardedHeaders, body });
-    const text = await res.text();
 
     console.log(`[OmniWatch Proxy] ← ${res.status}`);
+
+    // 204 No Content — must not include a body in the response
+    if (res.status === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    const text = await res.text();
 
     const responseHeaders = new Headers();
     responseHeaders.set('Content-Type', res.headers.get('Content-Type') ?? 'application/json');
@@ -39,7 +49,9 @@ async function forwardRequest(
     const setCookies: string[] =
       typeof res.headers.getSetCookie === 'function'
         ? res.headers.getSetCookie()
-        : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')!] : []);
+        : res.headers.get('set-cookie')
+          ? [res.headers.get('set-cookie')!]
+          : [];
 
     for (const cookie of setCookies) {
       responseHeaders.append('Set-Cookie', cookie);

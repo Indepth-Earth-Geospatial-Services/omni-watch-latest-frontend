@@ -3,8 +3,13 @@
 import React, { useState } from 'react';
 import ProjectTabs, { ProjectTabType } from './ProjectTabs';
 import ProjectTable from './ProjectTable';
+import type { Project } from '@/lib/types';
 
-const ProjectManagement = () => {
+interface ProjectManagementProps {
+  onEditProject: (project: Project) => void;
+}
+
+const ProjectManagement = ({ onEditProject }: ProjectManagementProps) => {
   const [activeTab, setActiveTab] = useState<ProjectTabType>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -12,12 +17,14 @@ const ProjectManagement = () => {
     <div className='flex flex-col gap-4 w-full'>
       <ProjectTabs
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-        }}
+        onTabChange={(tab) => setActiveTab(tab)}
         onSearch={setSearchQuery}
       />
-      <ProjectTable activeTab={activeTab} searchQuery={searchQuery} />
+      <ProjectTable
+        activeTab={activeTab}
+        searchQuery={searchQuery}
+        onEditProject={onEditProject}
+      />
     </div>
   );
 };

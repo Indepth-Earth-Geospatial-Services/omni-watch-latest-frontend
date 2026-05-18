@@ -44,8 +44,9 @@ async function forwardRequest(
   });
 
   try {
-    // Body is only read for methods that carry one — GET/HEAD have no body
-    const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+    // DELETE and GET/HEAD must not carry a body — some backends reject them
+    const NO_BODY = ['GET', 'HEAD', 'DELETE'];
+    const body = NO_BODY.includes(request.method) ? undefined : await request.text();
 
     const djResponse = await fetch(targetUrl, {
       method: request.method,

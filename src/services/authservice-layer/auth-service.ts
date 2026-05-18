@@ -38,7 +38,7 @@ import type {
   OrgUser,
   AddOrgUserRequest,
   UpdateOrgUserRequest,
-  PaginatedResponse,
+  OmniWatchPage,
   PageParams,
 } from '@/lib/types';
 
@@ -58,6 +58,13 @@ import type {
  * @param data         - Request body (axios serialises to JSON automatically)
  * @param extraHeaders - Additional headers merged on top of the defaults
  */
+// OmniWatch wraps every response in { code, message, data } — code 0 = success.
+interface OmniWatchEnvelope<T> {
+  code: number;
+  message: string;
+  data: T;
+}
+
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
@@ -65,9 +72,10 @@ async function request<T>(
   extraHeaders: Record<string, string> = {}
 ): Promise<T> {
   const token = getToken();
+  console.log(`[OmniWatch] → ${method} ${url}`);
 
   try {
-    const res = await axios.request<T>({
+    const res = await axios.request<OmniWatchEnvelope<T>>({
       method,
       url,
       data,
@@ -78,12 +86,36 @@ async function request<T>(
       },
     });
 
-    return res.data;
+    console.log(`[OmniWatch] ← ${method} ${url} — HTTP ${res.status}, code: ${res.data?.code}`);
+
+    // 204 No Content (e.g. DELETE success with no body)
+    if (res.status === 204 || !res.data) {
+      console.log(`[OmniWatch] ✓ ${method} ${url} — no content`);
+      return undefined as unknown as T;
+    }
+
+    const envelope = res.data;
+
+    if (envelope.code !== 0) {
+      const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
+      const msg = String(detail ?? envelope.message ?? `Request failed: ${res.status}`);
+      console.error(`[OmniWatch] ✗ ${method} ${url} — code ${envelope.code}: ${msg}`);
+      throw new Error(msg);
+    }
+
+    console.log(`[OmniWatch] ✓ ${method} ${url}`, envelope.data);
+    return envelope.data;
   } catch (err) {
     if (err instanceof AxiosError && err.response) {
-      const detail = err.response.data?.detail ?? `Request failed: ${err.response.status}`;
-      throw new Error(String(detail));
+      const envelope = err.response.data as OmniWatchEnvelope<unknown> | undefined;
+      const detail = (envelope?.data as Record<string, unknown> | undefined)?.detail;
+      const msg = String(
+        detail ?? envelope?.message ?? `Request failed: ${err.response.status}`
+      );
+      console.error(`[OmniWatch] ✗ ${method} ${url} — HTTP ${err.response.status}:`, msg, err.response.data);
+      throw new Error(msg);
     }
+    console.error(`[OmniWatch] ✗ ${method} ${url} — network error:`, err);
     throw err;
   }
 }
@@ -127,8 +159,8 @@ export const projectsApi = {
    *
    * @param params - Optional `page` and `page_size` for pagination.
    */
-  list: (params?: PageParams): Promise<PaginatedResponse<Project>> =>
-    request<PaginatedResponse<Project>>('GET', API_URLS.projects.list(params)),
+  list: (params?: PageParams): Promise<OmniWatchPage<Project>> =>
+    request<OmniWatchPage<Project>>('GET', API_URLS.projects.list(params)),
 
   /**
    * Create a new project.
@@ -176,8 +208,8 @@ export const projectsApi = {
    * @param id     - Project UUID.
    * @param params - Optional pagination params.
    */
-  listDevices: (id: string, params?: PageParams): Promise<PaginatedResponse<ProjectDevice>> =>
-    request<PaginatedResponse<ProjectDevice>>('GET', API_URLS.projects.devices(id, params)),
+  listDevices: (id: string, params?: PageParams): Promise<OmniWatchPage<ProjectDevice>> =>
+    request<OmniWatchPage<ProjectDevice>>('GET', API_URLS.projects.devices(id, params)),
 
   /**
    * Assign a device to a project by its serial number.
