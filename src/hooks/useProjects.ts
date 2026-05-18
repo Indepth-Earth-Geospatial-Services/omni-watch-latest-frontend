@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/services/authservice-layer/auth-service';
-import type { Project, ProjectBody, PageParams } from '@/lib/types';
+import type { Project, ProjectBody, ProjectDevice, PageParams } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -95,6 +95,46 @@ export function useDeleteProject() {
 
   return useMutation<void, Error, string>({
     mutationFn: (id) => projectsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+/**
+ * Assigns a device (by serial number) to a project.
+ * On success: invalidates all project queries so the devices list refreshes.
+ *
+ * @example
+ * const { mutate: assign } = useAssignDevice();
+ * assign({ projectId: 'abc-123', deviceSn: 'SN-XYZ' });
+ */
+export function useAssignDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ProjectDevice, Error, { projectId: string; deviceSn: string }>({
+    mutationFn: ({ projectId, deviceSn }) =>
+      projectsApi.assignDevice(projectId, { device_sn: deviceSn }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+/**
+ * Removes a device assignment from a project.
+ * The device stays bound to the organisation — it's only removed from the project's scope.
+ * On success: invalidates all project queries so the devices list refreshes.
+ *
+ * @example
+ * const { mutate: unassign } = useUnassignDevice();
+ * unassign({ projectId: 'abc-123', deviceSn: 'SN-XYZ' });
+ */
+export function useUnassignDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { projectId: string; deviceSn: string }>({
+    mutationFn: ({ projectId, deviceSn }) => projectsApi.unassignDevice(projectId, deviceSn),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
