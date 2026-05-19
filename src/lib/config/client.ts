@@ -1,5 +1,5 @@
 // Typed HTTP client for all DJI Cloud API calls.
-// All requests go through the Next.js proxy at /api/dji/... — never directly to the DJI server.
+// Requests go directly from the browser to the DJI server (CORS is open on that server).
 //
 // Usage:
 //   import { djiRequest } from '@/lib/config/client';
@@ -26,15 +26,16 @@ export class DJIApiError extends Error {
   }
 }
 
+const DJI_BASE_URL = process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '';
+
 /**
- * Core request function — attaches auth token, routes through the proxy, unwraps the DJI envelope.
+ * Core request function — attaches auth token, calls the DJI server directly, unwraps the envelope.
  *
  * On 401: silently refreshes the OmniWatch token (which reissues the DJI session token),
- * then replays the request once. Requires the HttpOnly refresh-token cookie to be present
- * in the browser — the auth proxy forwards it to OmniWatch on the refresh call.
+ * then replays the request once.
  *
  * @param method  - HTTP verb
- * @param path    - DJI API path (no base URL — proxy adds `/api/dji/` prefix automatically)
+ * @param path    - DJI API path (e.g. "/workspaces/:id/devices")
  * @param data    - Request body
  * @param retried - Internal flag: prevents infinite retry on 401
  */
@@ -46,13 +47,12 @@ async function request<T>(
 ): Promise<T> {
   const token = getToken();
 
-  // All DJI paths are forwarded through the Next.js proxy — strip any leading slash first
-  const proxyPath = `/api/dji/${path.replace(/^\//, '')}`;
+  const directUrl = `${DJI_BASE_URL}/${path.replace(/^\//, '')}`;
 
   try {
     const res = await axios.request<DJIApiResponse<T>>({
       method,
-      url: proxyPath,
+      url: directUrl,
       data,
       headers: {
         'Content-Type': 'application/json',
@@ -70,7 +70,6 @@ async function request<T>(
     return envelope.data as T;
   } catch (err) {
     // 401 → refresh OmniWatch token (reissues DJI session), then replay once.
-    // The browser's HttpOnly refresh cookie is forwarded by the /api/auth/ proxy.
     if (err instanceof AxiosError && err.response?.status === 401 && !retried) {
       try {
         const { authApi } = await import('@/services/authservice-layer/auth-api');

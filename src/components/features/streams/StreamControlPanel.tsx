@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { DJI_CONFIG } from '@/lib/config/config';
 import {
@@ -13,6 +13,10 @@ import {
 
 interface StreamControlPanelProps {
   stream: any;
+  /** Incremented by the parent to trigger a stop from outside the panel. */
+  externalStopSignal?: number;
+  /** Called whenever streaming state changes so the parent can track it. videoId is provided on start. */
+  onStreamingChange?: (isStreaming: boolean, videoId?: string) => void;
 }
 
 const QUALITY_OPTIONS = [
@@ -34,7 +38,11 @@ type LensValue = (typeof LENS_OPTIONS)[number]['value'];
 
 // Only renders for DJI DRONE streams when the DJI Cloud feature flag is on.
 // BODY CAM and CCTV streams have no DJI livestream API — return null for those.
-export function StreamControlPanel({ stream }: StreamControlPanelProps) {
+export function StreamControlPanel({
+  stream,
+  externalStopSignal,
+  onStreamingChange,
+}: StreamControlPanelProps) {
   const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
   const [isStreaming, setIsStreaming] = useState(false);
@@ -65,22 +73,21 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
     lensMutation.isPending;
 
   const streamFeedType = stream.feedType || stream.type || stream.device_type;
-  if (!DJI_CONFIG.USE_DJI_CLOUD || streamFeedType !== 'DRONE') {
-    return null;
-  }
 
   const handleStart = () => {
     startMutation.mutate(
       {
+        url: '',
         video_id: currentVideoId,
-        url_type: '2', // WebRTC (string as per docs)
-        video_quality: String(quality),
+        url_type: 4, // WHEP
+        video_quality: quality,
         videoType: lens,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           setIsStreaming(true);
           setActiveVideoId(currentVideoId);
+          onStreamingChange?.(true, data.url);
         },
       }
     );
@@ -89,27 +96,52 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
   const handleStop = () => {
     stopMutation.mutate(
       {
+        url: '',
         video_id: currentVideoId,
-        url_type: '2',
-        video_quality: String(quality),
+        url_type: 4,
+        video_quality: quality,
         videoType: lens,
       },
       {
         onSuccess: () => {
           setIsStreaming(false);
           setActiveVideoId(null);
+          onStreamingChange?.(false);
         },
       }
     );
   };
 
+  // Use refs so the effect always reads the latest values without re-subscribing.
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
+  const handleStopRef = useRef(handleStop);
+  handleStopRef.current = handleStop;
+  const prevSignalRef = useRef(0);
+
+  // When the parent increments externalStopSignal, trigger stop if we're streaming.
+  useEffect(() => {
+    const sig = externalStopSignal ?? 0;
+    if (sig > prevSignalRef.current) {
+      prevSignalRef.current = sig;
+      if (isStreamingRef.current) {
+        handleStopRef.current();
+      }
+    }
+  }, [externalStopSignal]);
+
+  if (!DJI_CONFIG.USE_DJI_CLOUD || streamFeedType !== 'DRONE') {
+    return null;
+  }
+
   const handleQualityChange = (newQuality: number) => {
     setQuality(newQuality);
     if (isStreaming) {
       qualityMutation.mutate({
+        url: '',
         video_id: currentVideoId,
-        url_type: '2',
-        video_quality: String(newQuality),
+        url_type: 4,
+        video_quality: newQuality,
         videoType: lens,
       });
     }
@@ -119,9 +151,10 @@ export function StreamControlPanel({ stream }: StreamControlPanelProps) {
     setLens(newLens);
     if (isStreaming) {
       lensMutation.mutate({
+        url: '',
         video_id: currentVideoId,
-        url_type: '2',
-        video_quality: String(quality),
+        url_type: 4,
+        video_quality: quality,
         videoType: newLens,
       });
     }

@@ -7,7 +7,7 @@ import {
   updateStreamQuality,
   switchStreamCamera,
 } from '@/services/djiservice-layer/dji-service';
-import type { LiveStreamRequest } from '@/lib/types';
+import type { LiveStreamRequest, StartStreamResponse } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ export function useLiveCapacity() {
  * start({ video_id, url_type: "2", video_quality: "0", videoType: "zoom" });
  */
 export function useStartStream() {
-  return useMutation<void, Error, LiveStreamRequest>({
+  return useMutation<StartStreamResponse, Error, LiveStreamRequest>({
     mutationFn: (payload) => startStream(payload),
   });
 }

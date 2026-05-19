@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Pencil,
@@ -13,13 +13,23 @@ import {
   Archive,
   FolderOpen,
   AlertCircle,
-  Loader2, // used in loading / error states above the table
+  Loader2,
+  MoreVertical,
+  PlusCircle,
+  MinusCircle,
+  X,
+  Box,
+  Activity,
+  Wifi,
+  List,
 } from 'lucide-react';
 
 import { ProjectTabType } from './ProjectTabs';
-import { useProjects, useDeleteProject } from '@/hooks/useProjects';
+import { useProjects, useDeleteProject, useUnassignDevice } from '@/hooks/useProjects';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useProject } from '@/providers/ProjectProvider';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import AssignDeviceToProjectModal from './AssignDeviceToProjectModal';
 import type { Project } from '@/lib/types';
 
 const PAGE_SIZE = 5;
@@ -39,29 +49,59 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
   const { activeProject, setActiveProject, clearActiveProject } = useProject();
   const { data, isLoading, error } = useProjects();
   const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
+  const { mutate: unassign, isPending: isUnassigning } = useUnassignDevice();
+  const { data: djiDevices = [] } = useDJIDevices();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
+  const [assignDeviceProject, setAssignDeviceProject] = useState<Project | null>(null);
+  const [unassignProject, setUnassignProject] = useState<Project | null>(null);
+  const [devicesModalProject, setDevicesModalProject] = useState<Project | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Reset to page 1 whenever the tab or search changes
+  // Reset page on tab / search change
   useEffect(() => {
     setPage(1);
     setSelected(new Set());
   }, [activeTab, searchQuery]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleMenuOpen = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    if (openMenuId === projectId) {
+      setOpenMenuId(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    setOpenMenuId(projectId);
+  };
+
   const allProjects = data?.list ?? [];
 
-  // Tab filtering — mapped to real Project shape (no status/archived field from API)
+  // Tab filtering
   const tabFiltered = allProjects.filter((p) => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Active') return p.devices.length > 0;
     if (activeTab === 'Offline') return p.devices.length === 0;
-    if (activeTab === 'Archived') return false; // no archived field in API yet
+    if (activeTab === 'Archived') return false;
     return true;
   });
 
-  // Search by name or description
+  // Search
   const filtered = tabFiltered.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,8 +110,11 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
   const allChecked = paginated.length > 0 && selected.size === paginated.length;
+
+  const activeMenuProject = openMenuId
+    ? allProjects.find((p) => p.id === openMenuId) ?? null
+    : null;
 
   const handleOpenProject = (project: Project) => {
     setActiveProject(project);
@@ -230,7 +273,6 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                           <div className='flex items-center gap-2 flex-wrap'>
                             <span className='text-sm font-bold text-zinc-100'>{project.name}</span>
 
-                            {/* Active session badge */}
                             {isActiveProject && (
                               <span className='inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/25 rounded-full'>
                                 <span className='w-1.5 h-1.5 rounded-full bg-[#1C93FF] animate-pulse' />
@@ -306,25 +348,18 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                         </span>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions — vertical 3-dots */}
                       <td className='px-4 py-4'>
-                        <div className='flex items-center gap-1'>
-                          <button
-                            onClick={() => onEditProject?.(project)}
-                            title='Edit project'
-                            className='p-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors'
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => setPendingDelete(project)}
-                            disabled={isDeleting}
-                            title='Delete project'
-                            className='p-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                        <button
+                          onClick={(e) => handleMenuOpen(e, project.id)}
+                          className={`p-1.5 rounded-md border transition-colors ${
+                            openMenuId === project.id
+                              ? 'bg-zinc-700 border-zinc-600 text-zinc-100'
+                              : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600'
+                          }`}
+                        >
+                          <MoreVertical size={14} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -373,11 +408,285 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         </div>
       </div>
 
+      {/* ── Fixed-position action dropdown ──────────────────────────────────────── */}
+      {activeMenuProject && (
+        <div
+          ref={menuRef}
+          style={{ top: menuPosition.top, right: menuPosition.right }}
+          className='fixed z-50 w-56 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/70 font-poppins overflow-hidden'
+        >
+          {/* Context label */}
+          <div className='px-3.5 py-2.5 border-b border-zinc-800/70'>
+            <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>Project</p>
+            <p className='text-xs font-bold text-zinc-200 truncate mt-0.5'>{activeMenuProject.name}</p>
+          </div>
+
+          {/* Device actions */}
+          <div className='p-1.5 space-y-0.5 border-b border-zinc-800/70'>
+            <button
+              onClick={() => {
+                if (!activeMenuProject.devices.length) return;
+                setOpenMenuId(null);
+                setDevicesModalProject(activeMenuProject);
+              }}
+              disabled={!activeMenuProject.devices.length}
+              title={!activeMenuProject.devices.length ? 'No devices assigned to this project' : undefined}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed'
+            >
+              <List size={13} className='flex-shrink-0' />
+              List Devices
+              {activeMenuProject.devices.length > 0 && (
+                <span className='ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full bg-zinc-700 text-zinc-400'>
+                  {activeMenuProject.devices.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setOpenMenuId(null);
+                setAssignDeviceProject(activeMenuProject);
+              }}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-[#1C93FF] hover:bg-[#1C93FF]/10 transition-colors text-left'
+            >
+              <PlusCircle size={13} className='flex-shrink-0' />
+              Assign Device
+            </button>
+            <button
+              onClick={() => {
+                if (!activeMenuProject.devices.length) return;
+                setOpenMenuId(null);
+                setUnassignProject(activeMenuProject);
+              }}
+              disabled={!activeMenuProject.devices.length}
+              title={!activeMenuProject.devices.length ? 'No devices assigned' : undefined}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed'
+            >
+              <MinusCircle size={13} className='flex-shrink-0' />
+              Unassign Device
+            </button>
+          </div>
+
+          {/* Project actions */}
+          <div className='p-1.5 space-y-0.5 border-b border-zinc-800/70'>
+            <button
+              onClick={() => {
+                setOpenMenuId(null);
+                onEditProject?.(activeMenuProject);
+              }}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors text-left'
+            >
+              <Pencil size={13} className='flex-shrink-0' />
+              Edit Project
+            </button>
+          </div>
+
+          {/* Danger zone */}
+          <div className='p-1.5'>
+            <button
+              onClick={() => {
+                setOpenMenuId(null);
+                setPendingDelete(activeMenuProject);
+              }}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors text-left'
+            >
+              <Trash2 size={13} className='flex-shrink-0' />
+              Delete Project
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Unassign device modal ────────────────────────────────────────────────── */}
+      {unassignProject && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
+          <div
+            className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+            onClick={() => setUnassignProject(null)}
+          />
+          <div className='relative w-full max-w-sm bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+            {/* Header */}
+            <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg'>
+                  <MinusCircle size={16} className='text-amber-400' />
+                </div>
+                <div>
+                  <h2 className='text-sm font-bold text-zinc-100'>Unassign Device</h2>
+                  <p className='text-[11px] text-zinc-500 truncate max-w-[200px]'>
+                    {unassignProject.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setUnassignProject(null)}
+                className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Device list */}
+            <div className='px-6 py-5 space-y-3'>
+              <p className='text-[11px] text-zinc-500'>
+                Select a device to remove from this project:
+              </p>
+              <div className='flex flex-col gap-2'>
+                {unassignProject.devices.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() =>
+                      unassign(
+                        { projectId: unassignProject.id, deviceSn: d.device_sn },
+                        { onSuccess: () => setUnassignProject(null) }
+                      )
+                    }
+                    disabled={isUnassigning}
+                    className='flex items-center justify-between px-3.5 py-2.5 bg-zinc-900 border border-zinc-700 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group'
+                  >
+                    <span className='text-xs font-mono text-emerald-400'>{d.device_sn}</span>
+                    {isUnassigning ? (
+                      <Loader2 size={11} className='text-amber-400 animate-spin' />
+                    ) : (
+                      <span className='text-[10px] font-bold text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity'>
+                        Remove
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── List Devices modal ──────────────────────────────────────────────────── */}
+      {devicesModalProject && (() => {
+        const enriched = devicesModalProject.devices.map((d) => {
+          const dji = djiDevices.find((dev) => dev.deviceSn === d.device_sn);
+          const isDrone = dji ? dji.domain === '0' : null;
+          return { ...d, dji, isDrone };
+        });
+        const drones = enriched.filter((d) => d.isDrone === true);
+        const docks  = enriched.filter((d) => d.isDrone === false);
+        const unknown = enriched.filter((d) => d.isDrone === null);
+
+        const DeviceRow = ({ d }: { d: typeof enriched[number] }) => (
+          <div className='flex items-center gap-3 px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800'>
+            <div className='w-8 h-8 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
+              {d.isDrone === true  && <Activity size={14} className='text-blue-400' />}
+              {d.isDrone === false && <Box size={14} className='text-cyan-400' />}
+              {d.isDrone === null  && <PlaneTakeoff size={14} className='text-zinc-600' />}
+            </div>
+            <div className='flex-1 min-w-0'>
+              <p className='text-xs font-bold text-zinc-200 truncate'>
+                {d.dji?.nickname || d.dji?.deviceName || d.device_sn}
+              </p>
+              <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device_sn}</p>
+            </div>
+            {d.dji ? (
+              <div className='flex items-center gap-1.5'>
+                <Wifi
+                  size={11}
+                  className={d.dji.status ? 'text-emerald-400' : 'text-zinc-600'}
+                />
+                <span className={`text-[10px] font-semibold ${d.dji.status ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                  {d.dji.status ? 'Online' : 'Offline'}
+                </span>
+              </div>
+            ) : (
+              <span className='text-[10px] text-zinc-700 italic'>Not bound</span>
+            )}
+          </div>
+        );
+
+        return (
+          <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
+            <div
+              className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+              onClick={() => setDevicesModalProject(null)}
+            />
+            <div className='relative w-full max-w-md bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 flex flex-col max-h-[80vh]'>
+              {/* Header */}
+              <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800 flex-shrink-0'>
+                <div className='flex items-center gap-3'>
+                  <div className='p-2 bg-zinc-800 border border-zinc-700 rounded-lg'>
+                    <List size={16} className='text-zinc-300' />
+                  </div>
+                  <div>
+                    <h2 className='text-sm font-bold text-zinc-100'>Assigned Devices</h2>
+                    <p className='text-[11px] text-zinc-500 truncate max-w-[220px]'>
+                      {devicesModalProject.name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDevicesModalProject(null)}
+                  className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className='overflow-y-auto px-6 py-5 space-y-5'>
+                {enriched.length === 0 ? (
+                  <div className='flex flex-col items-center gap-2 py-8'>
+                    <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
+                    <p className='text-sm text-zinc-600'>No devices assigned to this project.</p>
+                  </div>
+                ) : (
+                  <>
+                    {drones.length > 0 && (
+                      <div className='space-y-2'>
+                        <div className='flex items-center gap-2'>
+                          <Activity size={11} className='text-blue-400' />
+                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-blue-400'>
+                            Drones ({drones.length})
+                          </p>
+                        </div>
+                        {drones.map((d) => <DeviceRow key={d.id} d={d} />)}
+                      </div>
+                    )}
+                    {docks.length > 0 && (
+                      <div className='space-y-2'>
+                        <div className='flex items-center gap-2'>
+                          <Box size={11} className='text-cyan-400' />
+                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-cyan-400'>
+                            Docks ({docks.length})
+                          </p>
+                        </div>
+                        {docks.map((d) => <DeviceRow key={d.id} d={d} />)}
+                      </div>
+                    )}
+                    {unknown.length > 0 && (
+                      <div className='space-y-2'>
+                        <div className='flex items-center gap-2'>
+                          <PlaneTakeoff size={11} className='text-zinc-600' />
+                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-zinc-600'>
+                            Unknown ({unknown.length})
+                          </p>
+                        </div>
+                        {unknown.map((d) => <DeviceRow key={d.id} d={d} />)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <DeleteConfirmModal
         project={pendingDelete}
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setPendingDelete(null)}
+      />
+
+      <AssignDeviceToProjectModal
+        project={assignDeviceProject}
+        onClose={() => setAssignDeviceProject(null)}
       />
     </div>
   );

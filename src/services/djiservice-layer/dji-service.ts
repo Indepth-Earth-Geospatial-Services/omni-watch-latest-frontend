@@ -29,6 +29,7 @@ import type {
   HMSQueryParams,
   LiveCapacity,
   LiveStreamRequest,
+  StartStreamResponse,
   UploadedLog,
   DeviceLogModule,
   TriggerLogUploadRequest,
@@ -138,9 +139,9 @@ export function getLiveCapacity(): Promise<LiveCapacity[]> {
   return djiRequest.get<LiveCapacity[]>(DJI_URLS.live.capacity);
 }
 
-/** Starts a live video feed from a specific camera lens on a device. */
-export function startStream(payload: LiveStreamRequest): Promise<void> {
-  return djiRequest.post<void>(DJI_URLS.live.start, payload);
+/** Starts a live video feed. Returns the WHEP viewer URL in data.url. */
+export function startStream(payload: LiveStreamRequest): Promise<StartStreamResponse> {
+  return djiRequest.post<StartStreamResponse>(DJI_URLS.live.start, payload);
 }
 
 /** Stops an active live video feed. */

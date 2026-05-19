@@ -37,8 +37,13 @@ export interface VideoCapacity {
 }
 
 export interface LiveStreamRequest {
-  videoType: string;
-  url_type: string;
+  url: string;
   video_id: string;
-  video_quality: string;
+  url_type: number;
+  video_quality: number;
+  videoType: string;
+}
+
+export interface StartStreamResponse {
+  url: string;
 }
