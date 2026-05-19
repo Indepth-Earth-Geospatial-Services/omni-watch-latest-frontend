@@ -28,7 +28,7 @@ export default function ControlPage() {
   const [selectedCameraId,  setSelectedCameraId]  = useState('');
   const [selectedVideoId,   setSelectedVideoId]   = useState('');
   const [selectedVideoType, setSelectedVideoType] = useState('zoom');
-  const [streamQuality,     setStreamQuality]     = useState('0');
+  const [streamQuality,     setStreamQuality]     = useState(0);
   const [isStreaming,       setIsStreaming]        = useState(false);
 
   // ─── Derived selections ───────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export default function ControlPage() {
   const handleStart = useCallback(() => {
     if (!selectedVideoId) return;
     startStream(
-      { video_id: selectedVideoId, url_type: '2', video_quality: streamQuality, videoType: selectedVideoType },
+      { url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType: selectedVideoType },
       { onSuccess: () => setIsStreaming(true) }
     );
   }, [selectedVideoId, streamQuality, selectedVideoType, startStream]);
@@ -80,16 +80,16 @@ export default function ControlPage() {
   const handleStop = useCallback(() => {
     if (!selectedVideoId) return;
     stopStream(
-      { video_id: selectedVideoId, url_type: '2', video_quality: streamQuality, videoType: selectedVideoType },
+      { url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType: selectedVideoType },
       { onSuccess: () => setIsStreaming(false) }
     );
   }, [selectedVideoId, streamQuality, selectedVideoType, stopStream]);
 
   const handleQualityChange = useCallback(
-    (quality: string) => {
+    (quality: number) => {
       setStreamQuality(quality);
       if (isStreaming && selectedVideoId) {
-        updateQuality({ video_id: selectedVideoId, url_type: '2', video_quality: quality, videoType: selectedVideoType });
+        updateQuality({ url: '', video_id: selectedVideoId, url_type: 4, video_quality: quality, videoType: selectedVideoType });
       }
     },
     [isStreaming, selectedVideoId, selectedVideoType, updateQuality]
@@ -99,7 +99,7 @@ export default function ControlPage() {
     (videoType: string) => {
       setSelectedVideoType(videoType);
       if (isStreaming && selectedVideoId) {
-        switchCamera({ video_id: selectedVideoId, url_type: '2', video_quality: streamQuality, videoType });
+        switchCamera({ url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType });
       }
     },
     [isStreaming, selectedVideoId, streamQuality, switchCamera]

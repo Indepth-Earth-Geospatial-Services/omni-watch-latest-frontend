@@ -18,7 +18,7 @@ interface MissionControlViewportProps {
   selectedCameraId: string;
   selectedVideoId: string;
   selectedVideoType: string;
-  streamQuality: string;
+  streamQuality: number;
   isStreaming: boolean;
   isStarting: boolean;
   isStopping: boolean;
@@ -27,7 +27,7 @@ interface MissionControlViewportProps {
   onCameraChange: (cameraId: string) => void;
   onVideoChange: (videoId: string) => void;
   onVideoTypeChange: (type: string) => void;
-  onQualityChange: (quality: string) => void;
+  onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
 }
@@ -146,7 +146,7 @@ const MissionControlViewport = ({
         {/* Quality */}
         <select
           value={streamQuality}
-          onChange={(e) => onQualityChange(e.target.value)}
+          onChange={(e) => onQualityChange(Number(e.target.value))}
           disabled={!selectedVideoId}
           className={selectCls}
         >

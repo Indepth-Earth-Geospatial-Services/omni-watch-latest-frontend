@@ -11,6 +11,7 @@ import {
   Maximize2,
   Monitor,
   PlaneTakeoff,
+  Square,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { StreamControlPanel } from '@/components/features/streams/StreamControlPanel';
+import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { DJIDevice } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +45,10 @@ export default function LiveFeedPage() {
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
+  // Maps device SN → active video_id when streaming; absent = not streaming
+  const [streamingDevices, setStreamingDevices] = useState<Map<string, string>>(new Map());
+  // Counter per SN — incrementing tells that device's StreamControlPanel to stop
+  const [stopSignals, setStopSignals] = useState<Map<string, number>>(new Map());
 
   const projectSnSet = useMemo(
     () => new Set(activeProject?.devices.map((d) => d.device_sn) ?? []),
@@ -62,6 +68,30 @@ export default function LiveFeedPage() {
   const handleSelectDevice = (sn: string, switchToSingle = false) => {
     setSelectedSn(sn);
     if (switchToSingle) setViewMode('single');
+  };
+
+  const handleStreamingChange = (sn: string, isStreaming: boolean, videoId?: string) => {
+    setStreamingDevices((prev) => {
+      const next = new Map(prev);
+      if (isStreaming && videoId) {
+        next.set(sn, videoId);
+      } else {
+        next.delete(sn);
+      }
+      return next;
+    });
+  };
+
+  const stopDevice = (sn: string) => {
+    setStopSignals((prev) => new Map(prev).set(sn, (prev.get(sn) ?? 0) + 1));
+  };
+
+  const stopAll = () => {
+    setStopSignals((prev) => {
+      const next = new Map(prev);
+      streamingDevices.forEach((_, sn) => next.set(sn, (next.get(sn) ?? 0) + 1));
+      return next;
+    });
   };
 
   // ── No active project (layout guard redirects, but show fallback just in case) ──
@@ -158,44 +188,64 @@ export default function LiveFeedPage() {
                       (selectedSn ?? projectDevices[0]?.deviceSn) === device.deviceSn;
 
                     return (
-                      <button
+                      <div
                         key={device.deviceSn}
-                        onClick={() => handleSelectDevice(device.deviceSn, true)}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors text-left ${
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors group/row ${
                           isActive
                             ? 'bg-[#1C93FF]/10 border-[#1C93FF]/30'
                             : 'bg-zinc-900/30 border-zinc-800/30 hover:bg-zinc-800/50 hover:border-zinc-700/60'
                         }`}
                       >
-                        <div
-                          className={`w-7 h-7 rounded-md border flex items-center justify-center flex-shrink-0 ${
-                            drone
-                              ? 'bg-blue-500/10 border-blue-500/20'
-                              : 'bg-cyan-500/10 border-cyan-500/20'
-                          }`}
+                        {/* Click area — selects the device */}
+                        <button
+                          onClick={() => handleSelectDevice(device.deviceSn, true)}
+                          className='flex items-center gap-2.5 flex-1 min-w-0 text-left'
                         >
-                          {drone ? (
-                            <Activity size={12} className='text-blue-400' />
+                          <div
+                            className={`w-7 h-7 rounded-md border flex items-center justify-center flex-shrink-0 ${
+                              drone
+                                ? 'bg-blue-500/10 border-blue-500/20'
+                                : 'bg-cyan-500/10 border-cyan-500/20'
+                            }`}
+                          >
+                            {drone ? (
+                              <Activity size={12} className='text-blue-400' />
+                            ) : (
+                              <Box size={12} className='text-cyan-400' />
+                            )}
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <p className={`text-xs font-bold truncate ${isActive ? 'text-[#1C93FF]' : 'text-zinc-300'}`}>
+                              {device.nickname || device.deviceName || device.deviceSn}
+                            </p>
+                            <p className='text-[9px] font-mono text-zinc-600 truncate'>
+                              {device.deviceSn}
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* Right-side indicators */}
+                        <div className='flex items-center gap-1 flex-shrink-0'>
+                          {streamingDevices.has(device.deviceSn) ? (
+                            <>
+                              {/* Streaming pulse dot */}
+                              <span className='w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse' title='Streaming' />
+                              {/* Per-device stop button — visible on hover */}
+                              <button
+                                onClick={() => stopDevice(device.deviceSn)}
+                                title='Stop stream'
+                                className='p-1 rounded opacity-0 group-hover/row:opacity-100 text-red-400 hover:bg-red-500/20 transition-all'
+                              >
+                                <Square size={10} />
+                              </button>
+                            </>
                           ) : (
-                            <Box size={12} className='text-cyan-400' />
+                            device.status
+                              ? <Wifi size={10} className='text-emerald-400' />
+                              : <WifiOff size={10} className='text-zinc-700' />
                           )}
                         </div>
-                        <div className='min-w-0 flex-1'>
-                          <p
-                            className={`text-xs font-bold truncate ${isActive ? 'text-[#1C93FF]' : 'text-zinc-300'}`}
-                          >
-                            {device.nickname || device.deviceName || device.deviceSn}
-                          </p>
-                          <p className='text-[9px] font-mono text-zinc-600 truncate'>
-                            {device.deviceSn}
-                          </p>
-                        </div>
-                        {device.status ? (
-                          <Wifi size={10} className='text-emerald-400 flex-shrink-0' />
-                        ) : (
-                          <WifiOff size={10} className='text-zinc-700 flex-shrink-0' />
-                        )}
-                      </button>
+                      </div>
                     );
                   })}
             </div>
@@ -210,31 +260,57 @@ export default function LiveFeedPage() {
                   ? selectedDevice.nickname || selectedDevice.deviceName || selectedDevice.deviceSn
                   : 'All Feeds'}
               </p>
-              <div className='flex items-center gap-0.5 p-0.5 bg-zinc-900 border border-zinc-800 rounded-lg'>
-                <button
-                  onClick={() => setViewMode('single')}
-                  title='Single feed'
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${
-                    viewMode === 'single'
-                      ? 'bg-zinc-700 text-zinc-100'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  <Monitor size={11} />
-                  Single
-                </button>
-                <button
-                  onClick={() => setViewMode('multi')}
-                  title='All feeds'
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${
-                    viewMode === 'multi'
-                      ? 'bg-zinc-700 text-zinc-100'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  <LayoutGrid size={11} />
-                  All Feeds
-                </button>
+              <div className='flex items-center gap-2'>
+                {/* Stop / Stop All */}
+                {viewMode === 'single' && selectedDevice && streamingDevices.has(selectedDevice.deviceSn) && (
+                  <button
+                    onClick={() => stopDevice(selectedDevice.deviceSn)}
+                    className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-colors'
+                  >
+                    <Square size={11} />
+                    Stop
+                  </button>
+                )}
+                {viewMode === 'multi' && streamingDevices.size > 0 && (
+                  <button
+                    onClick={stopAll}
+                    className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-colors'
+                  >
+                    <Square size={11} />
+                    Stop All
+                    <span className='ml-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-300'>
+                      {streamingDevices.size}
+                    </span>
+                  </button>
+                )}
+
+                {/* View mode toggle */}
+                <div className='flex items-center gap-0.5 p-0.5 bg-zinc-900 border border-zinc-800 rounded-lg'>
+                  <button
+                    onClick={() => setViewMode('single')}
+                    title='Single feed'
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${
+                      viewMode === 'single'
+                        ? 'bg-zinc-700 text-zinc-100'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <Monitor size={11} />
+                    Single
+                  </button>
+                  <button
+                    onClick={() => setViewMode('multi')}
+                    title='All feeds'
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${
+                      viewMode === 'multi'
+                        ? 'bg-zinc-700 text-zinc-100'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <LayoutGrid size={11} />
+                    All Feeds
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -246,6 +322,9 @@ export default function LiveFeedPage() {
                     device={selectedDevice}
                     allDevices={projectDevices}
                     onSwitch={(sn) => handleSelectDevice(sn)}
+                    stopSignal={stopSignals.get(selectedDevice.deviceSn) ?? 0}
+                    onStreamingChange={(s, vid) => handleStreamingChange(selectedDevice.deviceSn, s, vid)}
+                    videoId={streamingDevices.get(selectedDevice.deviceSn) ?? null}
                   />
                 ) : (
                   <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
@@ -257,6 +336,9 @@ export default function LiveFeedPage() {
                 <MultiFeedView
                   devices={projectDevices}
                   onExpand={(sn) => handleSelectDevice(sn, true)}
+                  stopSignals={stopSignals}
+                  onStreamingChange={handleStreamingChange}
+                  streamingDevices={streamingDevices}
                 />
               )}
             </div>
@@ -273,10 +355,16 @@ function SingleFeedView({
   device,
   allDevices,
   onSwitch,
+  stopSignal,
+  onStreamingChange,
+  videoId,
 }: {
   device: DJIDevice;
   allDevices: DJIDevice[];
   onSwitch: (sn: string) => void;
+  stopSignal: number;
+  onStreamingChange: (isStreaming: boolean, videoId?: string) => void;
+  videoId: string | null;
 }) {
   const drone = isDrone(device);
 
@@ -338,7 +426,7 @@ function SingleFeedView({
       </div>
 
       {/* Video area */}
-      <VideoArea device={device} large />
+      <VideoArea device={device} streamUrl={videoId} large />
 
       {/* Controls */}
       <div className='bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-4'>
@@ -346,7 +434,11 @@ function SingleFeedView({
           Stream Controls
         </p>
         {drone ? (
-          <StreamControlPanel stream={toStream(device)} />
+          <StreamControlPanel
+            stream={toStream(device)}
+            externalStopSignal={stopSignal}
+            onStreamingChange={onStreamingChange}
+          />
         ) : (
           <p className='text-xs text-zinc-600 italic'>
             Live streaming is only available for drone-type devices.
@@ -362,9 +454,15 @@ function SingleFeedView({
 function MultiFeedView({
   devices,
   onExpand,
+  stopSignals,
+  onStreamingChange,
+  streamingDevices,
 }: {
   devices: DJIDevice[];
   onExpand: (sn: string) => void;
+  stopSignals: Map<string, number>;
+  onStreamingChange: (sn: string, isStreaming: boolean, videoId?: string) => void;
+  streamingDevices: Map<string, string>;
 }) {
   if (devices.length === 0) {
     return (
@@ -385,6 +483,9 @@ function MultiFeedView({
             key={device.deviceSn}
             device={device}
             onExpand={() => onExpand(device.deviceSn)}
+            stopSignal={stopSignals.get(device.deviceSn) ?? 0}
+            onStreamingChange={(s, vid) => onStreamingChange(device.deviceSn, s, vid)}
+            videoId={streamingDevices.get(device.deviceSn) ?? null}
           />
         ))}
       </div>
@@ -394,7 +495,19 @@ function MultiFeedView({
 
 // ─── Feed card (multi-view) ───────────────────────────────────────────────────
 
-function FeedCard({ device, onExpand }: { device: DJIDevice; onExpand: () => void }) {
+function FeedCard({
+  device,
+  onExpand,
+  stopSignal,
+  onStreamingChange,
+  videoId,
+}: {
+  device: DJIDevice;
+  onExpand: () => void;
+  stopSignal: number;
+  onStreamingChange: (isStreaming: boolean, videoId?: string) => void;
+  videoId: string | null;
+}) {
   const drone = isDrone(device);
 
   return (
@@ -448,12 +561,16 @@ function FeedCard({ device, onExpand }: { device: DJIDevice; onExpand: () => voi
       </div>
 
       {/* Video area */}
-      <VideoArea device={device} />
+      <VideoArea device={device} streamUrl={videoId} />
 
       {/* Controls */}
       <div className='px-3.5 py-3 border-t border-zinc-800/40'>
         {drone ? (
-          <StreamControlPanel stream={toStream(device)} />
+          <StreamControlPanel
+            stream={toStream(device)}
+            externalStopSignal={stopSignal}
+            onStreamingChange={onStreamingChange}
+          />
         ) : (
           <p className='text-[10px] text-zinc-700 italic text-center py-0.5'>
             Streaming not available for docks
@@ -466,15 +583,27 @@ function FeedCard({ device, onExpand }: { device: DJIDevice; onExpand: () => voi
 
 // ─── Video placeholder ────────────────────────────────────────────────────────
 
-function VideoArea({ device, large = false }: { device: DJIDevice; large?: boolean }) {
+function VideoArea({
+  device,
+  streamUrl = null,
+  large = false,
+}: {
+  device: DJIDevice;
+  streamUrl?: string | null;
+  large?: boolean;
+}) {
+  const containerCls = `relative bg-zinc-950 overflow-hidden ${
+    large ? 'aspect-video w-full rounded-xl border border-zinc-800' : 'aspect-video'
+  }`;
+
   return (
-    <div
-      className={`relative bg-zinc-950 flex items-center justify-center ${
-        large ? 'aspect-video w-full rounded-xl border border-zinc-800' : 'aspect-video'
-      }`}
-    >
-      {device.status ? (
-        <div className='flex flex-col items-center gap-2 text-center px-4'>
+    <div className={containerCls}>
+      {streamUrl ? (
+        /* Active stream — WHEP URL returned by the API */
+        <WebRTCPlayer url={streamUrl} className='absolute inset-0 w-full h-full' />
+      ) : device.status ? (
+        /* Online but not yet streaming */
+        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4'>
           <div className='w-9 h-9 rounded-xl bg-[#1C93FF]/10 border border-[#1C93FF]/20 flex items-center justify-center'>
             <Activity size={large ? 20 : 15} className='text-[#1C93FF]/60' />
           </div>
@@ -486,7 +615,8 @@ function VideoArea({ device, large = false }: { device: DJIDevice; large?: boole
           )}
         </div>
       ) : (
-        <div className='flex flex-col items-center gap-2'>
+        /* Device offline */
+        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2'>
           <WifiOff size={large ? 26 : 18} className='text-zinc-800' />
           <p className={`font-semibold text-zinc-700 ${large ? 'text-sm' : 'text-[11px]'}`}>
             Device Offline
@@ -494,13 +624,15 @@ function VideoArea({ device, large = false }: { device: DJIDevice; large?: boole
         </div>
       )}
 
-      {device.status && (
-        <div className='absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 bg-red-600/90 rounded-md'>
+      {/* LIVE badge — only shown while the WebRTC player is active */}
+      {streamUrl && (
+        <div className='absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 bg-red-600/90 rounded-md z-10'>
           <span className='w-1.5 h-1.5 rounded-full bg-white animate-pulse' />
           <span className='text-[9px] font-black tracking-widest text-white uppercase'>Live</span>
         </div>
       )}
-      <span className='absolute bottom-2 right-2.5 text-[9px] font-mono text-zinc-800 select-none'>
+
+      <span className='absolute bottom-2 right-2.5 text-[9px] font-mono text-zinc-800 select-none z-10'>
         {device.deviceSn}
       </span>
     </div>
