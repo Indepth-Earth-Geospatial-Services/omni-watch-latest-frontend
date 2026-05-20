@@ -176,7 +176,9 @@ export default function LiveFeedPage() {
                         <PlaneTakeoff size={12} className='text-zinc-600' />
                       </div>
                       <div className='min-w-0'>
-                        <p className='text-[10px] font-mono text-zinc-500 truncate'>{d.device_sn}</p>
+                        <p className='text-[10px] font-mono text-zinc-500 truncate'>
+                          {d.device_sn}
+                        </p>
                         <p className='text-[9px] text-zinc-700'>Not bound</p>
                       </div>
                     </div>
@@ -215,7 +217,9 @@ export default function LiveFeedPage() {
                             )}
                           </div>
                           <div className='min-w-0 flex-1'>
-                            <p className={`text-xs font-bold truncate ${isActive ? 'text-[#1C93FF]' : 'text-zinc-300'}`}>
+                            <p
+                              className={`text-xs font-bold truncate ${isActive ? 'text-[#1C93FF]' : 'text-zinc-300'}`}
+                            >
                               {device.nickname || device.deviceName || device.deviceSn}
                             </p>
                             <p className='text-[9px] font-mono text-zinc-600 truncate'>
@@ -229,7 +233,10 @@ export default function LiveFeedPage() {
                           {streamingDevices.has(device.deviceSn) ? (
                             <>
                               {/* Streaming pulse dot */}
-                              <span className='w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse' title='Streaming' />
+                              <span
+                                className='w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse'
+                                title='Streaming'
+                              />
                               {/* Per-device stop button — visible on hover */}
                               <button
                                 onClick={() => stopDevice(device.deviceSn)}
@@ -239,10 +246,10 @@ export default function LiveFeedPage() {
                                 <Square size={10} />
                               </button>
                             </>
+                          ) : device.status ? (
+                            <Wifi size={10} className='text-emerald-400' />
                           ) : (
-                            device.status
-                              ? <Wifi size={10} className='text-emerald-400' />
-                              : <WifiOff size={10} className='text-zinc-700' />
+                            <WifiOff size={10} className='text-zinc-700' />
                           )}
                         </div>
                       </div>
@@ -262,15 +269,17 @@ export default function LiveFeedPage() {
               </p>
               <div className='flex items-center gap-2'>
                 {/* Stop / Stop All */}
-                {viewMode === 'single' && selectedDevice && streamingDevices.has(selectedDevice.deviceSn) && (
-                  <button
-                    onClick={() => stopDevice(selectedDevice.deviceSn)}
-                    className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-colors'
-                  >
-                    <Square size={11} />
-                    Stop
-                  </button>
-                )}
+                {viewMode === 'single' &&
+                  selectedDevice &&
+                  streamingDevices.has(selectedDevice.deviceSn) && (
+                    <button
+                      onClick={() => stopDevice(selectedDevice.deviceSn)}
+                      className='flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 transition-colors'
+                    >
+                      <Square size={11} />
+                      Stop
+                    </button>
+                  )}
                 {viewMode === 'multi' && streamingDevices.size > 0 && (
                   <button
                     onClick={stopAll}
@@ -315,7 +324,7 @@ export default function LiveFeedPage() {
             </div>
 
             {/* Feed content */}
-            <div className='flex-1 overflow-y-auto'>
+            <div className={`flex-1 min-h-0 ${viewMode === 'multi' ? 'overflow-y-auto' : 'overflow-hidden flex flex-col'}`}>
               {viewMode === 'single' ? (
                 selectedDevice ? (
                   <SingleFeedView
@@ -323,7 +332,9 @@ export default function LiveFeedPage() {
                     allDevices={projectDevices}
                     onSwitch={(sn) => handleSelectDevice(sn)}
                     stopSignal={stopSignals.get(selectedDevice.deviceSn) ?? 0}
-                    onStreamingChange={(s, vid) => handleStreamingChange(selectedDevice.deviceSn, s, vid)}
+                    onStreamingChange={(s, vid) =>
+                      handleStreamingChange(selectedDevice.deviceSn, s, vid)
+                    }
                     videoId={streamingDevices.get(selectedDevice.deviceSn) ?? null}
                   />
                 ) : (
@@ -369,9 +380,9 @@ function SingleFeedView({
   const drone = isDrone(device);
 
   return (
-    <div className='p-5 space-y-4'>
+    <div className='flex flex-col h-full p-5 gap-4'>
       {/* Device header + switcher */}
-      <div className='flex items-center justify-between gap-4 flex-wrap'>
+      <div className='flex items-center justify-between gap-4 flex-wrap flex-shrink-0'>
         <div className='flex items-center gap-3'>
           <div
             className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
@@ -425,11 +436,13 @@ function SingleFeedView({
         )}
       </div>
 
-      {/* Video area */}
-      <VideoArea device={device} streamUrl={videoId} large />
+      {/* Video area — fills remaining height */}
+      <div className='flex-1 min-h-0'>
+        <VideoArea device={device} streamUrl={videoId} large />
+      </div>
 
       {/* Controls */}
-      <div className='bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-4'>
+      <div className='flex-shrink-0 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-4'>
         <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600 mb-3'>
           Stream Controls
         </p>
@@ -593,7 +606,7 @@ function VideoArea({
   large?: boolean;
 }) {
   const containerCls = `relative bg-zinc-950 overflow-hidden ${
-    large ? 'aspect-video w-full rounded-xl border border-zinc-800' : 'aspect-video'
+    large ? 'h-full w-full rounded-xl border border-zinc-800' : 'aspect-video'
   }`;
 
   return (

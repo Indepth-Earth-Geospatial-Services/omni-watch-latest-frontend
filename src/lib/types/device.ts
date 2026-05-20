@@ -1,13 +1,13 @@
 // Device types — drones, payloads (cameras), topology, binding
 
 export interface DJIDevice {
-  deviceSn: string;          // serial number — unique identifier
+  deviceSn: string; // serial number — unique identifier
   deviceName: string;
   workspaceId: string;
   controlSource?: string;
   deviceDesc?: string;
   childDeviceSn?: string;
-  domain: string;            // "0" = drone, "1" = remote controller, "2" = payload
+  domain: string; // "0" = drone, "1" = remote controller, "2" = payload
   type: string;
   subType: string;
   payloadsList?: DJIDevicePayload[];
@@ -15,11 +15,11 @@ export interface DJIDevice {
     normal_icon_url: string;
     selected_icon_url: string;
   };
-  status: boolean;           // true = online
+  status: boolean; // true = online
   boundStatus?: boolean;
-  loginTime: string;         // ISO timestamp
-  boundTime: string;         // ISO timestamp
-  nickname: string;          // user-assigned friendly name
+  loginTime: string; // ISO timestamp
+  boundTime: string; // ISO timestamp
+  nickname: string; // user-assigned friendly name
   userId?: string;
   firmwareVersion: string;
   workspaceName?: string;
@@ -32,7 +32,7 @@ export interface DJIDevice {
 
 export interface DJIDevicePayload {
   payloadSn: string;
-  payloadName: string;       // e.g. "Zenmuse H20T"
+  payloadName: string; // e.g. "Zenmuse H20T"
   index: number;
   payloadDesc?: string;
   controlSource?: string;

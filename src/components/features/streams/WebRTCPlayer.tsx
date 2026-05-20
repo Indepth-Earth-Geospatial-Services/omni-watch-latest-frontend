@@ -3,46 +3,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { getToken } from '@/lib/config/token-store';
 
+type StreamState = 'connecting' | 'playing' | 'error';
+
 interface WebRTCPlayerProps {
-  /** Full WHEP URL returned by the startStream API in res.data.url */
   url: string;
   className?: string;
 }
 
-type PlayerState = 'connecting' | 'playing' | 'error';
-
-/**
- * WebRTC viewer using the WHEP protocol.
- * The URL comes directly from the startStream API response (res.data.url) —
- * no URL construction needed here.
- *
- * Flow:
- *   1. Create RTCPeerConnection with recvonly transceivers
- *   2. Create SDP offer, wait for full ICE gathering (Vanilla ICE)
- *   3. POST raw SDP (Content-Type: application/sdp) to the WHEP URL
- *   4. Server responds 201 with SDP answer in the body
- *   5. Set remote description → receive video track → render
- */
 export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const [state, setState] = useState<PlayerState>('connecting');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [state, setState] = useState<StreamState>('connecting');
+  const [errorMsg, setErrorMsg] = useState<string>();
 
   useEffect(() => {
     let cancelled = false;
+    setState('connecting');
+    setErrorMsg(undefined);
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
-    pcRef.current = pc;
-    setState('connecting');
-    setErrorMsg(null);
 
     pc.ontrack = (e) => {
-      if (cancelled || !videoRef.current) return;
+      if (cancelled) return;
       const [stream] = e.streams;
-      if (stream) {
+      if (stream && videoRef.current) {
         videoRef.current.srcObject = stream;
         setState('playing');
       }
@@ -58,13 +43,11 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
     };
 
     pc.addTransceiver('video', { direction: 'recvonly' });
-    pc.addTransceiver('audio', { direction: 'recvonly' });
 
     async function negotiate() {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // Wait for full ICE gathering before sending
       await new Promise<void>((resolve) => {
         if (pc.iceGatheringState === 'complete') { resolve(); return; }
         const handler = () => {
@@ -83,11 +66,7 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
         headers['x-auth-token'] = token;
       }
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: pc.localDescription!.sdp,
-      });
+      const res = await fetch(url, { method: 'POST', headers, body: pc.localDescription!.sdp });
 
       if (res.status !== 201 && !res.ok) {
         throw new Error(`WHEP ${res.status} ${res.statusText}`);
@@ -110,12 +89,12 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
     return () => {
       cancelled = true;
       pc.close();
-      pcRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
   }, [url]);
 
   return (
-    <div className={`relative bg-black overflow-hidden ${className}`}>
+    <div className={`relative bg-zinc-950 ${className}`}>
       <video
         ref={videoRef}
         autoPlay
@@ -133,7 +112,7 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
 
       {state === 'error' && (
         <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center bg-zinc-950'>
-          <p className='text-xs font-semibold text-red-400'>{errorMsg}</p>
+          <p className='text-xs font-semibold text-red-400'>{errorMsg ?? 'Stream error'}</p>
           <p className='text-[10px] text-zinc-700'>Use stream controls to retry</p>
         </div>
       )}

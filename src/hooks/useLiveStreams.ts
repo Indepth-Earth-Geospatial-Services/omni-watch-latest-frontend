@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { DJI_CONFIG } from '@/lib/config/config';
 import {
   getLiveCapacity,
   startStream,
@@ -26,7 +25,6 @@ export function useLiveCapacity() {
   return useQuery({
     queryKey: streamKeys.capacity,
     queryFn: getLiveCapacity,
-    enabled: DJI_CONFIG.USE_DJI_CLOUD,
     retry: false,
     refetchInterval: 30_000,
     staleTime: 10_000,
