@@ -6,14 +6,13 @@
 // This never collides with the old ['drones'] keys so both can coexist
 // during migration while NEXT_PUBLIC_USE_DJI_CLOUD=false.
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
 import {
   bindDevice,
   getBoundDevices,
   getDJIDevice,
-  getDJIDevices,
   getDeviceTopologies,
   setDeviceProperty,
   unbindDevice,
@@ -40,7 +39,52 @@ const deviceKeys = (workspaceId: string) => ({
 
 // ─── Transformer ──────────────────────────────────────────────────────────────
 
-// Transformers for DJI devices will be implemented here if needed.
+// The DJI API returns snake_case fields and domain/type as integers.
+// This raw shape matches the actual JSON; DJIDevice uses camelCase with domain as string.
+interface RawDJIDevice {
+  device_sn: string;
+  device_name: string;
+  workspace_id: string;
+  control_source?: string;
+  device_desc?: string;
+  child_device_sn?: string;
+  domain: number;
+  type: number;
+  sub_type: number;
+  status: boolean;
+  bound_status?: boolean;
+  login_time?: string;
+  bound_time?: string;
+  nickname: string;
+  firmware_version?: string;
+  workspace_name?: string;
+  firmware_status?: number;
+  thing_version?: string;
+  icon_url?: { normal_icon_url: string; selected_icon_url: string };
+}
+
+function transformDevice(raw: RawDJIDevice): DJIDevice {
+  return {
+    deviceSn: raw.device_sn,
+    deviceName: raw.device_name,
+    workspaceId: raw.workspace_id,
+    controlSource: raw.control_source,
+    deviceDesc: raw.device_desc,
+    childDeviceSn: raw.child_device_sn,
+    domain: String(raw.domain),   // "0"=drone "1"=dock "2"=RC
+    type: String(raw.type),
+    subType: String(raw.sub_type),
+    status: raw.status,
+    boundStatus: raw.bound_status,
+    loginTime: raw.login_time ?? '',
+    boundTime: raw.bound_time ?? '',
+    nickname: raw.nickname,
+    firmwareVersion: raw.firmware_version ?? '',
+    workspaceName: raw.workspace_name,
+    firmwareStatus: raw.firmware_status != null ? String(raw.firmware_status) : undefined,
+    thingVersion: raw.thing_version,
+  };
+}
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
 
@@ -56,15 +100,41 @@ export function useDJIDevices() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const keys = deviceKeys(workspaceId);
 
-  return useQuery({
-    queryKey: keys.list,
-    queryFn: () => getDJIDevices(workspaceId),
-    enabled: !!workspaceId,
-    retry: false,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
-    staleTime: 10_000,
+  // Domain values per DJI Cloud API: 0 = drone, 1 = dock, 2 = RC
+  const DEVICE_DOMAINS = [0, 1, 2];
+
+  const results = useQueries({
+    queries: DEVICE_DOMAINS.map((domain) => ({
+      queryKey: [...keys.bound, domain],
+      queryFn: () => getBoundDevices(workspaceId, { domain, page_size: 100 }),
+      enabled: !!workspaceId,
+      retry: false,
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: true,
+      staleTime: 10_000,
+    })),
   });
+
+  const seen = new Set<string>();
+  const data = results
+    .flatMap((r) => (r.data?.list ?? []) as unknown as RawDJIDevice[])
+    .map(transformDevice)
+    .filter((d) => {
+      if (!d.deviceSn || seen.has(d.deviceSn)) return false;
+      seen.add(d.deviceSn);
+      return true;
+    });
+
+  // Surface an error only if ALL domain queries failed (no data at all).
+  // A single domain failing (e.g. no docks) is a normal workspace state.
+  const allFailed = results.every((r) => r.isError);
+  const firstError = results.find((r) => r.error)?.error ?? null;
+
+  return {
+    data,
+    isLoading: results.some((r) => r.isLoading),
+    error: allFailed ? firstError : null,
+  };
 }
 
 /**
@@ -96,16 +166,16 @@ export function useBoundDevices() {
 
   return useQuery({
     queryKey: keys.bound,
-    queryFn: () => getBoundDevices(workspaceId, { domain: 0 }),
+    queryFn: () => getBoundDevices(workspaceId, { domain: 1 }),
     enabled: !!workspaceId,
     retry: false,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
-    select: (response) => response.list,
+    select: (response) =>
+      ((response.list ?? []) as unknown as RawDJIDevice[]).map(transformDevice),
   });
 }
-
 
 /**
  * Fetches the full device topology tree (dock → drone → RC).

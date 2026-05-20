@@ -30,7 +30,15 @@ function ProjectProviderInner({
 }: ProjectContextValue & { children: React.ReactNode }) {
   // Fetch the latest version of the active project from the API.
   // enabled: false when no project is selected → no unnecessary requests.
-  const { data: freshProject } = useProjectDetail(activeProject?.id ?? '');
+  const { data: freshProject, isError: projectNotFound } = useProjectDetail(activeProject?.id ?? '');
+
+  // If the stored project no longer exists on the server (deleted, recreated, etc.),
+  // clear it from storage so the user is sent back to project selection.
+  useEffect(() => {
+    if (projectNotFound && activeProject) {
+      clearActiveProject();
+    }
+  }, [projectNotFound]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync context whenever the API returns data that differs from what we have stored.
   // Catches external changes: device assignments from another session, name edits, etc.

@@ -2,14 +2,19 @@
 
 import React from 'react';
 import KPIItem from '../layout/KpiItems';
-import { useDJIDevices } from '@/hooks/useDJIDevices';
+import type { DJIDevice } from '@/lib/types';
 
-const FleetOverviewKPI = () => {
-  const { data: devices = [] } = useDJIDevices();
+interface FleetOverviewKPIProps {
+  devices: DJIDevice[];
+  isLoading?: boolean;
+}
+
+const FleetOverviewKPI = ({ devices, isLoading = false }: FleetOverviewKPIProps) => {
+  if (isLoading) return null;
 
   const total = devices.length;
   const drones = devices.filter((d) => d.domain === '0').length;
-  const docks = devices.filter((d) => d.domain !== '0').length;
+  const docks  = devices.filter((d) => d.domain === '1').length;
   const online = devices.filter((d) => d.status).length;
   const offline = total - online;
 
