@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import TelemetryHeader from '@/feature/components/control-components/TelemetryHeader';
-import FlightStatsBar from '@/feature/components/control-components/FlightStatsBar';
-import MissionControlViewport from '@/feature/components/control-components/MissionControlViewport';
-import TacticalMiniMap from '@/feature/components/control-components/TacticalMiniMap';
-import DockMonitor from '@/feature/components/control-components/DockMonitor';
-import SystemStatusFooter from '@/feature/components/control-components/SystemStatusFooter';
+import TelemetryHeader from '@/components/features/control-components/TelemetryHeader';
+import FlightStatsBar from '@/components/features/control-components/FlightStatsBar';
+import MissionControlViewport from '@/components/features/control-components/MissionControlViewport';
+import TacticalMiniMap from '@/components/features/control-components/TacticalMiniMap';
+import DockMonitor from '@/components/features/control-components/DockMonitor';
+import SystemStatusFooter from '@/components/features/control-components/SystemStatusFooter';
 import {
   useLiveCapacity,
   useStartStream,
@@ -19,26 +19,26 @@ export default function ControlPage() {
   // ─── Livestream hooks ──────────────────────────────────────────────────────
   const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity();
   const { mutate: startStream, isPending: isStarting } = useStartStream();
-  const { mutate: stopStream,  isPending: isStopping  } = useStopStream();
+  const { mutate: stopStream, isPending: isStopping } = useStopStream();
   const { mutate: updateQuality } = useUpdateStreamQuality();
-  const { mutate: switchCamera  } = useSwitchStreamCamera();
+  const { mutate: switchCamera } = useSwitchStreamCamera();
 
   // ─── Selection state ──────────────────────────────────────────────────────
-  const [selectedSn,        setSelectedSn]        = useState('');
-  const [selectedCameraId,  setSelectedCameraId]  = useState('');
-  const [selectedVideoId,   setSelectedVideoId]   = useState('');
+  const [selectedSn, setSelectedSn] = useState('');
+  const [selectedCameraId, setSelectedCameraId] = useState('');
+  const [selectedVideoId, setSelectedVideoId] = useState('');
   const [selectedVideoType, setSelectedVideoType] = useState('zoom');
-  const [streamQuality,     setStreamQuality]     = useState(0);
-  const [isStreaming,       setIsStreaming]        = useState(false);
+  const [streamQuality, setStreamQuality] = useState(0);
+  const [isStreaming, setIsStreaming] = useState(false);
 
   // ─── Derived selections ───────────────────────────────────────────────────
-  const devices       = capacityMap ? Array.from(capacityMap.values()) : [];
+  const devices = capacityMap ? Array.from(capacityMap.values()) : [];
   const selectedDevice = selectedSn ? capacityMap?.get(selectedSn) : undefined;
-  const cameras       = selectedDevice?.camerasList ?? [];
+  const cameras = selectedDevice?.cameras_list ?? [];
   const selectedCamera = cameras.find((c) => c.id === selectedCameraId);
-  const videos        = selectedCamera?.videosList ?? [];
-  const selectedVideo = videos.find((v) => v.id === selectedVideoId);
-  const videoTypes    = selectedVideo?.switchVideoTypes ?? [];
+  const videos = selectedCamera?.videos_list ?? [];
+  // VideoCapacity has no switchVideoTypes — hide the lens selector
+  const videoTypes: string[] = [];
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -59,20 +59,21 @@ export default function ControlPage() {
   const handleVideoChange = useCallback(
     (videoId: string) => {
       setSelectedVideoId(videoId);
-      const video = cameras
-        .find((c) => c.id === selectedCameraId)
-        ?.videosList.find((v) => v.id === videoId);
-      const firstType = video?.switchVideoTypes[0];
-      if (firstType) setSelectedVideoType(firstType);
       setIsStreaming(false);
     },
-    [cameras, selectedCameraId]
+    []
   );
 
   const handleStart = useCallback(() => {
     if (!selectedVideoId) return;
     startStream(
-      { url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType: selectedVideoType },
+      {
+        url: '',
+        video_id: selectedVideoId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: selectedVideoType,
+      },
       { onSuccess: () => setIsStreaming(true) }
     );
   }, [selectedVideoId, streamQuality, selectedVideoType, startStream]);
@@ -80,7 +81,13 @@ export default function ControlPage() {
   const handleStop = useCallback(() => {
     if (!selectedVideoId) return;
     stopStream(
-      { url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType: selectedVideoType },
+      {
+        url: '',
+        video_id: selectedVideoId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: selectedVideoType,
+      },
       { onSuccess: () => setIsStreaming(false) }
     );
   }, [selectedVideoId, streamQuality, selectedVideoType, stopStream]);
@@ -89,7 +96,13 @@ export default function ControlPage() {
     (quality: number) => {
       setStreamQuality(quality);
       if (isStreaming && selectedVideoId) {
-        updateQuality({ url: '', video_id: selectedVideoId, url_type: 4, video_quality: quality, videoType: selectedVideoType });
+        updateQuality({
+          url: '',
+          video_id: selectedVideoId,
+          url_type: 4,
+          video_quality: quality,
+          video_type: selectedVideoType,
+        });
       }
     },
     [isStreaming, selectedVideoId, selectedVideoType, updateQuality]
@@ -99,7 +112,13 @@ export default function ControlPage() {
     (videoType: string) => {
       setSelectedVideoType(videoType);
       if (isStreaming && selectedVideoId) {
-        switchCamera({ url: '', video_id: selectedVideoId, url_type: 4, video_quality: streamQuality, videoType });
+        switchCamera({
+          url: '',
+          video_id: selectedVideoId,
+          url_type: 4,
+          video_quality: streamQuality,
+          video_type: videoType,
+        });
       }
     },
     [isStreaming, selectedVideoId, streamQuality, switchCamera]
