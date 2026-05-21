@@ -15,6 +15,7 @@ import {
   Terminal,
   LogOut,
   Settings,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -23,13 +24,13 @@ const navigation = [
   { name: 'Live Feeds', href: '/live-feed', icon: Video },
   { name: 'Geospatial Map', href: '/geospatial', icon: Globe },
   { name: 'Control', href: '/control', icon: Settings },
-  {
-    name: 'Reports',
-    href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',
-    icon: FileText,
-  },
-  { name: 'User Management', href: '/users', icon: Users },
-  { name: 'System Logs', href: '/logs', icon: Terminal },
+  // {
+  //   name: 'Reports',
+  //   href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',
+  //   icon: FileText,
+  // },
+  // { name: 'User Management', href: '/users', icon: Users },
+  // { name: 'System Logs', href: '/logs', icon: Terminal },
 ];
 
 const projectsLink = { name: 'Projects', href: '/projects', icon: FolderOpen };
@@ -42,10 +43,12 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
-  function handleSignOut() {
-    logout(); // clears JWT from localStorage and expires the cookie
-    router.push('/sign-in'); // proxy will also redirect here on next navigation, but be explicit
+  async function handleSignOut() {
+    setIsLoggingOut(true);
+    logout();
+    router.push('/sign-in');
   }
 
   // Derive display values from live user profile, fall back gracefully while loading
@@ -118,10 +121,15 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
         <button
           onClick={handleSignOut}
-          className='flex items-center text-xs text-red-500 hover:text-red-400 transition-colors'
+          disabled={isLoggingOut}
+          className='flex items-center text-xs text-red-500 hover:text-red-400 transition-colors disabled:opacity-60'
         >
-          <LogOut className='mr-1 h-3 w-3' />
-          Sign Out
+          {isLoggingOut ? (
+            <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+          ) : (
+            <LogOut className='mr-1 h-3 w-3' />
+          )}
+          {isLoggingOut ? 'Signing out…' : 'Sign Out'}
         </button>
       </div>
     </aside>

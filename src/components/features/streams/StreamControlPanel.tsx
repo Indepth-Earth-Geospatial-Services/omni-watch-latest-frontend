@@ -34,11 +34,13 @@ export function StreamControlPanel({
 }: StreamControlPanelProps) {
   const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
-  // Initialise from activeStreamUrl so state survives view switches (single ↔ multi).
+  // Initialise isStreaming from activeStreamUrl so the Stop button shows after a view switch.
+  // activeVideoId stays null — it falls back to liveVideoId (from capacity) which is always
+  // the correct DJI video_id regardless of whether the component was just mounted.
   const [isStreaming, setIsStreaming] = useState(() => !!activeStreamUrl);
   const [quality, setQuality] = useState(0);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
-  const [activeVideoId, setActiveVideoId] = useState<string | null>(() => activeStreamUrl ?? null);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
 
   const { data: capacityMap } = useLiveCapacity();
@@ -107,7 +109,9 @@ export function StreamControlPanel({
         video_type: effectiveLens,
       },
       {
-        onSuccess: () => {
+        // Use onSettled (not onSuccess) so the UI always resets even when the API
+        // returns an error — e.g. the stream was already broken server-side.
+        onSettled: () => {
           setIsStreaming(false);
           setActiveVideoId(null);
           onStreamingChange?.(false);
@@ -174,7 +178,7 @@ export function StreamControlPanel({
   };
 
   return (
-    <div className='flex flex-wrap items-end gap-6 mt-4 pt-4 border-t border-zinc-800'>
+    <div className='flex flex-wrap items-end gap-6'>
       {/* Lens selector — built from capacity data */}
       {lensOptions.length > 0 && (
         <div>

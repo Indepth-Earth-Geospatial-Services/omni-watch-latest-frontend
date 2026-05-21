@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, LogOut, User, ChevronDown, Building2 } from 'lucide-react';
+import { Bell, Settings, LogOut, User, ChevronDown, Building2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface NavItem {
@@ -25,6 +25,7 @@ const Navbar = () => {
   const { user, logout } = useAuth();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -39,13 +40,15 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = () => {
+    setIsLoggingOut(true);
     setDropdownOpen(false);
     logout();
     router.push('/sign-in');
   };
 
   // Derive display name — fall back to truncated user_id
-  const displayName = user?.username || (user?.user_id ? `User ${user.user_id.slice(0, 8)}` : 'User');
+  const displayName =
+    user?.username || (user?.user_id ? `User ${user.user_id.slice(0, 8)}` : 'User');
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
@@ -56,8 +59,8 @@ const Navbar = () => {
           <Image
             src='/iegs-logo.png'
             alt='IEGS Logo'
-            width={80}
-            height={32}
+            width={50}
+            height={18}
             className='invert brightness-0'
           />
         </Link>
@@ -105,9 +108,13 @@ const Navbar = () => {
                 alt='User Profile'
                 fill
                 className='object-cover'
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
               />
-              <span className='text-[10px] font-black text-zinc-300 select-none absolute'>{initials}</span>
+              <span className='text-[10px] font-black text-zinc-300 select-none absolute'>
+                {initials}
+              </span>
             </div>
             <ChevronDown
               size={14}
@@ -127,9 +134,13 @@ const Navbar = () => {
                       alt='User Profile'
                       fill
                       className='object-cover'
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
                     />
-                    <span className='text-xs font-black text-zinc-300 select-none absolute'>{initials}</span>
+                    <span className='text-xs font-black text-zinc-300 select-none absolute'>
+                      {initials}
+                    </span>
                   </div>
                   <div className='min-w-0'>
                     <p className='text-sm font-bold text-zinc-100 truncate'>{displayName}</p>
@@ -145,15 +156,23 @@ const Navbar = () => {
                 <div className='flex items-center gap-2.5'>
                   <User size={12} className='text-zinc-600 flex-shrink-0' />
                   <div className='min-w-0'>
-                    <p className='text-[9px] font-black tracking-widest uppercase text-zinc-600'>User ID</p>
-                    <p className='text-[11px] font-mono text-zinc-400 truncate'>{user?.user_id || '—'}</p>
+                    <p className='text-[9px] font-black tracking-widest uppercase text-zinc-600'>
+                      User ID
+                    </p>
+                    <p className='text-[11px] font-mono text-zinc-400 truncate'>
+                      {user?.user_id || '—'}
+                    </p>
                   </div>
                 </div>
                 <div className='flex items-center gap-2.5'>
                   <Building2 size={12} className='text-zinc-600 flex-shrink-0' />
                   <div className='min-w-0'>
-                    <p className='text-[9px] font-black tracking-widest uppercase text-zinc-600'>Workspace</p>
-                    <p className='text-[11px] font-mono text-zinc-400 truncate'>{user?.workspace_id || '—'}</p>
+                    <p className='text-[9px] font-black tracking-widest uppercase text-zinc-600'>
+                      Workspace
+                    </p>
+                    <p className='text-[11px] font-mono text-zinc-400 truncate'>
+                      {user?.workspace_id || '—'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -162,10 +181,15 @@ const Navbar = () => {
               <div className='px-2 py-2'>
                 <button
                   onClick={handleLogout}
-                  className='w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors'
+                  disabled={isLoggingOut}
+                  className='w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors disabled:opacity-60'
                 >
-                  <LogOut size={14} />
-                  Sign out
+                  {isLoggingOut ? (
+                    <Loader2 size={14} className='animate-spin' />
+                  ) : (
+                    <LogOut size={14} />
+                  )}
+                  {isLoggingOut ? 'Signing out…' : 'Sign out'}
                 </button>
               </div>
             </div>

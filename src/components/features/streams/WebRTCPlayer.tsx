@@ -1,35 +1,42 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { getToken } from '@/lib/config/token-store';
 
-type StreamState = 'connecting' | 'playing' | 'error';
+export type StreamState = 'connecting' | 'playing' | 'error';
 
 interface WebRTCPlayerProps {
   url: string;
-  className?: string;
+  onStateChange: (state: StreamState, errorMsg?: string) => void;
+  onMediaStream: (stream: MediaStream | null) => void;
 }
 
-export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [state, setState] = useState<StreamState>('connecting');
-  const [errorMsg, setErrorMsg] = useState<string>();
+/**
+ * Headless WebRTC / WHEP connection manager — renders nothing.
+ * One instance lives for the lifetime of a stream; unmounting closes the connection.
+ * The parent owns the persistent lifecycle; display is handled by VideoArea.
+ */
+export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayerProps) {
+  const onStateChangeRef = useRef(onStateChange);
+  const onMediaStreamRef = useRef(onMediaStream);
+  onStateChangeRef.current = onStateChange;
+  onMediaStreamRef.current = onMediaStream;
 
   useEffect(() => {
     let cancelled = false;
-    setState('connecting');
-    setErrorMsg(undefined);
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
 
+    onStateChangeRef.current('connecting');
+
     pc.ontrack = (e) => {
       if (cancelled) return;
       const [stream] = e.streams;
-      if (stream && videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setState('playing');
+      if (stream) {
+        onMediaStreamRef.current(stream);
+        onStateChangeRef.current('playing');
       }
     };
 
@@ -37,8 +44,7 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
       if (cancelled) return;
       const s = pc.connectionState;
       if (s === 'failed' || s === 'disconnected') {
-        setState('error');
-        setErrorMsg('Stream connection lost');
+        onStateChangeRef.current('error', 'Stream connection lost');
       }
     };
 
@@ -49,7 +55,10 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
       await pc.setLocalDescription(offer);
 
       await new Promise<void>((resolve) => {
-        if (pc.iceGatheringState === 'complete') { resolve(); return; }
+        if (pc.iceGatheringState === 'complete') {
+          resolve();
+          return;
+        }
         const handler = () => {
           if (pc.iceGatheringState === 'complete') {
             pc.removeEventListener('icegatheringstatechange', handler);
@@ -82,40 +91,15 @@ export function WebRTCPlayer({ url, className = '' }: WebRTCPlayerProps) {
 
     negotiate().catch((err) => {
       if (cancelled) return;
-      setState('error');
-      setErrorMsg(err?.message ?? 'Failed to connect to stream');
+      onStateChangeRef.current('error', err?.message ?? 'Failed to connect to stream');
     });
 
     return () => {
       cancelled = true;
       pc.close();
-      if (videoRef.current) videoRef.current.srcObject = null;
+      onMediaStreamRef.current(null);
     };
   }, [url]);
 
-  return (
-    <div className={`relative bg-zinc-950 ${className}`}>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className={`w-full h-full object-cover ${state === 'playing' ? 'block' : 'hidden'}`}
-      />
-
-      {state === 'connecting' && (
-        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-zinc-950'>
-          <div className='w-6 h-6 rounded-full border-2 border-[#1C93FF] border-t-transparent animate-spin' />
-          <p className='text-[11px] font-medium text-zinc-500'>Connecting…</p>
-        </div>
-      )}
-
-      {state === 'error' && (
-        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center bg-zinc-950'>
-          <p className='text-xs font-semibold text-red-400'>{errorMsg ?? 'Stream error'}</p>
-          <p className='text-[10px] text-zinc-700'>Use stream controls to retry</p>
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
