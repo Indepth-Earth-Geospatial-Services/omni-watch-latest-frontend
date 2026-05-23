@@ -22,22 +22,21 @@ const AUTH_PROXY = '/api/auth';
 const OMNI_PROXY = '/api/omniwatch';
 
 export const API_URLS = {
-
   /**
    * Authentication endpoints — proxied through /api/auth.
    * Credentials flow: browser → Next.js proxy → OmniWatch /api/v1/auth/*
    */
   auth: {
     /** POST — exchange email + PIN for access & refresh tokens */
-    login:         `${AUTH_PROXY}/login`,
+    login: `${AUTH_PROXY}/login`,
     /** POST — revoke the current session (HttpOnly refresh cookie cleared server-side) */
-    logout:        `${AUTH_PROXY}/logout`,
+    logout: `${AUTH_PROXY}/logout`,
     /** GET  — return the authenticated principal's org/workspace metadata */
-    me:            `${AUTH_PROXY}/me`,
+    me: `${AUTH_PROXY}/me`,
     /** POST — exchange refresh token (sent as HttpOnly cookie) for a new access token */
-    refreshToken:  `${AUTH_PROXY}/token/refresh`,
+    refreshToken: `${AUTH_PROXY}/token/refresh`,
     /** POST — validate an invitation token and provision DJI Web + Pilot accounts */
-    acceptInvite:  `${AUTH_PROXY}/accept-invite/`,
+    acceptInvite: `${AUTH_PROXY}/accept-invite/`,
     /** POST — provision the initial admin DJI accounts for a newly created workspace */
     registerAdmin: `${AUTH_PROXY}/register-admin/`,
   },
@@ -68,7 +67,7 @@ export const API_URLS = {
      */
     list: (params?: PageParams) => {
       const q = new URLSearchParams();
-      if (params?.page      !== undefined) q.set('page',      String(params.page));
+      if (params?.page !== undefined) q.set('page', String(params.page));
       if (params?.page_size !== undefined) q.set('page_size', String(params.page_size));
       const s = q.toString();
       return s ? `${OMNI_PROXY}/projects/?${s}` : `${OMNI_PROXY}/projects/`;
@@ -90,7 +89,7 @@ export const API_URLS = {
      */
     devices: (id: string, params?: PageParams) => {
       const q = new URLSearchParams();
-      if (params?.page      !== undefined) q.set('page',      String(params.page));
+      if (params?.page !== undefined) q.set('page', String(params.page));
       if (params?.page_size !== undefined) q.set('page_size', String(params.page_size));
       const s = q.toString();
       return s
@@ -99,8 +98,7 @@ export const API_URLS = {
     },
 
     /** POST — assign a device (by serial number) to the project */
-    assignDevice: (id: string) =>
-      `${OMNI_PROXY}/projects/${id}/devices/assign/`,
+    assignDevice: (id: string) => `${OMNI_PROXY}/projects/${id}/devices/assign/`,
 
     /**
      * DELETE — remove a device assignment from the project.
@@ -111,8 +109,7 @@ export const API_URLS = {
       `${OMNI_PROXY}/projects/${id}/devices/${sn}/unassign/`,
 
     /** POST — link a wayline flight area to the project */
-    assignFlightArea: (id: string) =>
-      `${OMNI_PROXY}/projects/${id}/flight-areas/assign/`,
+    assignFlightArea: (id: string) => `${OMNI_PROXY}/projects/${id}/flight-areas/assign/`,
 
     /**
      * DELETE — remove a flight-area link from the project.
@@ -139,12 +136,11 @@ export const API_URLS = {
     /** GET / PATCH — retrieve or partially update the authenticated org's details */
     detail: `${OMNI_PROXY}/organization/`,
     /** GET / POST — list all staff members or add a new one */
-    users:  `${OMNI_PROXY}/organization/users/`,
+    users: `${OMNI_PROXY}/organization/users/`,
     /**
      * PATCH — update a specific staff member's profile.
      * @param userId - UUID of the staff member to update.
      */
     user: (userId: string) => `${OMNI_PROXY}/organization/users/${userId}/`,
   },
-
 };

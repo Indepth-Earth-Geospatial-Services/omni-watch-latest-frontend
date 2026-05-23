@@ -1,12 +1,11 @@
-// import MemberHeader from '@/feature/components/layout/MemberHeader';
 import Navbar from '@/feature-unbording/components/layout/Navbar';
-import Member from '@/feature-unbording/page/Member';
+import MembersPage from '@/features/members/page';
 
-export default function FeaturePage() {
+export default function TeamPage() {
   return (
     <div className='min-h-screen bg-black'>
       <Navbar />
-      <Member />
+      <MembersPage />
     </div>
   );
 }
