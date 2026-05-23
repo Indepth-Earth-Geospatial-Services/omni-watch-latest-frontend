@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -102,7 +103,7 @@ export default function SignUpPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-3 mb-4">
             <div className="relative">
-              <i className="fas fa-shield-alt text-cyan-400 text-3xl"></i>
+              <ShieldAlert className="text-cyan-400 text-3xl" />
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             </div>
             <div>
@@ -123,11 +124,11 @@ export default function SignUpPage() {
           {/* Social Sign Up */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <Button variant="outline" type="button" className="w-full">
-              <i className="fab fa-google text-red-500 mr-2"></i>
+              <span className="text-red-500 mr-2 font-bold">G</span>
               Google
             </Button>
             <Button variant="outline" type="button" className="w-full">
-              <i className="fab fa-microsoft text-blue-400 mr-2"></i>
+              <span className="text-blue-400 mr-2 font-bold">M</span>
               Microsoft
             </Button>
           </div>
@@ -267,7 +268,7 @@ export default function SignUpPage() {
             href="/"
             className="text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1"
           >
-            <i className="fas fa-arrow-left"></i>
+            <ArrowLeft />
             <span>Back to home</span>
           </Link>
         </div>

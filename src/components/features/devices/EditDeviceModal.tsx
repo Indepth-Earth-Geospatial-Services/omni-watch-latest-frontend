@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { Pencil, X, Tag, PenLine, AlignLeft, Link, Power, AlertTriangle, Loader2, Save } from 'lucide-react';
 import { DroneAPIResponse } from '@/hooks/useDronesWebSocket';
 
 interface UpdateDronePayload {
@@ -106,7 +107,7 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
         <div className="sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <div>
             <h2 className="text-2xl font-bold text-white flex items-center">
-              <i className="fas fa-edit mr-3 text-blue-500"></i>
+              <Pencil className="w-6 h-6 mr-3 text-blue-500" />
               Edit Device
             </h2>
             <p className="text-sm text-gray-400 mt-1">
@@ -117,7 +118,7 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
-            <i className="fas fa-times text-xl"></i>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -126,14 +127,14 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
           {/* Device Info Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-              <i className="fas fa-info-circle mr-2 text-blue-500"></i>
+              <Tag className="w-4 h-4 mr-2 text-blue-500" />
               Device Information
             </h3>
 
             {/* Device Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <i className="fas fa-tag mr-2 text-blue-500"></i>
+              <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+                <Tag className="w-4 h-4 mr-2 text-blue-500" />
                 Device Name
               </label>
               <input
@@ -148,8 +149,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
 
             {/* Alias */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <i className="fas fa-signature mr-2 text-blue-500"></i>
+              <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+                <PenLine className="w-4 h-4 mr-2 text-blue-500" />
                 Alias
               </label>
               <input
@@ -164,8 +165,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <i className="fas fa-align-left mr-2 text-blue-500"></i>
+              <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+                <AlignLeft className="w-4 h-4 mr-2 text-blue-500" />
                 Description
               </label>
               <textarea
@@ -180,8 +181,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
             {/* Stream URL (for non-drone devices) */}
             {device.deviceCategory !== 'DRONE' && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  <i className="fas fa-link mr-2 text-blue-500"></i>
+                <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
+                  <Link className="w-4 h-4 mr-2 text-blue-500" />
                   Stream URL (RTSP/RTMP)
                 </label>
                 <input
@@ -198,8 +199,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
             <div className="p-4 bg-gray-800 border border-gray-700 rounded-lg">
               <label className="flex items-center justify-between cursor-pointer">
                 <div>
-                  <span className="text-white font-medium">
-                    <i className="fas fa-power-off mr-2 text-green-500"></i>
+                  <span className="text-white font-medium flex items-center">
+                    <Power className="w-4 h-4 mr-2 text-green-500" />
                     Stream Active
                   </span>
                   <p className="text-sm text-gray-400 mt-1">Enable or disable the stream</p>
@@ -218,8 +219,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
 
           {/* Error Message */}
           {errors.submit && (
-            <div className="bg-red-900/20 border border-red-500 rounded-lg p-3 text-red-400 text-sm">
-              <i className="fas fa-exclamation-triangle mr-2"></i>
+            <div className="bg-red-900/20 border border-red-500 rounded-lg p-3 text-red-400 text-sm flex items-center">
+              <AlertTriangle className="w-4 h-4 mr-2 shrink-0" />
               {errors.submit}
             </div>
           )}
@@ -230,24 +231,24 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
           <button
             onClick={onClose}
             type="button"
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-gray-400 hover:text-white transition-colors flex items-center"
           >
-            <i className="fas fa-times mr-2"></i>
+            <X className="w-4 h-4 mr-2" />
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={updateMutation.isPending}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {updateMutation.isPending ? (
               <>
-                <i className="fas fa-spinner fa-spin mr-2"></i>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <i className="fas fa-save mr-2"></i>
+                <Save className="w-4 h-4 mr-2" />
                 Save Changes
               </>
             )}

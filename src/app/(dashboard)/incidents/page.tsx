@@ -1,6 +1,21 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
+import {
+  AlertTriangle,
+  Users,
+  Car,
+  Factory,
+  ShieldAlert,
+  Flame,
+  AlertCircle,
+  Download,
+  RefreshCw,
+  TrendingUp,
+  Clock,
+  MapPin,
+  Eye,
+} from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { StatCard } from '@/components/features/metrics/stat-card';
 import { SearchFilter } from '@/components/features/filters/search-filter';
@@ -18,7 +33,7 @@ interface Incident {
   latitude: number;
   longitude: number;
   createdAt: Date;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 const incidents: Incident[] = [
@@ -32,7 +47,7 @@ const incidents: Incident[] = [
     latitude: 11.9956,
     longitude: 8.5264,
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    icon: 'fas fa-users',
+    icon: Users,
   },
   {
     id: 'zmdizjgn',
@@ -45,7 +60,7 @@ const incidents: Incident[] = [
     latitude: 6.5244,
     longitude: 3.3792,
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    icon: 'fas fa-car-side',
+    icon: Car,
   },
   {
     id: 'alt0f0hb',
@@ -57,7 +72,7 @@ const incidents: Incident[] = [
     latitude: 12.0022,
     longitude: 8.5917,
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    icon: 'fas fa-industry',
+    icon: Factory,
   },
   {
     id: 'sec9f2b1',
@@ -70,7 +85,7 @@ const incidents: Incident[] = [
     latitude: 6.4455,
     longitude: 3.3958,
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    icon: 'fas fa-shield-alt',
+    icon: ShieldAlert,
   },
   {
     id: 'pip47k2m',
@@ -83,7 +98,7 @@ const incidents: Incident[] = [
     latitude: 7.2389,
     longitude: 4.1201,
     createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    icon: 'fas fa-fire',
+    icon: Flame,
   },
 ];
 
@@ -151,19 +166,19 @@ export default function IncidentsPage() {
         <div className='p-6 space-y-6'>
           {/* Header */}
           <div className='flex items-center justify-between'>
-            <h2 className='font-semibold text-2xl'>
-              <i className='fas fa-exclamation-triangle text-sky-400 mr-2'></i>
+            <h2 className='font-semibold text-2xl flex items-center'>
+              <AlertTriangle className='text-sky-400 mr-2 w-6 h-6' />
               Incident Management
             </h2>
             <div className='flex items-center space-x-3'>
-              <button className='px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors'>
-                <i className='fas fa-download mr-2'></i>Export
+              <button className='px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center'>
+                <Download className='w-4 h-4 mr-2' />Export
               </button>
-              <button className='px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors'>
-                <i className='fas fa-sync-alt mr-2'></i>Refresh
+              <button className='px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center'>
+                <RefreshCw className='w-4 h-4 mr-2' />Refresh
               </button>
               <button className='px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'>
-                <i className='fas fa-plus mr-2'></i>New Incident
+                New Incident
               </button>
             </div>
           </div>
@@ -173,28 +188,28 @@ export default function IncidentsPage() {
             <StatCard
               title='Total Incidents'
               value={totalIncidents}
-              icon='fas fa-database'
+              icon={AlertTriangle}
               color='blue'
             />
 
             <StatCard
               title='Open Incidents'
               value={openIncidents}
-              icon='fas fa-exclamation-circle'
+              icon={AlertCircle}
               color='red'
             />
 
             <StatCard
               title='Critical Level'
               value={criticalIncidents}
-              icon='fas fa-radiation'
+              icon={Flame}
               color='orange'
             />
 
             <StatCard
               title="Today's Reports"
               value={todayIncidents}
-              icon='fas fa-chart-line'
+              icon={TrendingUp}
               color='green'
             />
           </div>
@@ -239,7 +254,7 @@ export default function IncidentsPage() {
           <div className='bg-card rounded-lg border border-gray-800'>
             <div className='p-4 border-b border-gray-800'>
               <h3 className='text-lg font-semibold flex items-center'>
-                <i className='fas fa-exclamation-triangle text-blue-500 mr-2'></i>
+                <AlertTriangle className='text-blue-500 mr-2 w-5 h-5' />
                 <span>Incidents ({filteredIncidents.length})</span>
               </h3>
             </div>
@@ -248,7 +263,7 @@ export default function IncidentsPage() {
               <div className='space-y-4'>
                 {filteredIncidents.length === 0 ? (
                   <div className='text-center py-12'>
-                    <i className='fas fa-exclamation-triangle text-6xl text-gray-500 mb-4'></i>
+                    <AlertTriangle className='text-gray-500 mb-4 w-16 h-16 mx-auto' />
                     <p className='text-gray-400 text-lg'>No incidents found</p>
                     <p className='text-sm text-gray-500 mt-2'>
                       Try adjusting your search criteria or filters
@@ -266,7 +281,7 @@ export default function IncidentsPage() {
                             <div className='space-y-2'>
                               <div className='flex items-center space-x-3'>
                                 <h3 className='font-semibold text-gray-100'>
-                                  <i className={`${incident.icon} mr-2`}></i>
+                                  <incident.icon className='mr-2 w-4 h-4 inline' />
                                   {incident.title}
                                 </h3>
                                 <span
@@ -283,25 +298,23 @@ export default function IncidentsPage() {
                               <p className='text-sm text-gray-400'>{incident.description}</p>
                             </div>
                             <button className='p-2 hover:bg-graybg rounded-md transition-colors'>
-                              <i className='fas fa-eye text-gray-400'></i>
+                              <Eye className='text-gray-400 w-4 h-4' />
                             </button>
                           </div>
 
                           <div className='flex items-center space-x-6 text-xs text-gray-500'>
                             <div className='flex items-center space-x-1'>
-                              <i className='fas fa-clock'></i>
+                              <Clock className='w-3 h-3' />
                               <span>{formatTimeAgo(incident.createdAt)}</span>
                             </div>
                             <div className='flex items-center space-x-1'>
-                              <i className='fas fa-map-marker-alt'></i>
+                              <MapPin className='w-3 h-3' />
                               <span>{incident.location}</span>
                             </div>
                             <div className='flex items-center space-x-1'>
-                              <i className='fas fa-id-badge'></i>
                               <span>ID: {incident.id}</span>
                             </div>
                             <div className='flex items-center space-x-1'>
-                              <i className='fas fa-crosshairs'></i>
                               <span>
                                 {incident.latitude.toFixed(4)}, {incident.longitude.toFixed(4)}
                               </span>

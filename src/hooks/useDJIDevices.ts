@@ -100,8 +100,8 @@ export function useDJIDevices(options?: { refetchInterval?: number }) {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const keys = deviceKeys(workspaceId);
 
-  // Domain values per DJI Cloud API: 0 = drone, 1 = dock, 2 = RC
-  const DEVICE_DOMAINS = [0, 1, 2];
+  // Domain values per DJI Cloud API: 0 = drone, 1 = dock, 2 = RC, 3 = dock (some deployments)
+  const DEVICE_DOMAINS = [0, 1, 2, 3];
 
   const results = useQueries({
     queries: DEVICE_DOMAINS.map((domain) => ({

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { Users, UserCheck, Filter, Search, Pencil, Loader2, X, AlertTriangle } from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { StatCard } from "@/components/features/metrics/stat-card";
 import { useWorkspaceUsers, useUpdateUser } from "@/hooks/useUser";
@@ -104,13 +105,13 @@ export default function UsersPage() {
             <StatCard
               title="Total Users"
               value={isLoading ? "..." : String(users.length)}
-              icon="fas fa-users"
+              icon={Users}
               color="blue"
             />
             <StatCard
               title="Active Users"
               value={isLoading ? "..." : String(activeCount)}
-              icon="fas fa-user-check"
+              icon={UserCheck}
               color="green"
             />
           </div>
@@ -118,12 +119,12 @@ export default function UsersPage() {
           {/* Filters and Search */}
           <div className="bg-card p-4 rounded-lg border border-gray-800">
             <div className="flex items-center space-x-2 mb-4">
-              <i className="fas fa-filter text-blue-500"></i>
+              <Filter className="text-blue-500 w-5 h-5" />
               <h3 className="text-lg font-semibold">Filters &amp; Search</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
-                <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search by name or email..."
@@ -159,20 +160,20 @@ export default function UsersPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold flex items-center">
-                <i className="fas fa-users text-blue-500 mr-2"></i>
+                <Users className="text-blue-500 mr-2 w-5 h-5" />
                 <span>System Users</span>
               </h3>
             </div>
 
             <div className="overflow-x-auto">
               {error ? (
-                <div className="p-8 text-center text-red-400">
-                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                <div className="p-8 text-center text-red-400 flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
                   Failed to load users: {(error as Error).message}
                 </div>
               ) : isLoading ? (
-                <div className="p-8 text-center text-gray-400">
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                <div className="p-8 text-center text-gray-400 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Loading users...
                 </div>
               ) : (
@@ -236,7 +237,7 @@ export default function UsersPage() {
                               className="p-1 hover:bg-gray-600 rounded"
                               title="Edit user"
                             >
-                              <i className="fas fa-edit text-blue-400 text-sm"></i>
+                                <Pencil className="text-blue-400 w-4 h-4" />
                             </button>
                           </td>
                         </tr>
@@ -296,7 +297,7 @@ export default function UsersPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Edit User</h3>
                 <button onClick={closeEdit} className="p-1 hover:bg-gray-700 rounded">
-                  <i className="fas fa-times text-gray-400"></i>
+                  <X className="text-gray-400 w-4 h-4" />
                 </button>
               </div>
 

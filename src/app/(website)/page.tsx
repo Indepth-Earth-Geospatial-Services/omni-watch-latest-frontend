@@ -1,6 +1,21 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  ShieldAlert,
+  Brain,
+  Video,
+  TrendingUp,
+  Globe,
+  FileText,
+  Check,
+  ArrowRight,
+  ChevronDown,
+  Lock,
+  ShieldCheck,
+  LogIn,
+  UserCog,
+} from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
 export default function LandingPage() {
@@ -74,39 +89,39 @@ export default function LandingPage() {
 
   const features = [
     {
-      icon: 'fa-brain',
+      icon: Brain,
       title: 'AI-Powered Detection',
       description:
         'Advanced machine learning algorithms for real-time threat identification and pipeline monitoring',
       color: 'text-purple-500',
     },
     {
-      icon: 'fa-video',
+      icon: Video,
       title: 'Live Stream Integration',
       description: 'Multiple drone and camera feeds with synchronized telemetry data visualization',
       color: 'text-blue-500',
     },
     {
-      icon: 'fa-shield-alt',
+      icon: ShieldAlert,
       title: 'Threat Analysis',
       description:
         'Comprehensive security monitoring with automated incident detection and response',
       color: 'text-red-500',
     },
     {
-      icon: 'fa-chart-line',
+      icon: TrendingUp,
       title: 'Real-Time Analytics',
       description: 'Advanced data processing and visualization for operational intelligence',
       color: 'text-green-500',
     },
     {
-      icon: 'fa-globe',
+      icon: Globe,
       title: 'Geospatial Mapping',
       description: 'Interactive mapping with precise location tracking and zone monitoring',
       color: 'text-cyan-500',
     },
     {
-      icon: 'fa-file-alt',
+      icon: FileText,
       title: 'Automated Reporting',
       description: 'Generate detailed reports with customizable templates and scheduled exports',
       color: 'text-orange-500',
@@ -267,7 +282,7 @@ export default function LandingPage() {
           <div className='flex items-center justify-between'>
             <div className='flex items-center space-x-3'>
               <div className='relative'>
-                <i className='fas fa-shield-alt text-cyan-400 text-2xl'></i>
+                <ShieldAlert className='text-cyan-400 text-2xl' />
                 <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse'></div>
               </div>
               <div>
@@ -344,7 +359,7 @@ export default function LandingPage() {
                 <div className='absolute inset-0 bg-gradient-to-r from-cyan-400/50 to-blue-500/50 blur-xl opacity-0 group-hover:opacity-70 transition-opacity'></div>
                 <span className='relative flex items-center space-x-2 text-lg font-bold'>
                   <span>Request Access</span>
-                  <i className='fas fa-arrow-right group-hover:translate-x-1 transition-transform'></i>
+                  <ArrowRight className='group-hover:translate-x-1 transition-transform' />
                 </span>
               </Link>
               <a
@@ -352,7 +367,7 @@ export default function LandingPage() {
                 className='px-10 py-4 border-2 border-cyan-500/30 text-gray-300 rounded-lg hover:border-cyan-500 hover:bg-cyan-500/5 hover:text-cyan-400 transition-all duration-300 flex items-center space-x-2'
               >
                 <span className='text-lg font-semibold'>Explore Capabilities</span>
-                <i className='fas fa-chevron-down'></i>
+                <ChevronDown />
               </a>
             </div>
           </div>
@@ -471,7 +486,7 @@ export default function LandingPage() {
                   {/* Icon Container */}
                   <div className='relative mb-6'>
                     <div className='w-16 h-16 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300'>
-                      <i className={`fas ${feature.icon} ${feature.color} text-3xl`}></i>
+                      <feature.icon className={`${feature.color} text-3xl`} />
                     </div>
                     {/* Corner Accent */}
                     <div className='absolute -top-1 -left-1 w-3 h-3 border-l-2 border-t-2 border-cyan-500/50 opacity-0 group-hover:opacity-100 transition-opacity'></div>
@@ -553,7 +568,7 @@ export default function LandingPage() {
                       style={{ transitionDelay: `${400 + index * 100}ms` }}
                     >
                       <div className='flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mt-0.5 group-hover:scale-110 transition-transform'>
-                        <i className='fas fa-check text-cyan-400 text-xs'></i>
+                        <Check className='text-cyan-400 text-xs' />
                       </div>
                       <span className='text-gray-300 text-lg group-hover:text-cyan-400 transition-colors'>
                         {item}
@@ -576,25 +591,25 @@ export default function LandingPage() {
                   <div className='space-y-4'>
                     {[
                       {
-                        icon: 'fa-video',
+                        icon: Video,
                         title: 'Live Surveillance',
                         desc: 'Multi-camera monitoring',
                         color: 'cyan',
                       },
                       {
-                        icon: 'fa-shield-alt',
+                        icon: ShieldAlert,
                         title: 'Threat Detection',
                         desc: 'AI-powered analysis',
                         color: 'red',
                       },
                       {
-                        icon: 'fa-chart-line',
+                        icon: TrendingUp,
                         title: 'Analytics Engine',
                         desc: 'Real-time insights',
                         color: 'green',
                       },
                       {
-                        icon: 'fa-users-cog',
+                        icon: UserCog,
                         title: 'Team Coordination',
                         desc: 'Secure access control',
                         color: 'purple',
@@ -612,7 +627,7 @@ export default function LandingPage() {
                         <div
                           className={`flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-${module.color}-500/10 to-${module.color}-500/5 flex items-center justify-center`}
                         >
-                          <i className={`fas ${module.icon} text-${module.color}-500 text-2xl`}></i>
+                          <module.icon className={`text-${module.color}-500 text-2xl`} />
                         </div>
                         <div className='flex-1'>
                           <div className='font-bold text-gray-100 mb-1 group-hover:text-cyan-400 transition-colors'>
@@ -691,7 +706,7 @@ export default function LandingPage() {
                       : 'opacity-0 -translate-y-10'
                   }`}
                 >
-                  <i className='fas fa-lock text-cyan-400 text-sm'></i>
+                  <Lock className='text-cyan-400 text-sm' />
                   <span className='text-sm font-mono text-cyan-400 uppercase tracking-wider'>
                     Secure Access
                   </span>
@@ -745,9 +760,9 @@ export default function LandingPage() {
                     <div className='absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity'></div>
                     <div className='absolute inset-0 bg-gradient-to-r from-cyan-400/50 to-blue-500/50 blur-xl opacity-0 group-hover:opacity-70 transition-opacity'></div>
                     <span className='relative flex items-center space-x-3 text-lg font-bold'>
-                      <i className='fas fa-user-shield'></i>
+                      <ShieldCheck />
                       <span>Request Access</span>
-                      <i className='fas fa-arrow-right group-hover:translate-x-1 transition-transform'></i>
+                      <ArrowRight className='group-hover:translate-x-1 transition-transform' />
                     </span>
                   </Link>
 
@@ -755,7 +770,7 @@ export default function LandingPage() {
                     href='/sign-in'
                     className='group px-12 py-5 border-2 border-cyan-500/50 text-gray-300 rounded-xl hover:border-cyan-500 hover:bg-cyan-500/5 hover:text-cyan-400 transition-all duration-300 flex items-center space-x-3 text-lg font-bold'
                   >
-                    <i className='fas fa-sign-in-alt'></i>
+                    <LogIn />
                     <span>Access Portal</span>
                   </Link>
                 </div>
@@ -767,7 +782,7 @@ export default function LandingPage() {
                     <span className='text-gray-400 font-mono'>All Systems Online</span>
                   </div>
                   <div className='flex items-center space-x-2'>
-                    <i className='fas fa-shield-alt text-cyan-400'></i>
+                    <ShieldAlert className='text-cyan-400' />
                     <span className='text-gray-400 font-mono'>256-bit Encrypted</span>
                   </div>
                 </div>
@@ -786,7 +801,7 @@ export default function LandingPage() {
           <div className='flex flex-col md:flex-row items-center justify-between'>
             <div className='flex items-center space-x-3 mb-6 md:mb-0'>
               <div className='relative'>
-                <i className='fas fa-shield-alt text-cyan-400 text-2xl'></i>
+                <ShieldAlert className='text-cyan-400 text-2xl' />
                 <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full'></div>
               </div>
               <div>

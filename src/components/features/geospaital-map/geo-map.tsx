@@ -1,243 +1,207 @@
 'use client';
+import { toast } from 'sonner';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices, useBoundDevices } from '@/hooks/useDJIDevices';
-import { useFlightAreas, useSyncFlightAreas, useElementGroups } from '@/hooks/useMapElements';
+import {
+  useFlightAreas,
+  useSyncFlightAreas,
+  useElementGroups,
+  useAddElement,
+  useDeleteElement,
+} from '@/hooks/useMapElements';
+import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
-import { LayoutTemplate } from 'lucide-react';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Map, {
-  Marker,
-  NavigationControl,
-  Popup,
-  MapRef,
-  Source,
-  Layer,
-} from 'react-map-gl/maplibre';
 import { feedData } from '@/lib/data';
-import { UnifiedStream } from '@/lib/types';
+import type { UnifiedStream } from '@/lib/types';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Map, { Marker, NavigationControl, Source, Layer, MapRef } from 'react-map-gl/maplibre';
+import type { MapLayerMouseEvent } from 'maplibre-gl';
+import type { DronePositionType, SelectedDroneInfo, MapViewMode, PendingPoint } from './map-types';
+import { DroneMarker } from './DroneMarker';
+import { DroneInfoPopup } from './DroneInfoPopup';
+import { TelemetryPanel } from './TelemetryPanel';
+import { MapCompass } from './MapCompass';
+import { AltitudeIndicator } from './AltitudeIndicator';
+import { AddElementPanel } from './AddElementPanel';
+import { ElementContextMenu } from './ElementContextMenu';
 
-type DronePositionType = {
-  longitude: number;
-  latitude: number;
-  sn: string;
-  nickname: string;
-  incidents?: any[];
-};
-
-// Custom pulse marker component moved outside - prevents recreation on every render
-const PulseMarker = memo(
-  ({
-    drone,
-    onClick,
-  }: {
-    drone: DronePositionType;
-    onClick: (drone: DronePositionType) => void;
-  }) => {
-    const handleClick = (e: any) => {
-      e.originalEvent?.stopPropagation();
-      onClick(drone);
-    };
-
-    return (
-      <Marker
-        longitude={drone.longitude}
-        latitude={drone.latitude}
-        anchor='center'
-        onClick={handleClick}
-      >
-        <div className='cursor-pointer size-[20px] bg-red-500 rounded-full relative shadow-[0_0_0_rgba(239,68,68,1)] animate-[markerPulse_2s_ease_infinite]' />
-      </Marker>
-    );
+const MAP_STYLES: Record<string, string | object> = {
+  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  satellite: {
+    version: 8,
+    sources: {
+      esri: {
+        type: 'raster',
+        tiles: [
+          'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+      },
+    },
+    layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
   },
-  // Custom comparison - only re-render if position actually changes
-  (prevProps, nextProps) => {
-    return (
-      prevProps.drone.sn === nextProps.drone.sn &&
-      prevProps.drone.longitude === nextProps.drone.longitude &&
-      prevProps.drone.latitude === nextProps.drone.latitude
-    );
-  }
-);
-
-PulseMarker.displayName = 'PulseMarker';
+};
 
 function GeoMap() {
   const mapRef = useRef<MapRef>(null);
+  const prevTelemetryRef = useRef<Record<string, string>>({});
 
+  // ── UI state ─────────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<MapViewMode>('multi');
   const [selectedDrone, setSelectedDrone] = useState<DronePositionType | null>(null);
+  const [dronePositions, setDronePositions] = useState<Record<string, DronePositionType>>({});
+  const [selectedStyle, setSelectedStyle] = useState('dark');
+  const [showElements, setShowElements] = useState(true);
+  const [viewState, setViewState] = useState({ longitude: 7.0336, latitude: 4.8242, zoom: 14 });
 
-  // DJI Cloud hooks — always called (Rules of Hooks); feature flag selects which result is used
+  // ── Draw / Add-element state ──────────────────────────────────────────────────
+  const [isDrawMode, setIsDrawMode] = useState(false);
+  const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
+  const [drawGroupId, setDrawGroupId] = useState('');
+  const [drawElementName, setDrawElementName] = useState('');
+
+  // ── Element context-menu state (right-click / double-tap to delete) ───────────
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; elementId: string; elementName: string;
+  } | null>(null);
+
+  // ── Data hooks ────────────────────────────────────────────────────────────────
+  const { user } = useAuth();
   const { data: djiDevices = [] } = useDJIDevices();
   const { data: boundDevices = [] } = useBoundDevices();
   const { data: flightAreas = [] } = useFlightAreas();
   const { data: elementGroups = [] } = useElementGroups();
   const { mutate: syncGeofences, isPending: isSyncing } = useSyncFlightAreas();
+  const { mutate: addMapElement, isPending: isAddingElement } = useAddElement();
+  const { mutate: deleteMapElement, isPending: isDeletingElement } = useDeleteElement();
+  const { droneUpdates, getProcessedDroneData } = useTelemetry();
 
-  const [showElements, setShowElements] = useState(true);
-
-  // Use static data if DJI Cloud is disabled, mapping it to UnifiedStream structure
+  // ── Nickname lookup list ──────────────────────────────────────────────────────
   const deviceList: UnifiedStream[] = useMemo(() => {
     if (DJI_CONFIG.USE_DJI_CLOUD) {
       return djiDevices.map((device) => ({
         id: device.deviceSn,
         name: device.deviceName,
-        type: 'DRONE', // DJI devices are primarily drones in this context
+        type: 'DRONE',
         isOnline: device.status,
         raw: device,
         metadata: { alias: device.nickname },
       }));
     }
-
     return feedData.map((drone) => ({
       id: String(drone.sn),
       name: drone.name,
       type: drone.feedType,
       isOnline: drone.status === 'online',
-      raw: {} as any, // Mock raw data
+      raw: {} as object,
       metadata: { alias: drone.name },
     }));
   }, [djiDevices]);
 
-  const [selectedStyle, setSelectedStyle] = useState('dark');
-  const [viewState, setViewState] = useState({
-    longitude: 7.0336,
-    latitude: 4.8242,
-    zoom: 14,
-  });
-
-  const { droneUpdates, getProcessedDroneData } = useTelemetry();
-
-  // Store drone positions directly from telemetry updates
-  const [dronePositions, setDronePositions] = useState<Record<string, DronePositionType>>({});
-
-  // Track previous telemetry to avoid unnecessary updates
-  const prevTelemetryRef = useRef<Record<string, string>>({});
-
-  // Update drone positions from telemetry - simplified to use droneUpdates directly
+  // ── Seed fleet from REST API — shows devices in panel before WS events arrive ──
   useEffect(() => {
-    const updatedPositions: Record<string, DronePositionType> = {};
-    let hasChanges = false;
+    if (!djiDevices.length) return;
+    setDronePositions((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      djiDevices
+        .filter((d) => d.status)
+        .forEach((d) => {
+          if (!next[d.deviceSn]) {
+            next[d.deviceSn] = {
+              sn: d.deviceSn,
+              nickname: d.nickname || d.deviceName,
+              longitude: 0,
+              latitude: 0,
+              heading: 0,
+              altitude: 0,
+              hasGPS: false,
+            };
+            changed = true;
+          }
+        });
+      return changed ? next : prev;
+    });
+  }, [djiDevices]);
 
-    // Iterate through all drones that have sent telemetry
+  // ── Sync drone positions from WebSocket telemetry ─────────────────────────────
+  useEffect(() => {
+    if (!droneUpdates.size) return;
+
+    // Detect changes first (avoids state update when nothing moved)
+    const changedSns: string[] = [];
     droneUpdates.forEach((_update, sn) => {
-      const telemetry = getProcessedDroneData(sn);
-
-      if (telemetry) {
-        const currentKey = `${telemetry.latitude},${telemetry.longitude}`;
-        const prevKey = prevTelemetryRef.current[sn];
-
-        // Only update if position actually changed
-        if (currentKey !== prevKey) {
-          hasChanges = true;
-          prevTelemetryRef.current[sn] = currentKey;
-        }
-
-        const deviceNickname = deviceList.find((device) => device.id === sn)?.metadata?.alias || sn;
-
-        updatedPositions[sn] = {
-          sn: sn,
-          nickname: deviceNickname,
-          longitude: telemetry.longitude,
-          latitude: telemetry.latitude,
-        };
+      const t = getProcessedDroneData(sn);
+      if (!t) return;
+      const key = `${t.latitude},${t.longitude},${t.heading},${t.altitude}`;
+      if (key !== prevTelemetryRef.current[sn]) {
+        prevTelemetryRef.current[sn] = key;
+        changedSns.push(sn);
       }
     });
+    if (!changedSns.length) return;
 
-    // Only trigger re-render if positions actually changed
-    if (hasChanges) {
-      setDronePositions(updatedPositions);
-    }
+    setDronePositions((prev) => {
+      const next = { ...prev }; // preserve REST-seeded entries
+      droneUpdates.forEach((_update, sn) => {
+        const t = getProcessedDroneData(sn);
+        if (!t) return;
+        const hasValidGPS = t.latitude !== 0 || t.longitude !== 0;
+        const nickname =
+          deviceList.find((d) => d.id === sn)?.metadata?.alias ?? (prev[sn]?.nickname ?? sn);
+        next[sn] = {
+          sn,
+          nickname,
+          longitude: hasValidGPS ? t.longitude : (prev[sn]?.longitude ?? 0),
+          latitude: hasValidGPS ? t.latitude : (prev[sn]?.latitude ?? 0),
+          heading: t.heading,
+          altitude: t.altitude,
+          hasGPS: hasValidGPS || (prev[sn]?.hasGPS ?? false),
+        };
+      });
+      return next;
+    });
   }, [droneUpdates, getProcessedDroneData, deviceList]);
 
-  // Get selected drone info for info panel
-  const selectedDroneInfo = useMemo(() => {
+  // ── Single-mode: auto-follow tracked drone ────────────────────────────────────
+  const trackedLat = selectedDrone ? dronePositions[selectedDrone.sn]?.latitude : undefined;
+  const trackedLng = selectedDrone ? dronePositions[selectedDrone.sn]?.longitude : undefined;
+
+  useEffect(() => {
+    if (viewMode !== 'single' || trackedLat === undefined || trackedLng === undefined) return;
+    mapRef.current?.easeTo({ center: [trackedLng, trackedLat], duration: 800 });
+  }, [viewMode, trackedLat, trackedLng]);
+
+  // ── Selected drone full telemetry ─────────────────────────────────────────────
+  const selectedDroneInfo: SelectedDroneInfo | null = useMemo(() => {
     if (!selectedDrone) return null;
-
-    // Get telemetry data for the selected drone
-    const telemetry = getProcessedDroneData(selectedDrone.sn);
-    const deviceNickname =
-      deviceList.find((device) => device.id === selectedDrone.sn)?.metadata?.alias ||
-      selectedDrone.sn;
-
+    const t = getProcessedDroneData(selectedDrone.sn);
+    const nickname =
+      deviceList.find((d) => d.id === selectedDrone.sn)?.metadata?.alias ?? selectedDrone.sn;
     return {
-      nickname: deviceNickname, // Use serial number as nickname
+      nickname,
       serialNumber: selectedDrone.sn,
       latitude: selectedDrone.latitude.toFixed(6),
       longitude: selectedDrone.longitude.toFixed(6),
-      battery: telemetry?.battery || 0,
-      altitude: telemetry?.altitude || 0,
-      direction: telemetry?.direction || 'N',
-      incidents: selectedDrone?.incidents || [],
+      battery: t?.battery ?? 0,
+      altitude: t?.altitude ?? 0,
+      direction: t?.direction ?? 'N',
+      heading: t?.heading ?? 0,
+      speed: t?.speed ?? 0,
+      modeCode: t?.modeCode ?? 0,
     };
-  }, [selectedDrone, getProcessedDroneData]);
+  }, [selectedDrone, getProcessedDroneData, deviceList]);
 
-  const styles: Record<string, any> = {
-    dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-    positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-    satellite: {
-      version: 8,
-      sources: {
-        esri: {
-          type: 'raster',
-          tiles: [
-            'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          ],
-          tileSize: 256,
-        },
-      },
-      layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
-    },
-  };
-
-  // Fit map to show all drones
-  const fitToAllDrones = useCallback(() => {
-    const positions = Object.values(dronePositions);
-    if (positions.length === 0) return;
-
-    const longitudes = positions.map((d) => d.longitude);
-    const latitudes = positions.map((d) => d.latitude);
-
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-
-    setViewState((prev) => ({
-      ...prev,
-      longitude: (minLng + maxLng) / 2,
-      latitude: (minLat + maxLat) / 2,
-      zoom: positions.length === 1 ? 16 : 14,
-    }));
-  }, [dronePositions]);
-
-  // Fly to specific drone with smooth animation
-  const flyToDrone = useCallback((drone: DronePositionType) => {
-    // Use maplibre's flyTo for smooth animation
-    mapRef.current?.flyTo({
-      center: [drone.longitude, drone.latitude],
-      zoom: 18,
-      duration: 2000, // 2 second smooth animation
-      essential: true,
-    });
-    setSelectedDrone(drone);
-  }, []);
-
-  // Handle basemap change
-  const handleBasemapChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStyle(event.target.value);
-  }, []);
-
-  // Memoize drone positions array for stable reference
-  const dronePositionsArray = useMemo(() => Object.values(dronePositions), [dronePositions]);
-
-  // Convert element groups to GeoJSON Features
-  const mapElementsGeoJSON = useMemo(() => {
-    const features: any[] = [];
-    elementGroups.forEach((group) => {
-      group.elements.forEach((el) => {
-        if (el.resource?.content) {
-          features.push({
+  // ── GeoJSON FeatureCollection from element groups ─────────────────────────────
+  const mapElementsGeoJSON = useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: elementGroups.flatMap((group) =>
+        group.elements
+          .filter((el) => el.resource?.content)
+          .map((el) => ({
             ...el.resource.content,
             id: el.id,
             properties: {
@@ -245,69 +209,207 @@ function GeoMap() {
               name: el.name,
               groupId: group.id,
               groupName: group.name,
+              elementId: el.id,
             },
-          });
-        }
-      });
-    });
-    return {
-      type: 'FeatureCollection',
-      features,
-    };
-  }, [elementGroups]);
+          }))
+      ),
+    }),
+    [elementGroups]
+  );
 
+  const dronePositionsArray = useMemo(() => Object.values(dronePositions), [dronePositions]);
+  const elementCount = useMemo(
+    () => elementGroups.reduce((acc, g) => acc + g.elements.length, 0),
+    [elementGroups]
+  );
+
+  // ── Map interaction handlers ──────────────────────────────────────────────────
+  const fitToAllDrones = useCallback(() => {
+    const positions = Object.values(dronePositions).filter((d) => d.hasGPS);
+    if (!positions.length) return;
+    const lngs = positions.map((d) => d.longitude);
+    const lats = positions.map((d) => d.latitude);
+    setViewState((prev) => ({
+      ...prev,
+      longitude: (Math.min(...lngs) + Math.max(...lngs)) / 2,
+      latitude: (Math.min(...lats) + Math.max(...lats)) / 2,
+      zoom: positions.length === 1 ? 16 : 14,
+    }));
+  }, [dronePositions]);
+
+  const flyToDrone = useCallback((drone: DronePositionType) => {
+    mapRef.current?.flyTo({
+      center: [drone.longitude, drone.latitude],
+      zoom: 18,
+      duration: 2000,
+      essential: true,
+    });
+    setSelectedDrone(drone);
+  }, []);
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!isDrawMode) return;
+      setPendingPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+    },
+    [isDrawMode]
+  );
+
+  // ── Draw mode helpers ─────────────────────────────────────────────────────────
+  const toggleDrawMode = useCallback(() => {
+    setIsDrawMode((prev) => {
+      if (prev) {
+        // Leaving draw mode — clear state
+        setPendingPoint(null);
+        setDrawGroupId('');
+        setDrawElementName('');
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleSaveElement = useCallback(() => {
+    if (!pendingPoint || !drawGroupId || !drawElementName.trim()) return;
+
+    addMapElement(
+      {
+        groupId: drawGroupId,
+        payload: {
+          id: crypto.randomUUID(),
+          name: drawElementName.trim(),
+          resource: {
+            type: 0,
+            content: {
+              type: 'Feature',
+              properties: { color: '#2D8CF0', clampToGround: true },
+              geometry: {
+                type: 'Point',
+                coordinates: [pendingPoint.lng, pendingPoint.lat],
+                radius: 0,
+              },
+            },
+            user_name: user?.username ?? 'user',
+          },
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsDrawMode(false);
+          setPendingPoint(null);
+          setDrawGroupId('');
+          setDrawElementName('');
+        },
+      }
+    );
+  }, [pendingPoint, drawGroupId, drawElementName, addMapElement, user]);
+
+  // ── Element context-menu handlers ────────────────────────────────────────────
+  const openContextMenu = useCallback(
+    (point: { x: number; y: number }) => {
+      if (!showElements || isDrawMode) return;
+      const features = mapRef.current?.queryRenderedFeatures(
+        [point.x, point.y],
+        { layers: ['map-elements-points'] }
+      );
+      if (!features?.length) return;
+      const f = features[0];
+      const elementId = String(f.properties?.elementId ?? '');
+      const elementName = String(f.properties?.name ?? 'Element');
+      if (!elementId) return;
+      setContextMenu({ x: point.x, y: point.y, elementId, elementName });
+    },
+    [showElements, isDrawMode]
+  );
+
+  const handleContextMenu = useCallback(
+    (e: MapLayerMouseEvent) => {
+      e.originalEvent.preventDefault();
+      openContextMenu(e.point);
+    },
+    [openContextMenu]
+  );
+
+  const handleDblClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const features = mapRef.current?.queryRenderedFeatures(
+        [e.point.x, e.point.y],
+        { layers: ['map-elements-points'] }
+      );
+      if (!features?.length) return;
+      // Prevent map zoom-in only when tapping an element
+      e.originalEvent.preventDefault();
+      openContextMenu(e.point);
+    },
+    [openContextMenu]
+  );
+
+  const handleDeleteElement = useCallback(() => {
+    if (!contextMenu) return;
+    deleteMapElement(contextMenu.elementId, {
+      onSuccess: () => setContextMenu(null),
+      onError: () => toast.error('Failed to delete element — please try again'),
+    });
+  }, [contextMenu, deleteMapElement]);
+
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <section className='h-[67dvh] relative w-full'>
-      {/* Map Component */}
       <Map
         ref={mapRef}
         {...viewState}
         onMove={(evt) => setViewState(evt.viewState)}
-        mapStyle={styles[selectedStyle]}
+        mapStyle={MAP_STYLES[selectedStyle] as string}
         style={{ width: '100%', height: '100%' }}
+        cursor={isDrawMode ? 'crosshair' : 'grab'}
+        onClick={handleMapClick}
+        onContextMenu={handleContextMenu}
+        onDblClick={handleDblClick}
       >
         <NavigationControl position='top-left' />
 
-        {/* Render all drone markers */}
-        {dronePositionsArray.map((drone) => (
-          <PulseMarker key={drone.sn} drone={drone} onClick={flyToDrone} />
-        ))}
+        {/* Drone markers — only shown once a valid GPS fix is received */}
+        {dronePositionsArray
+          .filter((drone) => drone.hasGPS)
+          .map((drone) => (
+            <DroneMarker
+              key={drone.sn}
+              drone={drone}
+              isSelected={selectedDrone?.sn === drone.sn}
+              showAltitude={viewMode === 'multi'}
+              onClick={flyToDrone}
+            />
+          ))}
 
-        {/* Map Elements (Points, Lines, Polygons from DJI Cloud) */}
+        {/* Pending point preview when in draw mode */}
+        {isDrawMode && pendingPoint && (
+          <Marker longitude={pendingPoint.lng} latitude={pendingPoint.lat} anchor='bottom'>
+            <div className='flex flex-col items-center'>
+              <div className='w-3 h-3 rounded-full bg-blue-400 border-2 border-white shadow-lg animate-bounce' />
+            </div>
+          </Marker>
+        )}
+
+        {/* GeoJSON element groups (points, lines, polygons) */}
         {showElements && (
-          <Source id='map-elements' type='geojson' data={mapElementsGeoJSON as any}>
-            {/* Polygons */}
+          <Source id='map-elements' type='geojson' data={mapElementsGeoJSON as never}>
             <Layer
               id='map-elements-polygons'
               type='fill'
               filter={['==', '$type', 'Polygon']}
-              paint={{
-                'fill-color': ['get', 'color'],
-                'fill-opacity': 0.3,
-              }}
+              paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.3 }}
             />
             <Layer
               id='map-elements-polygons-outline'
               type='line'
               filter={['==', '$type', 'Polygon']}
-              paint={{
-                'line-color': ['get', 'color'],
-                'line-width': 2,
-              }}
+              paint={{ 'line-color': ['get', 'color'], 'line-width': 2 }}
             />
-
-            {/* Lines */}
             <Layer
               id='map-elements-lines'
               type='line'
               filter={['==', '$type', 'LineString']}
-              paint={{
-                'line-color': ['get', 'color'],
-                'line-width': 3,
-              }}
+              paint={{ 'line-color': ['get', 'color'], 'line-width': 3 }}
             />
-
-            {/* Points (Circles) */}
             <Layer
               id='map-elements-points'
               type='circle'
@@ -322,15 +424,17 @@ function GeoMap() {
           </Source>
         )}
 
-        {/* Flight area markers — DJI geofences (shown when USE_DJI_CLOUD=true) */}
+        {/* Flight-area geofence markers */}
         {DJI_CONFIG.USE_DJI_CLOUD &&
           flightAreas.map((area) => {
-            // Extract a lat/lng anchor from the content if available, otherwise skip rendering
-            const content = area.content as any;
-            const lng: number | undefined = content?.longitude ?? content?.center?.longitude;
-            const lat: number | undefined = content?.latitude ?? content?.center?.latitude;
+            const content = area.content as Record<string, unknown> | null;
+            const lng =
+              (content?.longitude as number | undefined) ??
+              (content?.center as Record<string, number> | undefined)?.longitude;
+            const lat =
+              (content?.latitude as number | undefined) ??
+              (content?.center as Record<string, number> | undefined)?.latitude;
             if (lng === undefined || lat === undefined) return null;
-
             return (
               <Marker key={area.id} longitude={lng} latitude={lat} anchor='center'>
                 <div
@@ -347,187 +451,75 @@ function GeoMap() {
             );
           })}
 
-        {/* Popup for selected drone */}
+        {/* Selected drone popup */}
         {selectedDrone && selectedDroneInfo && (
-          <Popup
-            longitude={selectedDrone.longitude}
-            latitude={selectedDrone.latitude}
+          <DroneInfoPopup
+            drone={selectedDrone}
+            info={selectedDroneInfo}
             onClose={() => setSelectedDrone(null)}
-            anchor='bottom'
-            className='drone-popup'
-          >
-            <div className='bg-neutral-950 text-white p-3 rounded-lg min-w-[250px]'>
-              <h3 className='font-semibold text-lg mb-2'>{selectedDroneInfo.nickname}</h3>
-              <div className='text-xs text-gray-400 mb-2'>
-                SN: {selectedDroneInfo.serialNumber.slice(-8)}
-              </div>
-              <div className='border-t border-gray-700 pt-2 text-sm space-y-1'>
-                <div>
-                  <span className='text-gray-400'>Lat:</span>{' '}
-                  <span className='font-mono'>{selectedDroneInfo.latitude}</span>
-                </div>
-                <div>
-                  <span className='text-gray-400'>Lng:</span>{' '}
-                  <span className='font-mono'>{selectedDroneInfo.longitude}</span>
-                </div>
-              </div>
-
-              <div className='border-t border-gray-700 mt-2 pt-2 text-sm space-y-2'>
-                <div className='flex justify-between items-center'>
-                  <span className='text-gray-400'>Incidents</span>
-                  <div className='font-mono'>({selectedDrone.incidents?.length ?? 0})</div>
-                </div>
-
-                {/* Scrollable incident icons */}
-                <div className='flex overflow-x-auto space-x-4 py-2 scrollbar-thin scrollbar-thumb-gray-700'>
-                  {selectedDrone.incidents?.map((incident, index) => (
-                    <div
-                      key={incident.id || index}
-                      className='flex flex-col items-center flex-shrink-0'
-                    >
-                      <div className='w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white font-bold'>
-                        ⚠️
-                      </div>
-                      <span className='text-xs mt-1 text-gray-400'>{index + 1}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Popup>
+          />
         )}
       </Map>
 
-      {/* Controls Panel */}
-      <div className='absolute top-4 right-4 bg-neutral-950 p-4 rounded-lg shadow-lg z-10 min-w-64'>
-        <div className='flex items-center gap-2 mb-4'>
-          <LayoutTemplate className='w-5 h-5' />
-          <h3 className='font-semibold'>Controls</h3>
+      {/* Add-element panel — floats at top-center when draw mode is active */}
+      {isDrawMode && (
+        <AddElementPanel
+          elementGroups={elementGroups}
+          selectedGroupId={drawGroupId}
+          elementName={drawElementName}
+          hasClickTarget={pendingPoint !== null}
+          isPending={isAddingElement}
+          onGroupChange={setDrawGroupId}
+          onNameChange={setDrawElementName}
+          onSave={handleSaveElement}
+          onCancel={toggleDrawMode}
+        />
+      )}
+
+      {/* Bottom-left overlays: altitude gauge + compass (shown when a drone is selected) */}
+      {selectedDroneInfo && (
+        <div className='absolute bottom-8 left-4 z-10 flex items-end gap-3'>
+          <AltitudeIndicator altitude={selectedDroneInfo.altitude} />
+          <MapCompass heading={selectedDroneInfo.heading} />
         </div>
+      )}
 
-        {/* Basemap Switcher */}
-        <div className='mb-4'>
-          <label className='block text-sm font-medium mb-1'>Basemap Style</label>
-          <select
-            value={selectedStyle}
-            onChange={handleBasemapChange}
-            className='w-full p-2 border bg-slate-800 rounded text-sm'
-          >
-            <option value='dark'>Dark</option>
-            <option value='positron'>Positron</option>
-            <option value='satellite'>Satellite</option>
-          </select>
-        </div>
+      {/* Element context menu — right-click or double-tap a point to delete */}
+      {contextMenu && showElements && (
+        <ElementContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          elementName={contextMenu.elementName}
+          isPending={isDeletingElement}
+          onDelete={handleDeleteElement}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
 
-        {/* Layers Toggles */}
-        <div className='mb-4 space-y-2'>
-          <label className='block text-sm font-medium mb-1'>Layers</label>
-          <label className='flex items-center space-x-2 text-sm cursor-pointer'>
-            <input
-              type='checkbox'
-              checked={showElements}
-              onChange={(e) => setShowElements(e.target.checked)}
-              className='rounded border-gray-700 bg-slate-800'
-            />
-            <span>
-              Map Elements ({elementGroups.reduce((acc, g) => acc + g.elements.length, 0)})
-            </span>
-          </label>
-        </div>
+      {/* Right-side telemetry + controls panel */}
+      <TelemetryPanel
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        isDrawMode={isDrawMode}
+        onToggleDrawMode={toggleDrawMode}
+        selectedStyle={selectedStyle}
+        onStyleChange={setSelectedStyle}
+        showElements={showElements}
+        onShowElementsChange={setShowElements}
+        elementCount={elementCount}
+        selectedDroneInfo={selectedDroneInfo}
+        dronePositionsArray={dronePositionsArray}
+        getProcessedDroneData={getProcessedDroneData}
+        onFitToAllDrones={fitToAllDrones}
+        onFlyToDrone={flyToDrone}
+        selectedSn={selectedDrone?.sn ?? null}
+        flightAreas={flightAreas}
+        isSyncing={isSyncing}
+        onSyncGeofences={syncGeofences}
+        boundDevices={boundDevices}
+      />
 
-        {/* Info Panel */}
-        <div className='mb-4 p-2 bg-neutral-950 rounded text-sm'>
-          {selectedDroneInfo ? (
-            <>
-              <div className='font-medium mb-2'>Selected Asset:</div>
-              <div className='mb-1'>
-                <span className='text-gray-400'>Name:</span>{' '}
-                <span className='font-mono'>{selectedDroneInfo.nickname}</span>
-              </div>
-              <div className='mb-1 text-xs text-gray-400'>
-                SN: {selectedDroneInfo.serialNumber.slice(-8)}
-              </div>
-              <div className='border-t border-gray-700 mt-2 pt-2'>
-                <div>
-                  <span className='text-gray-400'>Lat:</span>{' '}
-                  <span className='font-mono'>{selectedDroneInfo.latitude}</span>
-                </div>
-                <div>
-                  <span className='text-gray-400'>Lng:</span>{' '}
-                  <span className='font-mono'>{selectedDroneInfo.longitude}</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className='text-gray-400 text-center py-2'>Click asset to view details</div>
-          )}
-          <div className='mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400'>
-            Active Asset: {Object.keys(dronePositions).length}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className='flex gap-2 mb-4'>
-          <button
-            onClick={fitToAllDrones}
-            disabled={Object.keys(dronePositions).length === 0}
-            className='flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-3 rounded text-sm transition-colors'
-          >
-            Zoom Extent
-          </button>
-        </div>
-
-        {/* Sync flight areas to devices — DJI Cloud only */}
-        {DJI_CONFIG.USE_DJI_CLOUD && (
-          <div className='mb-4'>
-            <button
-              onClick={() =>
-                syncGeofences({
-                  device_sn: boundDevices.map((d) => d.deviceSn),
-                })
-              }
-              disabled={isSyncing || boundDevices.length === 0}
-              className='w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-3 rounded text-sm transition-colors'
-            >
-              {isSyncing ? 'Syncing...' : `Sync Geofences (${flightAreas.length})`}
-            </button>
-            {boundDevices.length === 0 && (
-              <p className='text-xs text-gray-500 mt-1 text-center'>No bound devices</p>
-            )}
-          </div>
-        )}
-
-        {/* Drone List */}
-        <div className='h-full overflow-auto'>
-          <h4 className='font-medium mb-2'>Active Asset ({dronePositionsArray.length})</h4>
-          <div className='max-h-40 overflow-y-auto space-y-1'>
-            {dronePositionsArray.map((drone) => {
-              const telemetry = getProcessedDroneData(drone.sn);
-
-              return (
-                <button
-                  key={drone.sn}
-                  onClick={() => flyToDrone(drone)}
-                  className='w-full text-left p-2 hover:bg-gray-600 rounded text-sm flex justify-between items-center transition-colors'
-                >
-                  <div className='flex-1 truncate'>
-                    <div className='font-medium'>{drone.nickname}</div>
-                    <div className='text-xs text-gray-400'>SN: {drone.sn.slice(-8)}</div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    {telemetry?.isRecent && (
-                      <span className='w-2 h-2 bg-green-500 rounded-full'></span>
-                    )}
-                    <span className='text-xs text-gray-500'>→</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Pulse Animation & Popup Styles */}
+      {/* Global animation + popup styles */}
       <style jsx global>{`
         @keyframes markerPulse {
           0% {
@@ -544,13 +536,11 @@ function GeoMap() {
           }
         }
 
-        /* Dark theme popup styling */
         .drone-popup .maplibregl-popup-content {
           background-color: transparent !important;
           padding: 0 !important;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
         }
-
         .drone-popup .maplibregl-popup-close-button {
           color: #fff !important;
           font-size: 20px !important;
@@ -559,15 +549,12 @@ function GeoMap() {
           right: 4px !important;
           top: 4px !important;
         }
-
         .drone-popup .maplibregl-popup-close-button:hover {
           background-color: rgba(255, 255, 255, 0.1) !important;
           border-radius: 4px !important;
         }
-
         .drone-popup .maplibregl-popup-tip {
           border-top-color: #0f172a !important;
-          padding: 10px !important;
         }
       `}</style>
     </section>

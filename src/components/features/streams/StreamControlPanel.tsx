@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useLiveCapacity,
@@ -41,7 +42,6 @@ export function StreamControlPanel({
   const [quality, setQuality] = useState(0);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const { data: capacityMap } = useLiveCapacity();
   const startMutation = useStartStream();
@@ -170,9 +170,9 @@ export function StreamControlPanel({
         onError: () => {
           // Switch failed — revert the lens selector so it reflects what's actually streaming.
           setSelectedLens(effectiveLens);
-          setSwitchError('Camera switch unavailable — drone MQTT not responding');
+          toast.error('Camera switch unavailable — drone MQTT not responding');
         },
-        onSuccess: () => setSwitchError(null),
+        onSuccess: () => {},
       }
     );
   };
@@ -202,7 +202,6 @@ export function StreamControlPanel({
               </button>
             ))}
           </div>
-          {switchError && <p className='text-[10px] text-amber-400 mt-1.5'>{switchError}</p>}
         </div>
       )}
 

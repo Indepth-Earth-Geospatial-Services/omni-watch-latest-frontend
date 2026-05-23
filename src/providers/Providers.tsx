@@ -11,6 +11,7 @@ import { AuthProvider } from "./AuthProvider";
 import { ProjectProvider } from "./ProjectProvider";
 import QueryProvider from "./QueryProvider";
 import { ThemeProvider } from "./ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <QueryProvider>
           <ProjectProvider>{children}</ProjectProvider>
+          <Toaster richColors position='top-right' />
         </QueryProvider>
       </AuthProvider>
     </ThemeProvider>
