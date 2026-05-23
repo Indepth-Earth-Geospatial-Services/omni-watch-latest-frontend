@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { getToken } from '@/lib/config/token-store';
+import { Toaster } from 'sonner';
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -51,5 +52,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <Toaster />
+    </>
+  );
 }
