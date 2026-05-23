@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, PlaneTakeoff, Loader2 } from 'lucide-react';
-import { useAssignDevice } from '@/hooks/useProjects';
+import { createPortal } from 'react-dom';
+import {
+  X,
+  PlaneTakeoff,
+  Loader2,
+  Activity,
+  Box,
+  Wifi,
+  CheckCircle2,
+  FolderOpen,
+} from 'lucide-react';
+import { useAssignDevice, useProjects } from '@/hooks/useProjects';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
 import type { Project } from '@/lib/types';
 
 interface AssignDeviceToProjectModalProps {
@@ -11,43 +22,50 @@ interface AssignDeviceToProjectModalProps {
 }
 
 const AssignDeviceToProjectModal = ({ project, onClose }: AssignDeviceToProjectModalProps) => {
-  const [deviceSn, setDeviceSn] = useState('');
-  const [snError, setSnError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
-  const { mutate: assign, isPending, error, reset } = useAssignDevice();
+  const { mutate: assign, isPending, variables, reset } = useAssignDevice();
+  const { data: devices = [], isLoading: devicesLoading } = useDJIDevices();
+  const { data: projectsPage } = useProjects();
+  const allProjects = projectsPage?.list ?? [];
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    if (project) {
-      setDeviceSn('');
-      setSnError('');
-      reset();
-    }
+    if (project) reset();
   }, [project, reset]);
 
-  if (!project) return null;
+  // Close on Escape
+  useEffect(() => {
+    if (!project) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [project, onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const sn = deviceSn.trim();
-    if (!sn) {
-      setSnError('Device serial number is required.');
-      return;
-    }
-    assign(
-      { projectId: project.id, deviceSn: sn },
-      { onSuccess: onClose }
-    );
+  if (!project || !mounted) return null;
+
+  const alreadyInThisProject = new Set(project.devices.map((d) => d.device_sn));
+
+  // Find which project (if any) each device belongs to
+  const projectOf = (sn: string) =>
+    allProjects.find((p) => p.id !== project.id && p.devices.some((d) => d.device_sn === sn));
+
+  const handleAssign = (sn: string) => {
+    if (alreadyInThisProject.has(sn)) return;
+    assign({ projectId: project.id, deviceSn: sn }, { onSuccess: onClose });
   };
 
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
+  return createPortal(
+    <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
       {/* Backdrop */}
-      <div className='absolute inset-0 bg-black/60 backdrop-blur-sm' onClick={onClose} />
+      <div className='absolute inset-0 bg-black/70 backdrop-blur-sm' onClick={onClose} />
 
       {/* Modal card */}
-      <div className='relative w-full max-w-md bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+      <div className='relative z-10 w-full max-w-md mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 flex flex-col max-h-[80vh]'>
+
         {/* Header */}
-        <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800'>
+        <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800 flex-shrink-0'>
           <div className='flex items-center gap-3'>
             <div className='p-2 bg-[#1C93FF]/10 border border-[#1C93FF]/20 rounded-lg'>
               <PlaneTakeoff size={16} className='text-[#1C93FF]' />
@@ -65,88 +83,103 @@ const AssignDeviceToProjectModal = ({ project, onClose }: AssignDeviceToProjectM
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className='px-6 py-5 space-y-4'>
-          {/* Currently assigned */}
-          {project.devices.length > 0 && (
-            <div className='space-y-1.5'>
-              <p className='text-[10px] font-black tracking-wider text-zinc-500 uppercase'>
-                Currently Assigned ({project.devices.length})
-              </p>
-              <div className='flex flex-wrap gap-1.5'>
-                {project.devices.map((d) => (
-                  <span
-                    key={d.id}
-                    className='px-2 py-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded'
-                  >
-                    {d.device_sn}
-                  </span>
-                ))}
-              </div>
+        {/* Device list */}
+        <div className='overflow-y-auto px-4 py-3 flex-1'>
+          {devicesLoading ? (
+            <div className='flex items-center justify-center py-12 gap-2 text-zinc-500'>
+              <Loader2 size={16} className='animate-spin' />
+              <span className='text-xs'>Loading devices…</span>
             </div>
+          ) : devices.length === 0 ? (
+            <div className='flex flex-col items-center justify-center py-12 gap-2 text-zinc-600'>
+              <PlaneTakeoff size={22} />
+              <span className='text-xs'>No devices bound to this workspace.</span>
+            </div>
+          ) : (
+            <ul className='space-y-1.5'>
+              {devices.map((device) => {
+                const isDrone = device.domain === '0';
+                const inThisProject = alreadyInThisProject.has(device.deviceSn);
+                const otherProject = projectOf(device.deviceSn);
+                const isThisAssigning = isPending && variables?.deviceSn === device.deviceSn;
+
+                return (
+                  <li key={device.deviceSn}>
+                    <button
+                      onClick={() => handleAssign(device.deviceSn)}
+                      disabled={inThisProject || isPending}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border transition-colors text-left
+                        ${inThisProject
+                          ? 'bg-zinc-900/50 border-zinc-800 opacity-50 cursor-not-allowed'
+                          : 'bg-zinc-900 border-zinc-800 hover:border-[#1C93FF]/40 hover:bg-[#1C93FF]/5 disabled:opacity-50 disabled:cursor-not-allowed'
+                        }`}
+                    >
+                      {/* Device icon */}
+                      <div className='w-9 h-9 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
+                        {isDrone
+                          ? <Activity size={15} className='text-blue-400' />
+                          : <Box size={15} className='text-cyan-400' />
+                        }
+                      </div>
+
+                      {/* Device info */}
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-semibold text-zinc-100 truncate'>
+                          {device.nickname || device.deviceName || device.deviceSn}
+                        </p>
+                        <p className='text-[10px] font-mono text-zinc-500 truncate'>
+                          {device.deviceSn}
+                        </p>
+                        {otherProject && (
+                          <div className='flex items-center gap-1 mt-0.5'>
+                            <FolderOpen size={9} className='text-amber-400' />
+                            <span className='text-[9px] text-amber-400 truncate'>
+                              In: {otherProject.name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status + action */}
+                      <div className='flex items-center gap-2 flex-shrink-0'>
+                        <div className='flex items-center gap-1'>
+                          <Wifi
+                            size={11}
+                            className={device.status ? 'text-emerald-400' : 'text-zinc-600'}
+                          />
+                          <span className={`text-[10px] font-semibold ${device.status ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                            {device.status ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+
+                        {inThisProject ? (
+                          <CheckCircle2 size={14} className='text-[#1C93FF]' />
+                        ) : isThisAssigning ? (
+                          <Loader2 size={14} className='text-[#1C93FF] animate-spin' />
+                        ) : (
+                          <CheckCircle2 size={14} className='text-zinc-700 group-hover:text-[#1C93FF] transition-colors' />
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
+        </div>
 
-          {/* Device SN input */}
-          <div className='space-y-1.5'>
-            <label className='block text-[11px] font-bold tracking-wider text-zinc-400 uppercase'>
-              Device Serial Number <span className='text-red-400'>*</span>
-            </label>
-            <input
-              type='text'
-              value={deviceSn}
-              onChange={(e) => {
-                setDeviceSn(e.target.value);
-                if (snError) setSnError('');
-              }}
-              placeholder='e.g. 1ZNBJ9D001234'
-              autoFocus
-              className={`w-full px-3 py-2.5 bg-zinc-900 border rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 font-mono outline-none transition-colors
-                ${snError ? 'border-red-500/50 focus:border-red-500' : 'border-zinc-700 focus:border-[#1C93FF]'}`}
-            />
-            {snError && <p className='text-[11px] text-red-400'>{snError}</p>}
-            <p className='text-[10px] text-zinc-600'>
-              The device must be bound to this organisation's workspace.
-            </p>
-          </div>
-
-          {/* API error */}
-          {error && (
-            <p className='text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2'>
-              {error.message}
-            </p>
-          )}
-
-          {/* Actions */}
-          <div className='flex items-center justify-end gap-2 pt-1'>
-            <button
-              type='button'
-              onClick={onClose}
-              disabled={isPending}
-              className='px-4 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-50 transition-colors'
-            >
-              Cancel
-            </button>
-            <button
-              type='submit'
-              disabled={isPending}
-              className='flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[#1C93FF] rounded-lg hover:bg-[#1C93FF]/80 disabled:opacity-60 disabled:cursor-not-allowed transition-colors'
-            >
-              {isPending ? (
-                <>
-                  <Loader2 size={12} className='animate-spin' />
-                  Assigning…
-                </>
-              ) : (
-                <>
-                  <PlaneTakeoff size={12} />
-                  Assign Device
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+        {/* Footer */}
+        <div className='flex-shrink-0 px-5 py-3 border-t border-zinc-800'>
+          <button
+            onClick={onClose}
+            className='w-full py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

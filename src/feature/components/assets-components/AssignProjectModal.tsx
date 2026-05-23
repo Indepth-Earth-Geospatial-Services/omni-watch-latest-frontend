@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FolderOpen, Loader2, FolderX, CheckCircle2 } from 'lucide-react';
-import { useProjects } from '@/hooks/useProjects';
-import { useAssignDevice } from '@/hooks/useProjects';
+import { useProjects, useAssignDevice } from '@/hooks/useProjects';
 
 interface AssignProjectModalProps {
   deviceSn: string | null;
@@ -14,25 +14,40 @@ interface AssignProjectModalProps {
 const AssignProjectModal = ({ deviceSn, deviceName, onClose }: AssignProjectModalProps) => {
   const { data, isLoading } = useProjects();
   const { mutate: assign, isPending, variables } = useAssignDevice();
+  const [mounted, setMounted] = useState(false);
 
-  if (!deviceSn) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!deviceSn) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [deviceSn, onClose]);
+
+  if (!deviceSn || !mounted) return null;
 
   const projects = data?.list ?? [];
 
   const handleAssign = (projectId: string) => {
-    assign(
-      { projectId, deviceSn },
-      { onSuccess: onClose }
-    );
+    assign({ projectId, deviceSn }, { onSuccess: onClose });
   };
 
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
+  return createPortal(
+    <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
       {/* Backdrop */}
-      <div className='absolute inset-0 bg-black/60 backdrop-blur-sm' onClick={onClose} />
+      <div
+        className='absolute inset-0 bg-black/70 backdrop-blur-sm'
+        onClick={onClose}
+      />
 
       {/* Modal card */}
-      <div className='relative w-full max-w-sm bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+      <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
         {/* Header */}
         <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
           <div className='flex items-center gap-3'>
@@ -67,8 +82,7 @@ const AssignProjectModal = ({ deviceSn, deviceName, onClose }: AssignProjectModa
           ) : (
             <ul className='space-y-1.5'>
               {projects.map((project) => {
-                const isThisAssigning =
-                  isPending && variables?.projectId === project.id;
+                const isThisAssigning = isPending && variables?.projectId === project.id;
 
                 return (
                   <li key={project.id}>
@@ -107,6 +121,7 @@ const AssignProjectModal = ({ deviceSn, deviceName, onClose }: AssignProjectModa
           )}
         </div>
 
+        {/* Footer */}
         <div className='px-5 py-3 border-t border-zinc-800'>
           <button
             onClick={onClose}
@@ -116,7 +131,8 @@ const AssignProjectModal = ({ deviceSn, deviceName, onClose }: AssignProjectModa
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
