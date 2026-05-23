@@ -1,5 +1,5 @@
 import { MainLayout } from '@/components/layout/main-layout';
-import ControlPage from '@/feature/page/Control';
+import ControlPage from '@/components/features/control-components/Control';
 
 export default function AssetsControl() {
   return (

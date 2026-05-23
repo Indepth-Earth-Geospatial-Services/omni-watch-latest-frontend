@@ -29,35 +29,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// ─── Stable particle positions ────────────────────────────────────────────────
-// Pre-computed outside the component so they are IDENTICAL on server and client.
-// Using Math.random() inside render caused React hydration mismatches because
-// the server and client generated different random positions on each render.
-const PARTICLES = [
-  { left: '5%', top: '12%', delay: '0s', duration: '12s' },
-  { left: '15%', top: '78%', delay: '1s', duration: '15s' },
-  { left: '25%', top: '34%', delay: '2s', duration: '11s' },
-  { left: '35%', top: '56%', delay: '0.5s', duration: '14s' },
-  { left: '45%', top: '8%', delay: '3s', duration: '13s' },
-  { left: '55%', top: '90%', delay: '1.5s', duration: '16s' },
-  { left: '65%', top: '23%', delay: '4s', duration: '10s' },
-  { left: '75%', top: '67%', delay: '2.5s', duration: '18s' },
-  { left: '85%', top: '45%', delay: '0.8s', duration: '12s' },
-  { left: '92%', top: '15%', delay: '3.5s', duration: '14s' },
-  { left: '8%', top: '88%', delay: '1.2s', duration: '17s' },
-  { left: '18%', top: '50%', delay: '4.5s', duration: '11s' },
-  { left: '30%', top: '72%', delay: '0.3s', duration: '15s' },
-  { left: '42%', top: '30%', delay: '2.8s', duration: '13s' },
-  { left: '58%', top: '60%', delay: '1.8s', duration: '16s' },
-  { left: '70%', top: '82%', delay: '3.2s', duration: '10s' },
-  { left: '80%', top: '18%', delay: '0.6s', duration: '19s' },
-  { left: '88%', top: '55%', delay: '4.2s', duration: '12s' },
-  { left: '12%', top: '95%', delay: '2.2s', duration: '14s' },
-  { left: '50%', top: '40%', delay: '1.6s', duration: '11s' },
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 // ─── Internal Component ───────────────────────────────────────────────────────
 
 function SignInForm() {
@@ -126,30 +97,6 @@ function SignInForm() {
         {/* Vignette */}
         <div className='absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background' />
 
-        {/* Particles — stable positions, no Math.random() in render */}
-        {PARTICLES.map((p, i) => (
-          <div
-            key={i}
-            className='absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float'
-            style={{
-              left: p.left,
-              top: p.top,
-              animationDelay: p.delay,
-              animationDuration: p.duration,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Data stream lines */}
-      <div className='fixed top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none'>
-        <div className='w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream' />
-      </div>
-      <div className='fixed top-0 left-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none'>
-        <div
-          className='w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream'
-          style={{ animationDelay: '3s' }}
-        />
       </div>
 
       {/* Animation keyframes — scoped to this page */}
@@ -162,46 +109,8 @@ function SignInForm() {
             transform: translateY(100%);
           }
         }
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px) translateX(0px);
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
-          50% {
-            transform: translateY(-100px) translateX(50px);
-          }
-        }
-        @keyframes data-stream {
-          0% {
-            transform: translateY(-100%);
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(calc(100vh + 100%));
-            opacity: 0;
-          }
-        }
         .animate-scan {
           animation: scan 8s linear infinite;
-        }
-        .animate-float {
-          animation: float 15s ease-in-out infinite;
-        }
-        .animate-data-stream {
-          animation: data-stream 6s ease-in-out infinite;
         }
       `}</style>
 

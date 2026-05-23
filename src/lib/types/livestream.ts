@@ -17,23 +17,20 @@ export interface UnifiedStream {
 export interface LiveCapacity {
   sn: string;
   name: string;
-  camerasList: CameraCapacity[];
+  cameras_list: CameraCapacity[];
 }
 
 export interface CameraCapacity {
   id: string;
-  deviceSn: string;
   name: string;
   index: string;
-  type: string;
-  videosList: VideoCapacity[];
+  videos_list: VideoCapacity[];
 }
 
 export interface VideoCapacity {
   id: string;
   index: string;
   type: string;
-  switchVideoTypes: string[];
 }
 
 export interface LiveStreamRequest {
@@ -41,7 +38,7 @@ export interface LiveStreamRequest {
   video_id: string;
   url_type: number;
   video_quality: number;
-  videoType: string;
+  video_type: string;
 }
 
 export interface StartStreamResponse {

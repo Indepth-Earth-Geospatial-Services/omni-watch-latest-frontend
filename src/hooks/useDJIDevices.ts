@@ -95,7 +95,7 @@ function transformDevice(raw: RawDJIDevice): DJIDevice {
  * @example
  * const { data: devices = [], isLoading } = useDJIDevices();
  */
-export function useDJIDevices() {
+export function useDJIDevices(options?: { refetchInterval?: number }) {
   const { user } = useAuth();
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const keys = deviceKeys(workspaceId);
@@ -109,9 +109,9 @@ export function useDJIDevices() {
       queryFn: () => getBoundDevices(workspaceId, { domain, page_size: 100 }),
       enabled: !!workspaceId,
       retry: false,
-      refetchInterval: 30_000,
+      refetchInterval: options?.refetchInterval ?? 30_000,
       refetchOnWindowFocus: true,
-      staleTime: 10_000,
+      staleTime: 0,
     })),
   });
 

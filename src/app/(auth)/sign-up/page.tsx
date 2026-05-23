@@ -43,14 +43,6 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
-// ─── Stable particle positions ────────────────────────────────────────────────
-const PARTICLES = [...Array(20)].map((_, i) => ({
-  left: `${(i * 7 + 3) % 100}%`,
-  top: `${(i * 13 + 7) % 100}%`,
-  delay: `${(i * 0.4) % 5}s`,
-  duration: `${10 + (i * 0.5) % 10}s`,
-}));
-
 export default function SignUpPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -92,29 +84,6 @@ export default function SignUpPage() {
         {/* Vignette */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background"></div>
 
-        {/* Floating particles */}
-        <div className="absolute inset-0">
-          {PARTICLES.map((p, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float"
-              style={{
-                left: p.left,
-                top: p.top,
-                animationDelay: p.delay,
-                animationDuration: p.duration,
-              }}
-            ></div>
-          ))}
-        </div>
-      </div>
-
-      {/* Data Stream Effect */}
-      <div className="fixed top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream"></div>
-      </div>
-      <div className="fixed top-0 left-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream" style={{ animationDelay: '3s' }}></div>
       </div>
 
       {/* Custom CSS animations */}
@@ -123,26 +92,8 @@ export default function SignUpPage() {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100%); }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          50% { transform: translateY(-100px) translateX(50px); }
-        }
-        @keyframes data-stream {
-          0% { transform: translateY(-100%); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
-        }
         .animate-scan {
           animation: scan 8s linear infinite;
-        }
-        .animate-float {
-          animation: float 15s ease-in-out infinite;
-        }
-        .animate-data-stream {
-          animation: data-stream 6s ease-in-out infinite;
         }
       `}</style>
 

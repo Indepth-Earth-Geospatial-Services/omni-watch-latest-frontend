@@ -1,5 +1,5 @@
-import Navbar from '@/feature/components/layout/Navbar';
-import AssetsPage from '@/feature/page/AssetsPage';
+import Navbar from '@/feature-unbording/components/layout/Navbar';
+import AssetsPage from '@/feature-unbording/page/AssetsPage';
 
 export default function Assets() {
   return (

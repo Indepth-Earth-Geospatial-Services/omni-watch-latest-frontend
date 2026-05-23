@@ -128,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
+    clearToken(); // clear immediately so protected routes redirect without waiting for the API
     authApi.logout().catch(() => {});
     setUser(null);
     setLoginError(null);

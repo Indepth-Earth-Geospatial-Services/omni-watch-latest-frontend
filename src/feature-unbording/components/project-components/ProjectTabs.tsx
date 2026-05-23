@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Search, ListFilter } from 'lucide-react';
 
-export type ProjectTabType = 'All' | 'Active' | 'Offline' | 'Archived';
+export type ProjectTabType = 'All' | 'Active' | 'Offline' | 'Online';
 
 interface ProjectTabsProps {
   activeTab: ProjectTabType;
@@ -11,7 +11,7 @@ interface ProjectTabsProps {
   onSearch?: (query: string) => void;
 }
 
-const tabs: ProjectTabType[] = ['All', 'Active', 'Offline', 'Archived'];
+const tabs: ProjectTabType[] = ['All', 'Active', 'Online', 'Offline'];
 
 const ProjectTabs = ({ activeTab, onTabChange, onSearch }: ProjectTabsProps) => {
   const [query, setQuery] = useState('');

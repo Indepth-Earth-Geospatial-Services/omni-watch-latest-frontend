@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Pencil,
@@ -92,31 +92,39 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
 
   const allProjects = data?.list ?? [];
 
-  // Tab filtering
-  const tabFiltered = allProjects.filter((p) => {
+  // Tab filtering — 'Online' shows projects where at least one device is currently online
+  const tabFiltered = useMemo(() => allProjects.filter((p) => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Active') return p.devices.length > 0;
     if (activeTab === 'Offline') return p.devices.length === 0;
-    if (activeTab === 'Archived') return false;
+    if (activeTab === 'Online') return p.devices.some((d) =>
+      djiDevices.find((dev) => dev.deviceSn === d.device_sn)?.status === true
+    );
     return true;
-  });
+  }), [allProjects, activeTab, djiDevices]);
 
   // Search
-  const filtered = tabFiltered.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return tabFiltered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? '').toLowerCase().includes(q)
+    );
+  }, [tabFiltered, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const allChecked = paginated.length > 0 && selected.size === paginated.length;
 
   const activeMenuProject = openMenuId
-    ? allProjects.find((p) => p.id === openMenuId) ?? null
+    ? (allProjects.find((p) => p.id === openMenuId) ?? null)
     : null;
 
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
+
   const handleOpenProject = (project: Project) => {
+    setNavigatingId(project.id);
     setActiveProject(project);
     router.push('/dashboard');
   };
@@ -230,8 +238,8 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                       <span className='text-sm text-zinc-600'>
                         {searchQuery
                           ? 'No projects match your search.'
-                          : activeTab === 'Archived'
-                            ? 'No archived projects.'
+                          : activeTab === 'Online'
+                            ? 'No projects with online drones.'
                             : 'No projects yet. Create one to get started.'}
                       </span>
                     </div>
@@ -282,13 +290,18 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
 
                             <button
                               onClick={() => handleOpenProject(project)}
-                              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded transition-colors ${
+                              disabled={navigatingId === project.id}
+                              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded transition-colors disabled:opacity-70 ${
                                 isActiveProject
                                   ? 'text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/30 hover:bg-[#1C93FF]/20'
                                   : 'text-white bg-[#1C93FF] hover:bg-[#1C93FF]/80'
                               }`}
                             >
-                              <FolderOpen size={10} />
+                              {navigatingId === project.id ? (
+                                <Loader2 size={10} className='animate-spin' />
+                              ) : (
+                                <FolderOpen size={10} />
+                              )}
                               {isActiveProject ? 'Resume' : 'Open'}
                             </button>
                           </div>
@@ -417,8 +430,12 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         >
           {/* Context label */}
           <div className='px-3.5 py-2.5 border-b border-zinc-800/70'>
-            <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>Project</p>
-            <p className='text-xs font-bold text-zinc-200 truncate mt-0.5'>{activeMenuProject.name}</p>
+            <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>
+              Project
+            </p>
+            <p className='text-xs font-bold text-zinc-200 truncate mt-0.5'>
+              {activeMenuProject.name}
+            </p>
           </div>
 
           {/* Device actions */}
@@ -430,7 +447,11 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                 setDevicesModalProject(activeMenuProject);
               }}
               disabled={!activeMenuProject.devices.length}
-              title={!activeMenuProject.devices.length ? 'No devices assigned to this project' : undefined}
+              title={
+                !activeMenuProject.devices.length
+                  ? 'No devices assigned to this project'
+                  : undefined
+              }
               className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed'
             >
               <List size={13} className='flex-shrink-0' />
@@ -560,122 +581,128 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
       )}
 
       {/* ── List Devices modal ──────────────────────────────────────────────────── */}
-      {devicesModalProject && (() => {
-        const enriched = devicesModalProject.devices.map((d) => {
-          const dji = djiDevices.find((dev) => dev.deviceSn === d.device_sn);
-          const isDrone = dji ? dji.domain === '0' : null;
-          return { ...d, dji, isDrone };
-        });
-        const drones = enriched.filter((d) => d.isDrone === true);
-        const docks  = enriched.filter((d) => d.isDrone === false);
-        const unknown = enriched.filter((d) => d.isDrone === null);
+      {devicesModalProject &&
+        (() => {
+          const enriched = devicesModalProject.devices.map((d) => {
+            const dji = djiDevices.find((dev) => dev.deviceSn === d.device_sn);
+            const isDrone = dji ? dji.domain === '0' : null;
+            return { ...d, dji, isDrone };
+          });
+          const drones = enriched.filter((d) => d.isDrone === true);
+          const docks = enriched.filter((d) => d.isDrone === false);
+          const unknown = enriched.filter((d) => d.isDrone === null);
 
-        const DeviceRow = ({ d }: { d: typeof enriched[number] }) => (
-          <div className='flex items-center gap-3 px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800'>
-            <div className='w-8 h-8 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
-              {d.isDrone === true  && <Activity size={14} className='text-blue-400' />}
-              {d.isDrone === false && <Box size={14} className='text-cyan-400' />}
-              {d.isDrone === null  && <PlaneTakeoff size={14} className='text-zinc-600' />}
-            </div>
-            <div className='flex-1 min-w-0'>
-              <p className='text-xs font-bold text-zinc-200 truncate'>
-                {d.dji?.nickname || d.dji?.deviceName || d.device_sn}
-              </p>
-              <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device_sn}</p>
-            </div>
-            {d.dji ? (
-              <div className='flex items-center gap-1.5'>
-                <Wifi
-                  size={11}
-                  className={d.dji.status ? 'text-emerald-400' : 'text-zinc-600'}
-                />
-                <span className={`text-[10px] font-semibold ${d.dji.status ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                  {d.dji.status ? 'Online' : 'Offline'}
-                </span>
+          const DeviceRow = ({ d }: { d: (typeof enriched)[number] }) => (
+            <div className='flex items-center gap-3 px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800'>
+              <div className='w-8 h-8 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
+                {d.isDrone === true && <Activity size={14} className='text-blue-400' />}
+                {d.isDrone === false && <Box size={14} className='text-cyan-400' />}
+                {d.isDrone === null && <PlaneTakeoff size={14} className='text-zinc-600' />}
               </div>
-            ) : (
-              <span className='text-[10px] text-zinc-700 italic'>Not bound</span>
-            )}
-          </div>
-        );
-
-        return (
-          <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
-            <div
-              className='absolute inset-0 bg-black/60 backdrop-blur-sm'
-              onClick={() => setDevicesModalProject(null)}
-            />
-            <div className='relative w-full max-w-md bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 flex flex-col max-h-[80vh]'>
-              {/* Header */}
-              <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800 flex-shrink-0'>
-                <div className='flex items-center gap-3'>
-                  <div className='p-2 bg-zinc-800 border border-zinc-700 rounded-lg'>
-                    <List size={16} className='text-zinc-300' />
-                  </div>
-                  <div>
-                    <h2 className='text-sm font-bold text-zinc-100'>Assigned Devices</h2>
-                    <p className='text-[11px] text-zinc-500 truncate max-w-[220px]'>
-                      {devicesModalProject.name}
-                    </p>
-                  </div>
+              <div className='flex-1 min-w-0'>
+                <p className='text-xs font-bold text-zinc-200 truncate'>
+                  {d.dji?.nickname || d.dji?.deviceName || d.device_sn}
+                </p>
+                <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device_sn}</p>
+              </div>
+              {d.dji ? (
+                <div className='flex items-center gap-1.5'>
+                  <Wifi size={11} className={d.dji.status ? 'text-emerald-400' : 'text-zinc-600'} />
+                  <span
+                    className={`text-[10px] font-semibold ${d.dji.status ? 'text-emerald-400' : 'text-zinc-600'}`}
+                  >
+                    {d.dji.status ? 'Online' : 'Offline'}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setDevicesModalProject(null)}
-                  className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              ) : (
+                <span className='text-[10px] text-zinc-700 italic'>Not bound</span>
+              )}
+            </div>
+          );
 
-              {/* Body */}
-              <div className='overflow-y-auto px-6 py-5 space-y-5'>
-                {enriched.length === 0 ? (
-                  <div className='flex flex-col items-center gap-2 py-8'>
-                    <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
-                    <p className='text-sm text-zinc-600'>No devices assigned to this project.</p>
+          return (
+            <div className='fixed inset-0 z-50 flex items-center justify-center font-poppins'>
+              <div
+                className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+                onClick={() => setDevicesModalProject(null)}
+              />
+              <div className='relative w-full max-w-md bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 flex flex-col max-h-[80vh]'>
+                {/* Header */}
+                <div className='flex items-center justify-between px-6 py-5 border-b border-zinc-800 flex-shrink-0'>
+                  <div className='flex items-center gap-3'>
+                    <div className='p-2 bg-zinc-800 border border-zinc-700 rounded-lg'>
+                      <List size={16} className='text-zinc-300' />
+                    </div>
+                    <div>
+                      <h2 className='text-sm font-bold text-zinc-100'>Assigned Devices</h2>
+                      <p className='text-[11px] text-zinc-500 truncate max-w-[220px]'>
+                        {devicesModalProject.name}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    {drones.length > 0 && (
-                      <div className='space-y-2'>
-                        <div className='flex items-center gap-2'>
-                          <Activity size={11} className='text-blue-400' />
-                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-blue-400'>
-                            Drones ({drones.length})
-                          </p>
+                  <button
+                    onClick={() => setDevicesModalProject(null)}
+                    className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className='overflow-y-auto px-6 py-5 space-y-5'>
+                  {enriched.length === 0 ? (
+                    <div className='flex flex-col items-center gap-2 py-8'>
+                      <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
+                      <p className='text-sm text-zinc-600'>No devices assigned to this project.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {drones.length > 0 && (
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-2'>
+                            <Activity size={11} className='text-blue-400' />
+                            <p className='text-[10px] font-black tracking-[0.16em] uppercase text-blue-400'>
+                              Drones ({drones.length})
+                            </p>
+                          </div>
+                          {drones.map((d) => (
+                            <DeviceRow key={d.id} d={d} />
+                          ))}
                         </div>
-                        {drones.map((d) => <DeviceRow key={d.id} d={d} />)}
-                      </div>
-                    )}
-                    {docks.length > 0 && (
-                      <div className='space-y-2'>
-                        <div className='flex items-center gap-2'>
-                          <Box size={11} className='text-cyan-400' />
-                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-cyan-400'>
-                            Docks ({docks.length})
-                          </p>
+                      )}
+                      {docks.length > 0 && (
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-2'>
+                            <Box size={11} className='text-cyan-400' />
+                            <p className='text-[10px] font-black tracking-[0.16em] uppercase text-cyan-400'>
+                              Docks ({docks.length})
+                            </p>
+                          </div>
+                          {docks.map((d) => (
+                            <DeviceRow key={d.id} d={d} />
+                          ))}
                         </div>
-                        {docks.map((d) => <DeviceRow key={d.id} d={d} />)}
-                      </div>
-                    )}
-                    {unknown.length > 0 && (
-                      <div className='space-y-2'>
-                        <div className='flex items-center gap-2'>
-                          <PlaneTakeoff size={11} className='text-zinc-600' />
-                          <p className='text-[10px] font-black tracking-[0.16em] uppercase text-zinc-600'>
-                            Unknown ({unknown.length})
-                          </p>
+                      )}
+                      {unknown.length > 0 && (
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-2'>
+                            <PlaneTakeoff size={11} className='text-zinc-600' />
+                            <p className='text-[10px] font-black tracking-[0.16em] uppercase text-zinc-600'>
+                              Unknown ({unknown.length})
+                            </p>
+                          </div>
+                          {unknown.map((d) => (
+                            <DeviceRow key={d.id} d={d} />
+                          ))}
                         </div>
-                        {unknown.map((d) => <DeviceRow key={d.id} d={d} />)}
-                      </div>
-                    )}
-                  </>
-                )}
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       <DeleteConfirmModal
         project={pendingDelete}
