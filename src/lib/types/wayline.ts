@@ -1,16 +1,30 @@
 // Wayline types — flight route files (KMZ), tasks, and active job tracking
 
-// A stored wayline route file uploaded by an operator
+export interface WaypointCoord {
+  lat: number;
+  lng: number;
+  alt: number; // execute height in metres (from wpml:executeHeight or KML altitude)
+  index: number;
+}
+
+// A stored wayline route file uploaded by an operator.
 export interface Wayline {
-  wayline_id: string;
+  id: string;                      // unique wayline UUID
   name: string;
-  drone_model_key: string;       // which drone model this route is compatible with
-  payload_model_key: string[];   // compatible payload models
-  wayline_type: number;          // 0 = waypoint, 1 = mapping, 2 = oblique
-  update_time: number;           // Unix timestamp ms
-  username: string;              // who uploaded it
+  drone_model_key: string;
+  payload_model_keys: string[];    // compatible payload models
+  template_types: number[];        // [0]=waypoint, [1]=mapping, [2]=oblique
+  update_time: number;             // Unix timestamp ms
+  create_time: number;             // Unix timestamp ms
+  user_name: string;               // who uploaded it
   favorited: boolean;
-  object_key: string;            // KMZ file location in object storage
+  object_key: string;              // KMZ storage path
+  sign?: string;                   // file checksum
+}
+
+/** Returns the unique ID for a wayline. */
+export function getWaylineId(wl: Wayline): string {
+  return wl.id;
 }
 
 export interface WaylineListResponse {
@@ -35,7 +49,7 @@ export interface FlightTask {
   device_sn: string;             // which drone to assign the task to
 }
 
-// An active or historical flight job
+// An active or historical flight job — as returned by /wayline/api/v1/workspaces/{id}/jobs
 export interface FlightJob {
   job_id: string;
   name: string;
@@ -48,4 +62,31 @@ export interface FlightJob {
 
 export interface UpdateJobStatusRequest {
   status: number; // 0 = pause, 1 = resume
+}
+
+// Shape returned by GET /wayline/api/v1/workspaces/{id}/jobs
+export interface WaylineJobItem {
+  job_id: string;
+  job_name: string;
+  file_id: string;       // wayline file UUID — used to get download URL
+  file_name: string;     // human-readable wayline name
+  dock_sn: string;
+  workspace_id: string;
+  wayline_type: number;  // 0=Waypoint, 1=Mapping, 2=Oblique
+  task_type: number;
+  execute_time: string;  // "YYYY-MM-DD HH:MM:SS"
+  begin_time: string;
+  end_time: string;
+  completed_time: string;
+  status: number;
+  username: string;
+  code: number;
+  rth_altitude: number;
+  out_of_control_action: number;
+  media_count: number;
+}
+
+export interface WaylineJobListResponse {
+  list: WaylineJobItem[];
+  pagination: { page: number; total: number; page_size: number };
 }

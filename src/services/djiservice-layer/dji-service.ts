@@ -45,6 +45,8 @@ import type {
   AddFlightAreaRequest,
   SyncFlightAreaRequest,
   DeviceFlightAreaStatus,
+  WaylineListResponse,
+  WaylineJobListResponse,
 } from '@/lib/types';
 import type {
   PayloadCommandRequest,
@@ -294,6 +296,32 @@ export function syncFlightAreas(
 /** Checks the sync status of flight areas on each device. */
 export function getDeviceFlightAreaStatus(workspaceId: string): Promise<DeviceFlightAreaStatus[]> {
   return djiRequest.get<DeviceFlightAreaStatus[]>(DJI_URLS.map.deviceFlightAreaStatus(workspaceId));
+}
+
+// ─── Waylines ─────────────────────────────────────────────────────────────────
+
+/** Lists all wayline route files uploaded to the workspace. */
+export function getWaylines(
+  workspaceId: string,
+  params?: { page?: number; page_size?: number; order_by?: string; favorited?: boolean }
+): Promise<WaylineListResponse> {
+  return djiRequest.get<WaylineListResponse>(DJI_URLS.waylines.list(workspaceId, params));
+}
+
+/** Lists flight jobs in the workspace. Each job references a wayline file via file_id. */
+export function getWaylineJobs(
+  workspaceId: string,
+  params?: { page?: number; page_size?: number }
+): Promise<WaylineJobListResponse> {
+  return djiRequest.get<WaylineJobListResponse>(DJI_URLS.waylines.jobs(workspaceId, params));
+}
+
+/** Downloads a wayline KMZ file as an ArrayBuffer. The endpoint streams binary directly. */
+export function downloadWaylineKmz(
+  workspaceId: string,
+  waylineId: string
+): Promise<ArrayBuffer> {
+  return djiRequest.getBinary(DJI_URLS.waylines.downloadUrl(workspaceId, waylineId));
 }
 
 // ─── Dock / Flight Control ────────────────────────────────────────────────────

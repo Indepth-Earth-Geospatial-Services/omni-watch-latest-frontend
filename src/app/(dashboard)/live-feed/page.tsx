@@ -19,7 +19,9 @@ export default function LiveFeedPage() {
   const router = useRouter();
   const { activeProject } = useProject();
   // Poll every 5 s on this page so device online/offline status reflects quickly
-  const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({ refetchInterval: 5_000 });
+  const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({
+    refetchInterval: 5_000,
+  });
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
@@ -86,8 +88,7 @@ export default function LiveFeedPage() {
   }, []);
 
   const stopDevice = useCallback(
-    (sn: string) =>
-      setStopSignals((prev) => new Map(prev).set(sn, (prev.get(sn) ?? 0) + 1)),
+    (sn: string) => setStopSignals((prev) => new Map(prev).set(sn, (prev.get(sn) ?? 0) + 1)),
     []
   );
 
@@ -155,7 +156,7 @@ export default function LiveFeedPage() {
       </div>
 
       <MainLayout title='Live Feeds' subtitle={activeProject.name}>
-        <div className='flex gap-4 h-[calc(100vh-13rem)] font-poppins'>
+        <div className='flex gap-4 h-[calc(100vh-10rem)] font-poppins'>
           <DeviceSidebar
             projectDevices={projectDevices}
             unboundDevices={activeProject.devices}
