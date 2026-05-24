@@ -64,7 +64,7 @@ async function request<T>(
 
     // DJI signals errors via code !== 0 even on HTTP 200
     if (envelope.code !== 0) {
-      throw new DJIApiError(envelope.code, envelope.message ?? 'Request failed');
+      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed');
     }
 
     return envelope.data as T;
@@ -92,6 +92,17 @@ async function request<T>(
   }
 }
 
+/** Downloads a binary file (e.g. KMZ) from a DJI endpoint — bypasses the JSON envelope. */
+async function requestBinary(path: string): Promise<ArrayBuffer> {
+  const token = getToken();
+  const directUrl = `${DJI_BASE_URL}/${path.replace(/^\//, '')}`;
+  const res = await axios.get<ArrayBuffer>(directUrl, {
+    responseType: 'arraybuffer',
+    headers: { ...(token ? { 'x-auth-token': token } : {}) },
+  });
+  return res.data;
+}
+
 // Public API — four methods matching every HTTP verb the DJI server uses
 export const djiRequest = {
   get: <T>(path: string) => request<T>('GET', path),
@@ -101,4 +112,7 @@ export const djiRequest = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
 
   delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
+
+  /** Fetches a binary resource (ArrayBuffer) — no DJI envelope unwrapping. */
+  getBinary: (path: string) => requestBinary(path),
 };

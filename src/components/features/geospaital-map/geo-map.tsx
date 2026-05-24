@@ -25,6 +25,8 @@ import { MapCompass } from './MapCompass';
 import { AltitudeIndicator } from './AltitudeIndicator';
 import { AddElementPanel } from './AddElementPanel';
 import { ElementContextMenu } from './ElementContextMenu';
+import { WaylinePanel } from './WaylinePanel';
+import { useWaylines, useWaylineRoute } from '@/hooks/useWaylines';
 
 const MAP_STYLES: Record<string, string | object> = {
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
@@ -73,6 +75,9 @@ function GeoMap() {
     x: number; y: number; elementId: string; elementName: string;
   } | null>(null);
 
+  // ── Active wayline route overlay ──────────────────────────────────────────────
+  const [activeWaylineId, setActiveWaylineId] = useState<string | null>(null);
+
   // ── Data hooks ────────────────────────────────────────────────────────────────
   const { user } = useAuth();
   const { data: djiDevices = [] } = useDJIDevices();
@@ -83,6 +88,8 @@ function GeoMap() {
   const { mutate: addMapElement, isPending: isAddingElement } = useAddElement();
   const { mutate: deleteMapElement, isPending: isDeletingElement } = useDeleteElement();
   const { droneUpdates, getProcessedDroneData } = useTelemetry();
+  const { data: waylines = [], isLoading: isLoadingWaylines } = useWaylines();
+  const { data: activeRoute, isFetching: isLoadingRoute } = useWaylineRoute(activeWaylineId);
 
   // ── Nickname lookup list ──────────────────────────────────────────────────────
   const deviceList: UnifiedStream[] = useMemo(() => {
@@ -233,6 +240,29 @@ function GeoMap() {
 
   const dronePositionsArray = useMemo(() => Object.values(dronePositions), [dronePositions]);
 
+  // ── Wayline route GeoJSON — rebuilt only when the active route changes ─────────
+  const waylineGeoJSON = useMemo(() => {
+    if (!activeRoute || activeRoute.length < 2) return null;
+    return {
+      type: 'FeatureCollection' as const,
+      features: [
+        {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: activeRoute.map((p) => [p.lng, p.lat]),
+          },
+          properties: { kind: 'route' },
+        },
+        ...activeRoute.map((p) => ({
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+          properties: { kind: 'waypoint', index: p.index, alt: p.alt },
+        })),
+      ],
+    };
+  }, [activeRoute]);
+
   // ── One-shot auto-fly: snap to the drone the moment its first GPS fix arrives ──
   // Only triggers when there is exactly ONE drone in the project.
   // The ref prevents re-firing after the initial fly-to, keeping the user free to pan.
@@ -268,6 +298,29 @@ function GeoMap() {
       zoom: positions.length === 1 ? 16 : 14,
     }));
   }, [dronePositions]);
+
+  const fitToRoute = useCallback(() => {
+    if (!activeRoute || activeRoute.length === 0) return;
+    const lngs = activeRoute.map((p) => p.lng);
+    const lats = activeRoute.map((p) => p.lat);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    mapRef.current?.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]],
+      { padding: 80, duration: 1200, maxZoom: 18 }
+    );
+  }, [activeRoute]);
+
+  // Auto-fit map to show the full route whenever a new route loads
+  useEffect(() => {
+    if (!activeRoute || activeRoute.length === 0) return;
+    const lngs = activeRoute.map((p) => p.lng);
+    const lats = activeRoute.map((p) => p.lat);
+    mapRef.current?.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 80, duration: 1200, maxZoom: 18 }
+    );
+  }, [activeRoute]);
 
   const flyToDrone = useCallback((drone: DronePositionType) => {
     mapRef.current?.flyTo({
@@ -483,6 +536,94 @@ function GeoMap() {
             );
           })}
 
+        {/* Wayline route overlay */}
+        {waylineGeoJSON && (
+          <Source id='wayline-route' type='geojson' data={waylineGeoJSON as never}>
+            {/* Dark casing behind the line for contrast on satellite view */}
+            <Layer
+              id='wayline-casing'
+              type='line'
+              filter={['==', ['get', 'kind'], 'route']}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{ 'line-color': '#05253d', 'line-width': 8 }}
+            />
+            {/* Main dashed route line */}
+            <Layer
+              id='wayline-line'
+              type='line'
+              filter={['==', ['get', 'kind'], 'route']}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{ 'line-color': '#1C93FF', 'line-width': 3, 'line-dasharray': [5, 3] }}
+            />
+            {/* Waypoint pin — outer shadow halo */}
+            <Layer
+              id='wayline-waypoint-halo'
+              type='circle'
+              filter={['all', ['==', ['get', 'kind'], 'waypoint'], ['!=', ['get', 'index'], 0], ['!=', ['get', 'index'], -1]]}
+              paint={{
+                'circle-radius': 13,
+                'circle-color': 'rgba(28, 147, 255, 0.18)',
+                'circle-stroke-width': 0,
+              }}
+            />
+            {/* Waypoint pin — filled circle */}
+            <Layer
+              id='wayline-waypoints'
+              type='circle'
+              filter={['==', ['get', 'kind'], 'waypoint']}
+              paint={{
+                'circle-radius': 9,
+                'circle-color': '#1C93FF',
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2,
+              }}
+            />
+            {/* Waypoint number label (1-based) */}
+            <Layer
+              id='wayline-waypoint-labels'
+              type='symbol'
+              filter={['==', ['get', 'kind'], 'waypoint']}
+              layout={{
+                'text-field': ['to-string', ['+', ['get', 'index'], 1]],
+                'text-size': 9,
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-anchor': 'center',
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+              }}
+              paint={{ 'text-color': '#ffffff' }}
+            />
+          </Source>
+        )}
+
+        {/* Start (S) and End (E) markers for the active wayline */}
+        {activeRoute && activeRoute.length > 0 && (
+          <>
+            <Marker longitude={activeRoute[0].lng} latitude={activeRoute[0].lat} anchor='bottom'>
+              <div className='flex flex-col items-center'>
+                <div className='bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-t-lg rounded-b-sm shadow-lg select-none border border-emerald-400 whitespace-nowrap'>
+                  START
+                </div>
+                <div className='w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-emerald-500' />
+              </div>
+            </Marker>
+            {activeRoute.length > 1 && (
+              <Marker
+                longitude={activeRoute[activeRoute.length - 1].lng}
+                latitude={activeRoute[activeRoute.length - 1].lat}
+                anchor='bottom'
+              >
+                <div className='flex flex-col items-center'>
+                  <div className='bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-t-lg rounded-b-sm shadow-lg select-none border border-red-400 whitespace-nowrap'>
+                    END
+                  </div>
+                  <div className='w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-red-500' />
+                </div>
+              </Marker>
+            )}
+          </>
+        )}
+
         {/* Selected drone popup */}
         {selectedDrone && selectedDroneInfo && (
           <DroneInfoPopup
@@ -508,9 +649,20 @@ function GeoMap() {
         />
       )}
 
+      {/* Wayline route panel — floats top-left below the map navigation control */}
+      <WaylinePanel
+        waylines={waylines}
+        isLoading={isLoadingWaylines}
+        activeWaylineId={activeWaylineId}
+        activeRoute={activeRoute}
+        isLoadingRoute={isLoadingRoute}
+        onSelect={setActiveWaylineId}
+        onFitRoute={fitToRoute}
+      />
+
       {/* Bottom-left overlays: altitude gauge + compass (shown when a drone is selected) */}
       {selectedDroneInfo && (
-        <div className='absolute bottom-8 left-4 z-10 flex items-end gap-3'>
+        <div className='absolute bottom-16 left-4 z-10 flex items-end gap-3'>
           <AltitudeIndicator altitude={selectedDroneInfo.altitude} />
           <MapCompass heading={selectedDroneInfo.heading} />
         </div>

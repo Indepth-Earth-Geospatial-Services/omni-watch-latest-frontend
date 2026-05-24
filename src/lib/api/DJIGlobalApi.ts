@@ -14,7 +14,7 @@ import type {
   GetElementGroupsParams,
 } from '@/lib/types';
 
-const { MANAGE, MAP, CONTROL } = DJI_CONFIG;
+const { MANAGE, MAP, CONTROL, WAYLINE } = DJI_CONFIG;
 
 // Builds a query string from any plain object, skipping undefined/null/empty values.
 function qs(params: Record<string, unknown>): string {
@@ -149,6 +149,21 @@ export const DJI_URLS = {
 
     deviceFlightAreaStatus: (workspaceId: string) =>
       `${MAP}/workspaces/${workspaceId}/device-status`,
+  },
+
+  // ── Waylines ────────────────────────────────────────────────────────────────
+  waylines: {
+    // Lists wayline files in the workspace
+    list: (workspaceId: string, params?: { page?: number; page_size?: number; order_by?: string; favorited?: boolean }) =>
+      `${WAYLINE}/workspaces/${workspaceId}/waylines${qs(params ?? {})}`,
+
+    // Lists executed flight jobs — each job references a wayline file via file_id
+    jobs: (workspaceId: string, params?: { page?: number; page_size?: number }) =>
+      `${WAYLINE}/workspaces/${workspaceId}/jobs${qs(params ?? {})}`,
+
+    // Pre-signed download URL for a wayline KMZ (uses file_id as the wayline identifier)
+    downloadUrl: (workspaceId: string, waylineId: string) =>
+      `${WAYLINE}/workspaces/${workspaceId}/waylines/${waylineId}/url`,
   },
 
   // ── Dock / Flight Control ───────────────────────────────────────────────────
