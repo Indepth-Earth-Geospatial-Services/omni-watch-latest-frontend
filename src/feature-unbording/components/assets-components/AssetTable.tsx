@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   Wifi,
   Activity,
@@ -14,12 +14,17 @@ import {
   MoreVertical,
   X,
   AlertTriangle,
+  RefreshCw,
+  Download,
 } from 'lucide-react';
 import { TabType } from './AssetManagement';
-import { useUnbindDevice } from '@/hooks/useDJIDevices';
+import { useUnbindDevice, useDeviceOTA } from '@/hooks/useDJIDevices';
+import { useDJIWebSocket } from '@/hooks/useDJIWebSocket';
 import { useProjects, useUnassignDevice } from '@/hooks/useProjects';
-import AssignProjectModal from './AssignProjectModal';
+// Lazy — chunk only downloaded when the user first assigns a device to a project
+const AssignProjectModal = lazy(() => import('./AssignProjectModal'));
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
 
 const isDrone = (device: DJIDevice) => device.domain === '0';
@@ -36,9 +41,12 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
   const { data: projectsPage } = useProjects();
   const { mutate: unassign, isPending: isUnassigning } = useUnassignDevice();
   const { mutate: unbind, isPending: isUnbinding } = useUnbindDevice();
+  const { mutate: triggerOTA, isPending: isOTAPending } = useDeviceOTA();
+  const { upgradeStates } = useDJIWebSocket();
 
   const [assignTarget, setAssignTarget] = useState<{ sn: string; name: string } | null>(null);
   const [pendingUnbind, setPendingUnbind] = useState<{ sn: string; name: string } | null>(null);
+  const [pendingOTA, setPendingOTA] = useState<DJIDevice | null>(null);
   const [openMenuSn, setOpenMenuSn] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -85,28 +93,6 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
     ? assignedProjectFor(activeMenuDevice.deviceSn)
     : undefined;
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
-  if (devicesLoading) {
-    return (
-      <div className='w-[calc(100%-1rem)] bg-[#1D2026] rounded-lg border border-zinc-800/50 mx-2 flex items-center justify-center h-64 gap-3'>
-        <Loader2 className='w-6 h-6 text-[#1C93FF] animate-spin' />
-        <span className='text-sm text-zinc-500'>Loading devices…</span>
-      </div>
-    );
-  }
-
-  // ── Error ────────────────────────────────────────────────────────────────────
-  if (devicesError) {
-    return (
-      <div className='w-[calc(100%-1rem)] bg-[#1D2026] rounded-lg border border-zinc-800/50 mx-2 flex flex-col items-center justify-center h-64 gap-3'>
-        <AlertCircle className='w-7 h-7 text-red-400' />
-        <span className='text-sm text-zinc-400'>Failed to load devices</span>
-        <span className='text-xs text-red-400/80 font-mono max-w-[380px] text-center px-4'>
-          {devicesError.message}
-        </span>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -126,7 +112,55 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
               </tr>
             </thead>
             <tbody className='divide-y divide-zinc-800/30'>
-              {filtered.length === 0 ? (
+              {devicesLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    {/* Asset Identity */}
+                    <td className='px-5 py-4'>
+                      <div className='flex items-center gap-3'>
+                        <div className='w-9 h-9 rounded bg-zinc-800 animate-pulse' />
+                        <div className='h-3 w-28 bg-zinc-800 rounded animate-pulse' />
+                      </div>
+                    </td>
+                    {/* Serial Number */}
+                    <td className='px-5 py-4'>
+                      <div className='h-3 w-36 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    {/* Type */}
+                    <td className='px-5 py-4'>
+                      <div className='h-4 w-14 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    {/* Status */}
+                    <td className='px-5 py-4'>
+                      <div className='h-3 w-16 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    {/* Firmware */}
+                    <td className='px-5 py-4'>
+                      <div className='h-3 w-20 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    {/* Project */}
+                    <td className='px-5 py-4'>
+                      <div className='h-3 w-24 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    {/* Actions */}
+                    <td className='px-5 py-4'>
+                      <div className='w-7 h-7 bg-zinc-800 rounded-md animate-pulse' />
+                    </td>
+                  </tr>
+                ))
+              ) : devicesError ? (
+                <tr>
+                  <td colSpan={7} className='px-5 py-14 text-center'>
+                    <div className='flex flex-col items-center gap-2'>
+                      <AlertCircle className='w-7 h-7 text-red-400' />
+                      <span className='text-sm text-zinc-400'>Failed to load devices</span>
+                      <span className='text-xs text-red-400/80 font-mono max-w-[380px] text-center px-4'>
+                        {devicesError.message}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className='px-5 py-14 text-center'>
                     <div className='flex flex-col items-center gap-2'>
@@ -199,9 +233,34 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
 
                       {/* Firmware */}
                       <td className='px-5 py-4'>
-                        <span className='text-[11px] font-mono text-zinc-400'>
-                          {device.firmwareVersion || '—'}
-                        </span>
+                        {(() => {
+                          const upgrade = upgradeStates.get(device.deviceSn);
+                          if (upgrade) {
+                            const pct = upgrade.host.progress.percent;
+                            const step = upgrade.host.progress.step_key;
+                            return (
+                              <div className='space-y-1 min-w-[100px]'>
+                                <div className='flex items-center gap-1.5'>
+                                  <Download size={11} className='text-blue-400 animate-pulse' />
+                                  <span className='text-[10px] text-blue-400 font-semibold capitalize'>
+                                    {step}… {pct}%
+                                  </span>
+                                </div>
+                                <div className='w-full h-1 bg-zinc-800 rounded-full overflow-hidden'>
+                                  <div
+                                    className='h-full bg-blue-500 rounded-full transition-all duration-300'
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <span className='text-[11px] font-mono text-zinc-400'>
+                              {device.firmwareVersion || '—'}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Project */}
@@ -292,6 +351,25 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
             </button>
           </div>
 
+          {/* Firmware update */}
+          <div className='p-1.5 border-b border-zinc-800/70'>
+            <button
+              onClick={() => {
+                setOpenMenuSn(null);
+                setPendingOTA(activeMenuDevice);
+              }}
+              disabled={!!upgradeStates.get(activeMenuDevice.deviceSn)}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed'
+            >
+              {upgradeStates.get(activeMenuDevice.deviceSn) ? (
+                <Loader2 size={13} className='flex-shrink-0 animate-spin' />
+              ) : (
+                <RefreshCw size={13} className='flex-shrink-0' />
+              )}
+              Update Firmware
+            </button>
+          </div>
+
           {/* Danger zone */}
           <div className='p-1.5'>
             <button
@@ -309,6 +387,81 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── OTA firmware update confirmation modal ───────────────────────────── */}
+      {pendingOTA && createPortal(
+        <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
+          <div className='absolute inset-0 bg-black/70 backdrop-blur-sm' onClick={() => setPendingOTA(null)} />
+          <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+            <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg'>
+                  <RefreshCw size={15} className='text-emerald-400' />
+                </div>
+                <div>
+                  <h2 className='text-sm font-bold text-zinc-100'>Update Firmware</h2>
+                  <p className='text-[11px] text-zinc-500 truncate max-w-[180px]'>
+                    {pendingOTA.nickname || pendingOTA.deviceName || pendingOTA.deviceSn}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPendingOTA(null)}
+                className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <div className='px-5 py-4 space-y-3'>
+              <p className='text-sm text-zinc-300'>
+                Send a firmware update request to this device. The RC will prompt the operator to confirm and begin downloading.
+              </p>
+              <div className='bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 space-y-1'>
+                <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600'>Current version</p>
+                <p className='text-xs font-mono text-zinc-300'>{pendingOTA.firmwareVersion || '—'}</p>
+              </div>
+            </div>
+            <div className='flex items-center gap-2 px-5 py-4 border-t border-zinc-800'>
+              <button
+                onClick={() => setPendingOTA(null)}
+                className='flex-1 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!pendingOTA) return;
+                  triggerOTA(
+                    [
+                      {
+                        deviceName: pendingOTA.deviceName,
+                        sn: pendingOTA.deviceSn,
+                        productVersion: pendingOTA.firmwareVersion ?? '',
+                        firmwareUpgradeType: 1,
+                      },
+                    ],
+                    {
+                      onSuccess: () => {
+                        toast.success('Firmware update sent — confirm on the RC screen');
+                        setPendingOTA(null);
+                      },
+                      onError: (err) => {
+                        toast.error(`Update failed: ${err.message}`);
+                      },
+                    }
+                  );
+                }}
+                disabled={isOTAPending}
+                className='flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                {isOTAPending ? <Loader2 size={12} className='animate-spin' /> : <RefreshCw size={12} />}
+                Send Update
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Unbind confirmation modal ────────────────────────────────────────── */}
@@ -369,12 +522,16 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
         document.body
       )}
 
-      {/* Assign-to-project modal */}
-      <AssignProjectModal
-        deviceSn={assignTarget?.sn ?? null}
-        deviceName={assignTarget?.name ?? ''}
-        onClose={() => setAssignTarget(null)}
-      />
+      {/* Assign-to-project modal — lazily loaded */}
+      {assignTarget && (
+        <Suspense fallback={null}>
+          <AssignProjectModal
+            deviceSn={assignTarget.sn}
+            deviceName={assignTarget.name}
+            onClose={() => setAssignTarget(null)}
+          />
+        </Suspense>
+      )}
     </>
   );
 };

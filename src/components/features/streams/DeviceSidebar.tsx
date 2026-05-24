@@ -13,6 +13,7 @@ interface DeviceSidebarProps {
   streamingDevices: Map<string, string>;
   onSelect: (sn: string) => void;
   onStop: (sn: string) => void;
+  isLoading?: boolean;
 }
 
 export const DeviceSidebar = memo(function DeviceSidebar({
@@ -23,6 +24,7 @@ export const DeviceSidebar = memo(function DeviceSidebar({
   streamingDevices,
   onSelect,
   onStop,
+  isLoading = false,
 }: DeviceSidebarProps) {
   const onlineCount = projectDevices.filter((d) => d.status).length;
   const effectiveSn = selectedSn ?? projectDevices[0]?.deviceSn;
@@ -39,7 +41,21 @@ export const DeviceSidebar = memo(function DeviceSidebar({
       </div>
 
       <div className='flex-1 overflow-y-auto p-2 space-y-1'>
-        {projectDevices.length === 0
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className='flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-zinc-900/30 border border-zinc-800/30'
+            >
+              <div className='w-7 h-7 bg-zinc-800 rounded-md animate-pulse flex-shrink-0' />
+              <div className='flex-1 flex flex-col gap-1.5'>
+                <div className='h-2.5 w-24 bg-zinc-800 rounded animate-pulse' />
+                <div className='h-2 w-16 bg-zinc-800/60 rounded animate-pulse' />
+              </div>
+              <div className='w-2.5 h-2.5 bg-zinc-800 rounded-full animate-pulse' />
+            </div>
+          ))
+        ) : projectDevices.length === 0
           ? unboundDevices.map((d) => (
               <div
                 key={d.id}

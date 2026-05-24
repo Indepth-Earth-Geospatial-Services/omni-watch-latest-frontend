@@ -293,3 +293,4 @@ export function useDeviceOTA() {
     mutationFn: (payload) => deviceOTA(workspaceId, payload),
   });
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Users, UserCheck, Filter, Search, Pencil, Loader2, X, AlertTriangle } from "lucide-react";
+import { Users, UserCheck, Filter, Search, Pencil, X, AlertTriangle } from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { StatCard } from "@/components/features/metrics/stat-card";
 import { useWorkspaceUsers, useUpdateUser } from "@/hooks/useUser";
@@ -166,37 +166,54 @@ export default function UsersPage() {
             </div>
 
             <div className="overflow-x-auto">
-              {error ? (
-                <div className="p-8 text-center text-red-400 flex items-center justify-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Failed to load users: {(error as Error).message}
-                </div>
-              ) : isLoading ? (
-                <div className="p-8 text-center text-gray-400 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading users...
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-800">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">User</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">Email</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">Status</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">Last Login</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">Created</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-300">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {pagedUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                          No users found
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">User</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">Email</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">Status</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">Last Login</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">Created</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {isLoading ? (
+                    Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                      <tr key={i}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-700 rounded-full animate-pulse" />
+                            <div className="flex flex-col gap-1.5">
+                              <div className="h-3 w-28 bg-gray-700 rounded animate-pulse" />
+                              <div className="h-2 w-20 bg-gray-700/60 rounded animate-pulse" />
+                            </div>
+                          </div>
                         </td>
+                        <td className="px-4 py-3"><div className="h-3 w-36 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-4 py-3"><div className="h-5 w-14 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-4 py-3"><div className="h-3 w-24 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-4 py-3"><div className="h-3 w-24 bg-gray-700 rounded animate-pulse" /></td>
+                        <td className="px-4 py-3"><div className="w-6 h-6 bg-gray-700 rounded animate-pulse" /></td>
                       </tr>
-                    ) : (
-                      pagedUsers.map((user) => (
+                    ))
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-red-400">
+                        <div className="flex items-center justify-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Failed to load users: {(error as Error).message}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : pagedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        No users found
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedUsers.map((user) => (
                         <tr key={user.id} className="hover:bg-gray-700/50">
                           <td className="px-4 py-3">
                             <div className="flex items-center space-x-3">
@@ -245,7 +262,6 @@ export default function UsersPage() {
                     )}
                   </tbody>
                 </table>
-              )}
             </div>
 
             {/* Pagination */}

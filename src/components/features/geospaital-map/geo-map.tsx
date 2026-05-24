@@ -14,7 +14,7 @@ import { DJI_CONFIG } from '@/lib/config/config';
 import { feedData } from '@/lib/data';
 import type { UnifiedStream } from '@/lib/types';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer, MapRef } from 'react-map-gl/maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { DronePositionType, SelectedDroneInfo, MapViewMode, PendingPoint } from './map-types';
@@ -47,6 +47,12 @@ const MAP_STYLES: Record<string, string | object> = {
 function GeoMap() {
   const mapRef = useRef<MapRef>(null);
   const prevTelemetryRef = useRef<Record<string, string>>({});
+  const hasAutoFocusedRef = useRef(false);
+  const [, startMapTransition] = useTransition();
+
+  // Cancel any in-flight map animation so MapLibre tears down its window-level
+  // pointer listeners cleanly before the component unmounts (prevents navigation lock).
+  useEffect(() => () => { mapRef.current?.stop(); }, []);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<MapViewMode>('multi');
@@ -100,6 +106,12 @@ function GeoMap() {
     }));
   }, [djiDevices]);
 
+  // SNs of domain-0 devices (aircraft only) — excludes RC/dock from fleet + WS processing.
+  const droneSnSet = useMemo(
+    () => new Set(djiDevices.filter((d) => d.domain === '0').map((d) => d.deviceSn)),
+    [djiDevices]
+  );
+
   // ── Seed fleet from REST API — shows devices in panel before WS events arrive ──
   useEffect(() => {
     if (!djiDevices.length) return;
@@ -107,7 +119,7 @@ function GeoMap() {
       const next = { ...prev };
       let changed = false;
       djiDevices
-        .filter((d) => d.status)
+        .filter((d) => d.status && d.domain === '0') // aircraft only — exclude RC / dock
         .forEach((d) => {
           if (!next[d.deviceSn]) {
             next[d.deviceSn] = {
@@ -146,24 +158,26 @@ function GeoMap() {
     setDronePositions((prev) => {
       const next = { ...prev }; // preserve REST-seeded entries
       droneUpdates.forEach((_update, sn) => {
+        if (!droneSnSet.has(sn)) return; // skip RC / dock OSD — aircraft only
         const t = getProcessedDroneData(sn);
         if (!t) return;
-        const hasValidGPS = t.latitude !== 0 || t.longitude !== 0;
+        // useTelemetry returns sticky last-valid coords — trust lat/lng directly.
+        const hasGPS = (t.latitude !== 0 || t.longitude !== 0) || (prev[sn]?.hasGPS ?? false);
         const nickname =
           deviceList.find((d) => d.id === sn)?.metadata?.alias ?? (prev[sn]?.nickname ?? sn);
         next[sn] = {
           sn,
           nickname,
-          longitude: hasValidGPS ? t.longitude : (prev[sn]?.longitude ?? 0),
-          latitude: hasValidGPS ? t.latitude : (prev[sn]?.latitude ?? 0),
+          longitude: t.longitude,
+          latitude: t.latitude,
           heading: t.heading,
           altitude: t.altitude,
-          hasGPS: hasValidGPS || (prev[sn]?.hasGPS ?? false),
+          hasGPS,
         };
       });
       return next;
     });
-  }, [droneUpdates, getProcessedDroneData, deviceList]);
+  }, [droneUpdates, getProcessedDroneData, deviceList, droneSnSet]);
 
   // ── Single-mode: auto-follow tracked drone ────────────────────────────────────
   const trackedLat = selectedDrone ? dronePositions[selectedDrone.sn]?.latitude : undefined;
@@ -218,6 +232,24 @@ function GeoMap() {
   );
 
   const dronePositionsArray = useMemo(() => Object.values(dronePositions), [dronePositions]);
+
+  // ── One-shot auto-fly: snap to the drone the moment its first GPS fix arrives ──
+  // Only triggers when there is exactly ONE drone in the project.
+  // The ref prevents re-firing after the initial fly-to, keeping the user free to pan.
+  useEffect(() => {
+    if (hasAutoFocusedRef.current) return;
+    if (dronePositionsArray.length !== 1) return;
+    const [drone] = dronePositionsArray;
+    if (!drone.hasGPS) return;
+    mapRef.current?.flyTo({
+      center: [drone.longitude, drone.latitude],
+      zoom: 17,
+      duration: 2000,
+      essential: true,
+    });
+    hasAutoFocusedRef.current = true;
+  }, [dronePositionsArray]);
+
   const elementCount = useMemo(
     () => elementGroups.reduce((acc, g) => acc + g.elements.length, 0),
     [elementGroups]
@@ -357,7 +389,7 @@ function GeoMap() {
       <Map
         ref={mapRef}
         {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
+        onMove={(evt) => startMapTransition(() => setViewState(evt.viewState))}
         mapStyle={MAP_STYLES[selectedStyle] as string}
         style={{ width: '100%', height: '100%' }}
         cursor={isDrawMode ? 'crosshair' : 'grab'}

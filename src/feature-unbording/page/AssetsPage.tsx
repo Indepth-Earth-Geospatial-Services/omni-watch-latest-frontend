@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Plus } from 'lucide-react';
 import AssetManagement from '../components/assets-components/AssetManagement';
 import FleetOverviewKPI from '../components/assets-components/FleetOverviewKPI';
-import AddAssetModal from '../components/assets-components/AddAssetModal';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+
+// Lazy — chunk only downloaded when the user first clicks "Add Asset"
+const AddAssetModal = lazy(() => import('../components/assets-components/AddAssetModal'));
 
 /**
  * Fetches all devices bound to the workspace from:
@@ -35,7 +37,11 @@ export default function AssetsPage() {
 
       <AssetManagement devices={devices} isLoading={isLoading} error={error} />
 
-      <AddAssetModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+      {showAddModal && (
+        <Suspense fallback={null}>
+          <AddAssetModal open={true} onClose={() => setShowAddModal(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

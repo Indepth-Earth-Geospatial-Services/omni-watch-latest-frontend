@@ -1,5 +1,6 @@
 'use client';
 import { memo } from 'react';
+import Link from 'next/link';
 import {
   LayoutTemplate,
   RefreshCw,
@@ -12,6 +13,8 @@ import {
   MapPin,
   Users,
   Crosshair,
+  Video,
+  Gamepad2,
 } from 'lucide-react';
 import { DJI_CONFIG } from '@/lib/config/config';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
@@ -177,9 +180,7 @@ export const TelemetryPanel = memo(
 
         {DJI_CONFIG.USE_DJI_CLOUD && (
           <button
-            onClick={() =>
-              onSyncGeofences({ device_sn: boundDevices.map((d) => d.deviceSn) })
-            }
+            onClick={() => onSyncGeofences({ device_sn: boundDevices.map((d) => d.deviceSn) })}
             disabled={isSyncing || boundDevices.length === 0}
             className='flex-1 flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-800 disabled:cursor-not-allowed text-white py-1.5 px-2 rounded-lg text-xs transition-colors'
           >
@@ -196,7 +197,9 @@ export const TelemetryPanel = memo(
             Tracking
           </div>
           <div className='font-semibold text-sm truncate mb-0.5'>{selectedDroneInfo.nickname}</div>
-          <div className='text-xs text-gray-400 mb-3'>SN: {selectedDroneInfo.serialNumber.slice(-8)}</div>
+          <div className='text-xs text-gray-400 mb-3'>
+            SN: {selectedDroneInfo.serialNumber.slice(-8)}
+          </div>
 
           <div className='grid grid-cols-2 gap-1.5 text-xs'>
             <TelemetryItem
@@ -227,16 +230,30 @@ export const TelemetryPanel = memo(
 
           <div className='mt-2 pt-2 border-t border-gray-700/50 flex justify-between text-xs'>
             <span className='text-gray-400'>Mode</span>
-            <span
-              className={
-                selectedDroneInfo.modeCode === 1 ? 'text-green-400' : 'text-gray-300'
-              }
-            >
+            <span className={selectedDroneInfo.modeCode === 1 ? 'text-green-400' : 'text-gray-300'}>
               {selectedDroneInfo.modeCode === 1 ? 'In-flight' : 'Standby'}
             </span>
           </div>
           <div className='mt-1 text-[10px] text-gray-500 font-mono text-right'>
             {selectedDroneInfo.latitude}, {selectedDroneInfo.longitude}
+          </div>
+
+          {/* Quick-nav buttons */}
+          <div className='mt-3 pt-2.5 border-t border-blue-700/30 grid grid-cols-2 gap-2'>
+            <Link
+              href='/live-feed'
+              className='flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-zinc-800/70 border border-zinc-700/50 hover:bg-[#1C93FF]/15 hover:border-[#1C93FF]/40 text-zinc-400 hover:text-[#1C93FF] transition-colors text-[11px] font-semibold'
+            >
+              <Video className='w-3.5 h-3.5 flex-shrink-0' />
+              Live Feed
+            </Link>
+            <Link
+              href='/control'
+              className='flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-zinc-800/70 border border-zinc-700/50 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-zinc-400 hover:text-emerald-400 transition-colors text-[11px] font-semibold'
+            >
+              <Gamepad2 className='w-3.5 h-3.5 flex-shrink-0' />
+              Control
+            </Link>
           </div>
         </div>
       )}
@@ -248,7 +265,9 @@ export const TelemetryPanel = memo(
             <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wider'>
               Live Fleet
             </span>
-            <span className='text-xs font-mono text-blue-400'>{dronePositionsArray.length} active</span>
+            <span className='text-xs font-mono text-blue-400'>
+              {dronePositionsArray.length} active
+            </span>
           </div>
 
           {dronePositionsArray.length === 0 ? (
@@ -264,12 +283,12 @@ export const TelemetryPanel = memo(
                 return (
                   <button
                     key={drone.sn}
-                    onClick={() => drone.hasGPS ? onFlyToDrone(drone) : undefined}
-                    className={`w-full text-left p-2.5 rounded-xl text-xs transition-all border ${
+                    onClick={() => (drone.hasGPS ? onFlyToDrone(drone) : undefined)}
+                    className={`w-full text-left p-2.5 rounded-xl text-xs transition-all border outline-none select-none focus:outline-none focus:ring-0 ${
                       isSelected
-                        ? 'border-blue-600 bg-blue-950/40'
+                        ? 'border-blue-500 bg-blue-950/40 outline-none select-none focus:outline-none focus:ring-0'
                         : drone.hasGPS
-                          ? 'border-gray-800 hover:border-gray-600 bg-neutral-900/60'
+                          ? 'border-gray-800 hover:border-gray-600 bg-neutral-900/60 '
                           : 'border-yellow-900/40 bg-neutral-900/40 cursor-default'
                     }`}
                   >
@@ -283,7 +302,9 @@ export const TelemetryPanel = memo(
                         <span className='font-semibold truncate'>{drone.nickname}</span>
                       </div>
                       {t && drone.hasGPS && (
-                        <span className={`font-mono flex-shrink-0 font-semibold ${batteryClass(t.battery)}`}>
+                        <span
+                          className={`font-mono flex-shrink-0 font-semibold ${batteryClass(t.battery)}`}
+                        >
                           {t.battery}%
                         </span>
                       )}
@@ -294,7 +315,9 @@ export const TelemetryPanel = memo(
                           No GPS fix · {t.gpsNumber} sat{t.gpsNumber !== 1 ? 's' : ''} visible
                         </div>
                       ) : (
-                        <div className='text-yellow-600/80 font-mono text-[10px]'>Awaiting telemetry…</div>
+                        <div className='text-yellow-600/80 font-mono text-[10px]'>
+                          Awaiting telemetry…
+                        </div>
                       )
                     ) : t ? (
                       <div className='grid grid-cols-3 gap-1 text-gray-400'>

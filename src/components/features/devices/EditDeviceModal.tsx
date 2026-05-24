@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Pencil, X, Tag, PenLine, AlignLeft, Link, Power, AlertTriangle, Loader2, Save } from 'lucide-react';
-import { DroneAPIResponse } from '@/hooks/useDronesWebSocket';
+import { DroneAPIResponse } from '@/lib/types';
 
 interface UpdateDronePayload {
   deviceName: string;

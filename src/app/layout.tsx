@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='en' suppressHydrationWarning className={poppins.variable}>
+    <html lang='en' suppressHydrationWarning className={poppins.variable} data-scroll-behavior='smooth'>
       <body style={{ fontFamily: 'Inter, sans-serif' }}>
         <Providers>{children}</Providers>
       </body>

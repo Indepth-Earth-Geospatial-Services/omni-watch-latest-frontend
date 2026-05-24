@@ -3,6 +3,7 @@
 import React from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { StatCard } from '@/components/features/metrics/stat-card';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
 import {
   AlertTriangle,
   ShieldAlert,
@@ -14,6 +15,12 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { data: devices = [], isLoading } = useDJIDevices();
+
+  const assetsOnline  = devices.filter((d) => d.status).length;
+  const totalAssets   = devices.length;
+  const dronesOnline  = devices.filter((d) => d.domain === '0' && d.status).length;
+
   return (
     <div className='bg-background text-foreground min-h-screen'>
       <MainLayout
@@ -61,11 +68,11 @@ export default function DashboardPage() {
             />
             <StatCard
               title='Assets Online'
-              value={142}
+              value={isLoading ? '…' : assetsOnline}
               icon={Radio}
               color='green'
               variant='hover-border'
-              trend={{ direction: 'up', value: '+1 from yesterday' }}
+              trend={{ direction: 'up', value: `${dronesOnline} drone${dronesOnline !== 1 ? 's' : ''} active` }}
             />
             <StatCard
               title='Avg Response Time'
@@ -81,7 +88,7 @@ export default function DashboardPage() {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
             <StatCard title='Operational Efficiency' value='95%' icon={TrendingUp} color='purple' />
             <StatCard title='Critical Incidents' value={2} icon={AlertTriangle} color='orange' />
-            <StatCard title='Total Assets' value={156} icon={Radio} color='green' />
+            <StatCard title='Total Assets' value={isLoading ? '…' : totalAssets} icon={Radio} color='green' />
           </div>
 
           {/* Main Content Grid */}

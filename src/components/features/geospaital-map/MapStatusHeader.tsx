@@ -8,8 +8,8 @@ export const MapStatusHeader = memo(() => {
   const { data: djiDevices = [] } = useDJIDevices();
 
   const totalElements = elementGroups.reduce((acc, g) => acc + g.elements.length, 0);
-  // Count all online devices — domain values vary by DJI deployment (0/1/2/3)
-  const onlineDrones = djiDevices.filter((d) => d.status).length;
+  // Domain confirmed from live OSD logs: '0'=drone, '2'=RC
+  const onlineDrones = djiDevices.filter((d) => d.domain === '0' && d.status).length;
   // Domain 1 = dock per DJI Cloud API standard; domain 3 used by some deployments
   const onlineDocks = djiDevices.filter((d) => (d.domain === '1' || d.domain === '3') && d.status).length;
 

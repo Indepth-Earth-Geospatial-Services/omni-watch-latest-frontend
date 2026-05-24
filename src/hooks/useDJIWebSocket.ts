@@ -8,7 +8,7 @@
 // Connection: ws://<host>/api/v1/ws?x-auth-token=<jwt>
 // Messages:   JSON { biz_code: string; data: object }
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, startTransition } from 'react';
 import { DJI_CONFIG } from '@/lib/config/config';
 import { getToken } from '@/lib/config/token-store';
 
@@ -19,7 +19,8 @@ export type BizCode =
   | 'device_osd'
   | 'hms_event'
   | 'task_progress'
-  | 'flight_area_sync';
+  | 'flight_area_sync'
+  | 'device_upgrade_progress';
 
 export interface DeviceOnlineUpdateData {
   sn: string;
@@ -87,6 +88,15 @@ export interface FlightAreaSyncData {
   result?: string;
 }
 
+// step_key: 'downloading' | 'upgrading' | 'success' | 'failure'
+export interface DeviceUpgradeProgressData {
+  sn: string;
+  host: {
+    progress: { percent: number; step_key: string };
+    status: number; // 1=downloading, 2=upgrading, 3=success, 4=failure
+  };
+}
+
 interface DJIMessage {
   biz_code: string;
   data: unknown;
@@ -100,6 +110,7 @@ interface EventHandlerMap {
   hms_event: EventHandler<HMSEventData>[];
   task_progress: EventHandler<TaskProgressData>[];
   flight_area_sync: EventHandler<FlightAreaSyncData>[];
+  device_upgrade_progress: EventHandler<DeviceUpgradeProgressData>[];
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -112,12 +123,14 @@ export function useDJIWebSocket() {
     hms_event: [],
     task_progress: [],
     flight_area_sync: [],
+    device_upgrade_progress: [],
   });
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [deviceStates, setDeviceStates] = useState<Map<string, DeviceOnlineUpdateData>>(new Map());
   const [osdStates, setOsdStates] = useState<Map<string, DeviceOSDData>>(new Map());
+  const [upgradeStates, setUpgradeStates] = useState<Map<string, DeviceUpgradeProgressData>>(new Map());
 
   // Subscribe to a specific biz_code event; returns an unsubscribe function
   const on = useCallback(
@@ -184,6 +197,7 @@ export function useDJIWebSocket() {
       };
 
       ws.onmessage = (event) => {
+        if (cancelled) return;
         try {
           const msg = JSON.parse(event.data as string) as DJIMessage;
           const { biz_code, data } = msg;
@@ -197,25 +211,44 @@ export function useDJIWebSocket() {
             (handlersRef.current[biz_code as BizCode] as any[]).forEach((h) => h(data));
           }
 
-          // Built-in: maintain device state map for device_online_update
-          if (biz_code === 'device_online_update') {
-            const update = data as DeviceOnlineUpdateData;
-            setDeviceStates((prev) => {
-              const next = new Map(prev);
-              next.set(update.sn, update);
-              return next;
-            });
-          }
+          // Wrap all state updates in startTransition so navigation takes priority
+          // over incoming telemetry re-renders.
+          startTransition(() => {
+            // Built-in: maintain device state map for device_online_update
+            if (biz_code === 'device_online_update') {
+              const update = data as DeviceOnlineUpdateData;
+              setDeviceStates((prev) => {
+                const next = new Map(prev);
+                next.set(update.sn, update);
+                return next;
+              });
+            }
 
-          // Built-in: maintain OSD map — primary source of GPS + telemetry
-          if (biz_code === 'device_osd') {
-            const osd = data as DeviceOSDData;
-            setOsdStates((prev) => {
-              const next = new Map(prev);
-              next.set(osd.sn, osd);
-              return next;
-            });
-          }
+            // Built-in: maintain OSD map — primary source of GPS + telemetry
+            if (biz_code === 'device_osd') {
+              const osd = data as DeviceOSDData;
+              setOsdStates((prev) => {
+                const next = new Map(prev);
+                next.set(osd.sn, osd);
+                return next;
+              });
+            }
+
+            // Built-in: track OTA progress per device; remove entry once done/failed
+            if (biz_code === 'device_upgrade_progress') {
+              const upgrade = data as DeviceUpgradeProgressData;
+              setUpgradeStates((prev) => {
+                const next = new Map(prev);
+                const done = upgrade.host.status === 3 || upgrade.host.status === 4;
+                if (done) {
+                  next.delete(upgrade.sn);
+                } else {
+                  next.set(upgrade.sn, upgrade);
+                }
+                return next;
+              });
+            }
+          });
         } catch (err) {
           console.error('[DJI WS] Failed to parse message:', err);
         }
@@ -235,5 +268,5 @@ export function useDJIWebSocket() {
     };
   }, []);
 
-  return { isConnected, deviceStates, osdStates, on };
+  return { isConnected, deviceStates, osdStates, upgradeStates, on };
 }
