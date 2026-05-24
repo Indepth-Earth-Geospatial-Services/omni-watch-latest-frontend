@@ -41,8 +41,9 @@ export interface GeoJSONFeature {
 export interface ElementGroup {
   id: string;
   name: string;
-  type: number;         // 0 = Pilot Share Layer
+  type: number;         // 0 = Custom, 1 = Default Layer, 2 = Pilot Share Layer
   elements: MapElement[];
+  is_lock: boolean;
 }
 
 // Response data for POST /element-groups/{element_group_id}/elements

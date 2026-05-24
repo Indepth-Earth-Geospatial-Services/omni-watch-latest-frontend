@@ -1,6 +1,22 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  FileText,
+  PlaneTakeoff,
+  HardDrive,
+  Clock,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Search,
+  List,
+  Inbox,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { useDJIDevices } from "@/hooks/useDJIDevices";
 import { useUploadedLogs, useDeleteLogFile, useCancelLogUpload } from "@/hooks/useDeviceLogs";
@@ -56,7 +72,7 @@ function LogRow({
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <i className="fas fa-file-alt text-blue-400 shrink-0"></i>
+          <FileText className="text-blue-400 shrink-0 w-4 h-4" />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-gray-100 font-mono text-sm truncate">
@@ -67,16 +83,16 @@ function LogRow({
               </span>
             </div>
             <div className="text-xs text-gray-400 mt-0.5 flex gap-4">
-              <span>
-                <i className="fas fa-drone mr-1"></i>
+              <span className="flex items-center gap-1">
+                <PlaneTakeoff className="w-3 h-3" />
                 {log.deviceSn}
               </span>
-              <span>
-                <i className="fas fa-hdd mr-1"></i>
+              <span className="flex items-center gap-1">
+                <HardDrive className="w-3 h-3" />
                 {formatBytes(totalSize)}
               </span>
-              <span>
-                <i className="fas fa-clock mr-1"></i>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
                 {formatTs(log.createTime)}
               </span>
               <span>{log.list?.length ?? 0} file(s)</span>
@@ -100,9 +116,9 @@ function LogRow({
             className="p-1.5 hover:bg-gray-600 rounded"
             title="Delete log"
           >
-            <i className="fas fa-trash text-red-400 text-sm"></i>
+            <Trash2 className="text-red-400 w-4 h-4" />
           </button>
-          <i className={`fas fa-chevron-${expanded ? "up" : "down"} text-gray-500 text-sm`}></i>
+          {expanded ? <ChevronUp className="text-gray-500 w-4 h-4" /> : <ChevronDown className="text-gray-500 w-4 h-4" />}
         </div>
       </div>
 
@@ -179,7 +195,7 @@ export default function LogsPage() {
           {/* Device Selector + Actions */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <i className="fas fa-drone text-blue-400"></i>
+              <PlaneTakeoff className="text-blue-400 w-4 h-4" />
               <select
                 value={selectedDeviceSn}
                 onChange={(e) => setSelectedDeviceSn(e.target.value)}
@@ -203,7 +219,7 @@ export default function LogsPage() {
               disabled={!selectedDeviceSn || logsLoading}
               className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50"
             >
-              <i className={`fas fa-sync-alt mr-2 ${logsLoading ? "fa-spin" : ""}`}></i>
+              <RefreshCw className={`w-4 h-4 mr-2 ${logsLoading ? "animate-spin" : ""}`} />
               Refresh
             </button>
           </div>
@@ -211,13 +227,13 @@ export default function LogsPage() {
           {/* Filters */}
           <div className="bg-card p-4 rounded-lg border border-gray-800">
             <div className="flex items-center space-x-2 mb-4">
-              <i className="fas fa-filter text-blue-500"></i>
+              <Filter className="text-blue-500 w-5 h-5" />
               <h3 className="text-lg font-semibold">Filters</h3>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <i className="fas fa-search absolute left-2 top-2.5 text-gray-400"></i>
+                  <Search className="absolute left-2 top-2.5 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Search by log ID…"
@@ -244,7 +260,7 @@ export default function LogsPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800 flex items-center justify-between">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <i className="fas fa-list text-blue-500"></i>
+                <List className="text-blue-500 w-5 h-5" />
                 Uploaded Logs
               </h3>
               <span className="text-sm text-gray-400">
@@ -257,22 +273,22 @@ export default function LogsPage() {
             <div className="p-4">
               {!selectedDeviceSn ? (
                 <div className="text-center py-12 text-gray-400">
-                  <i className="fas fa-drone text-3xl mb-3 block text-gray-600"></i>
+                  <PlaneTakeoff className="w-8 h-8 mb-3 mx-auto text-gray-600" />
                   Select a device above to view its uploaded logs
                 </div>
               ) : logsError ? (
-                <div className="text-center py-8 text-red-400">
-                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                <div className="text-center py-8 text-red-400 flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
                   Failed to load logs: {(logsError as Error).message}
                 </div>
               ) : logsLoading ? (
-                <div className="text-center py-8 text-gray-400">
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                <div className="text-center py-8 text-gray-400 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Loading logs…
                 </div>
               ) : filteredLogs.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
-                  <i className="fas fa-inbox text-3xl mb-3 block text-gray-600"></i>
+                  <Inbox className="w-8 h-8 mb-3 mx-auto text-gray-600" />
                   No uploaded logs found
                 </div>
               ) : (

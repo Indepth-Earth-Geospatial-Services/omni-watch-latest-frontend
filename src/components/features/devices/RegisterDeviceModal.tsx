@@ -2,6 +2,25 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import {
+  X,
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  Check,
+  CheckCircle,
+  PlaneTakeoff,
+  Video,
+  Camera,
+  Barcode,
+  Link,
+  Tag,
+  PenLine,
+  AlignLeft,
+  Layers,
+  AlertTriangle,
+  Info,
+} from 'lucide-react';
 interface CreateDronePayload {
   deviceSerialNumber: string;
   deviceName: string;
@@ -228,7 +247,7 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
             }}
             className='text-gray-400 hover:text-white transition-colors'
           >
-            <i className='fas fa-times text-xl'></i>
+            <X className='w-5 h-5' />
           </button>
         </div>
 
@@ -273,8 +292,8 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
         {/* Error Message */}
         {errors.submit && (
           <div className='px-6 pb-4'>
-            <div className='bg-red-900/20 border border-red-500 rounded-lg p-3 text-red-400 text-sm'>
-              <i className='fas fa-exclamation-triangle mr-2'></i>
+            <div className='bg-red-900/20 border border-red-500 rounded-lg p-3 text-red-400 text-sm flex items-center'>
+              <AlertTriangle className='w-4 h-4 mr-2 shrink-0' />
               {errors.submit}
             </div>
           </div>
@@ -293,7 +312,7 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
             }
             className='px-4 py-2 text-gray-400 hover:text-white transition-colors'
           >
-            <i className='fas fa-arrow-left mr-2'></i>
+            <ArrowLeft className='w-4 h-4 mr-2 inline' />
             {step === 'device-type' ? 'Cancel' : 'Back'}
           </button>
           <button
@@ -303,18 +322,18 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
           >
             {createMutation.isPending || bindMutation.isPending ? (
               <>
-                <i className='fas fa-spinner fa-spin mr-2'></i>
+                <Loader2 className='w-4 h-4 mr-2 inline animate-spin' />
                 Registering...
               </>
             ) : step === 'confirm' ? (
               <>
-                <i className='fas fa-check mr-2'></i>
+                <Check className='w-4 h-4 mr-2 inline' />
                 Register Device
               </>
             ) : (
               <>
                 Next
-                <i className='fas fa-arrow-right ml-2'></i>
+                <ArrowRight className='w-4 h-4 ml-2 inline' />
               </>
             )}
           </button>
@@ -332,22 +351,22 @@ function DeviceTypeStep({
   deviceType: DeviceType;
   setDeviceType: (type: DeviceType) => void;
 }) {
-  const deviceTypes: { type: DeviceType; icon: string; title: string; description: string }[] = [
+  const deviceTypes: { type: DeviceType; icon: React.ComponentType<{ className?: string }>; title: string; description: string }[] = [
     {
       type: 'DRONE',
-      icon: 'fa-drone',
+      icon: PlaneTakeoff,
       title: 'Drone',
       description: 'Register a drone device with telemetry tracking',
     },
     {
       type: 'BODY CAM',
-      icon: 'fa-video',
+      icon: Video,
       title: 'Body Camera',
       description: 'Register a wearable body camera for personnel',
     },
     {
       type: 'CCTV',
-      icon: 'fa-camera',
+      icon: Camera,
       title: 'CCTV Camera',
       description: 'Register a fixed CCTV surveillance camera',
     },
@@ -377,7 +396,7 @@ function DeviceTypeStep({
                   deviceType === dt.type ? 'bg-blue-500' : 'bg-gray-700'
                 }`}
               >
-                <i className={`fas ${dt.icon} text-2xl text-white`}></i>
+                <dt.icon className='w-8 h-8 text-white' />
               </div>
               <div>
                 <h4 className='font-semibold text-white mb-1'>{dt.title}</h4>
@@ -385,7 +404,7 @@ function DeviceTypeStep({
               </div>
               {deviceType === dt.type && (
                 <div className='mt-2'>
-                  <i className='fas fa-check-circle text-blue-500'></i>
+                  <CheckCircle className='text-blue-500 w-5 h-5' />
                 </div>
               )}
             </div>
@@ -408,8 +427,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
       {/* Serial Number or Stream URL */}
       {deviceType === 'DRONE' ? (
         <div>
-          <label className='block text-sm font-medium text-gray-300 mb-2'>
-            <i className='fas fa-barcode mr-2 text-blue-500'></i>
+          <label className='flex items-center text-sm font-medium text-gray-300 mb-2'>
+            <Barcode className='w-4 h-4 mr-2 text-blue-500' />
             Select Serial Number
           </label>
           {unregisteredDevices.length > 0 ? (
@@ -428,8 +447,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
               ))}
             </select>
           ) : (
-            <div className='p-4 bg-yellow-900/20 border border-yellow-500 rounded-lg text-yellow-400 text-sm'>
-              <i className='fas fa-exclamation-triangle mr-2'></i>
+            <div className='p-4 bg-yellow-900/20 border border-yellow-500 rounded-lg text-yellow-400 text-sm flex items-start'>
+              <AlertTriangle className='w-4 h-4 mr-2 shrink-0 mt-0.5' />
               No unregistered drones detected. Make sure the drone is sending telemetry data.
             </div>
           )}
@@ -439,8 +458,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
         </div>
       ) : (
         <div>
-          <label className='block text-sm font-medium text-gray-300 mb-2'>
-            <i className='fas fa-link mr-2 text-blue-500'></i>
+          <label className='flex items-center text-sm font-medium text-gray-300 mb-2'>
+            <Link className='w-4 h-4 mr-2 text-blue-500' />
             Stream URL (RTSP/RTMP)
           </label>
           <input
@@ -456,8 +475,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
 
       {/* Device Name */}
       <div>
-        <label className='block text-sm font-medium text-gray-300 mb-2'>
-          <i className='fas fa-tag mr-2 text-blue-500'></i>
+        <label className='flex items-center text-sm font-medium text-gray-300 mb-2'>
+          <Tag className='w-4 h-4 mr-2 text-blue-500' />
           Device Name
         </label>
         <input
@@ -472,8 +491,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
 
       {/* Alias */}
       <div>
-        <label className='block text-sm font-medium text-gray-300 mb-2'>
-          <i className='fas fa-signature mr-2 text-blue-500'></i>
+        <label className='flex items-center text-sm font-medium text-gray-300 mb-2'>
+          <PenLine className='w-4 h-4 mr-2 text-blue-500' />
           Alias
         </label>
         <input
@@ -488,8 +507,8 @@ function DeviceInfoStep({ deviceType, formData, setFormData, unregisteredDevices
 
       {/* Description */}
       <div>
-        <label className='block text-sm font-medium text-gray-300 mb-2'>
-          <i className='fas fa-align-left mr-2 text-blue-500'></i>
+        <label className='flex items-center text-sm font-medium text-gray-300 mb-2'>
+          <AlignLeft className='w-4 h-4 mr-2 text-blue-500' />
           Description
         </label>
         <textarea
@@ -509,29 +528,29 @@ function ConfirmStep({ formData, deviceType }: any) {
   return (
     <div className='space-y-6'>
       <div className='mb-6'>
-        <h3 className='text-xl font-semibold text-white mb-2'>
-          <i className='fas fa-check-circle mr-2 text-green-500'></i>
+        <h3 className='text-xl font-semibold text-white mb-2 flex items-center'>
+          <CheckCircle className='w-5 h-5 mr-2 text-green-500' />
           Confirm Registration
         </h3>
         <p className='text-gray-400'>Review the device details before registering</p>
       </div>
 
       <div className='space-y-4'>
-        <InfoRow label='Device Type' value={deviceType} icon='fa-layer-group' />
-        <InfoRow label='Device Name' value={formData.deviceName} icon='fa-tag' />
-        <InfoRow label='Alias' value={formData.alias} icon='fa-signature' />
+        <InfoRow label='Device Type' value={deviceType} icon={Layers} />
+        <InfoRow label='Device Name' value={formData.deviceName} icon={Tag} />
+        <InfoRow label='Alias' value={formData.alias} icon={PenLine} />
         {deviceType === 'DRONE' && (
-          <InfoRow label='Serial Number' value={formData.serialNumber} icon='fa-barcode' />
+          <InfoRow label='Serial Number' value={formData.serialNumber} icon={Barcode} />
         )}
         {deviceType !== 'DRONE' && (
-          <InfoRow label='Stream URL' value={formData.streamUrl} icon='fa-link' />
+          <InfoRow label='Stream URL' value={formData.streamUrl} icon={Link} />
         )}
-        <InfoRow label='Description' value={formData.description} icon='fa-align-left' />
+        <InfoRow label='Description' value={formData.description} icon={AlignLeft} />
       </div>
 
       <div className='p-4 bg-green-900/20 border border-green-500 rounded-lg'>
-        <p className='text-green-400 text-sm'>
-          <i className='fas fa-info-circle mr-2'></i>
+        <p className='text-green-400 text-sm flex items-center'>
+          <Info className='w-4 h-4 mr-2 shrink-0' />
           Click "Register Device" to add this device to your surveillance system
         </p>
       </div>
@@ -540,11 +559,11 @@ function ConfirmStep({ formData, deviceType }: any) {
 }
 
 // Info Row Component
-function InfoRow({ label, value, icon, valueColor = 'text-white' }: any) {
+function InfoRow({ label, value, icon: Icon, valueColor = 'text-white' }: { label: string; value: string; icon: React.ComponentType<{ className?: string }>; valueColor?: string }) {
   return (
     <div className='flex items-start justify-between p-3 bg-gray-800 rounded-lg'>
       <span className='text-gray-400 text-sm flex items-center'>
-        <i className={`fas ${icon} mr-2 text-blue-500`}></i>
+        <Icon className='w-4 h-4 mr-2 text-blue-500' />
         {label}
       </span>
       <span className={`text-sm font-medium ${valueColor} text-right max-w-md break-words`}>

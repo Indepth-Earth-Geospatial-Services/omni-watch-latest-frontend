@@ -1,6 +1,24 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import {
+  Clock,
+  Target,
+  AlertTriangle,
+  Wifi,
+  Radio,
+  BarChart2,
+  Brain,
+  CheckCircle,
+  XCircle,
+  Server,
+  Bell,
+  Download,
+  RefreshCw,
+  PlaneTakeoff,
+  Video,
+  ShieldCheck,
+} from 'lucide-react'
 import { StatCard } from '@/components/features/metrics/stat-card'
 import { MainLayout } from '@/components/layout/main-layout'
 import { feedData } from '@/lib/data'
@@ -56,11 +74,11 @@ export default function AnalyticsPage() {
               </select>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors">
-                <i className="fas fa-download mr-2"></i>Export
+              <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center">
+                <Download className="w-4 h-4 mr-2" />Export
               </button>
-              <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors">
-                <i className="fas fa-sync-alt mr-2"></i>Refresh
+              <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center">
+                <RefreshCw className="w-4 h-4 mr-2" />Refresh
               </button>
             </div>
           </div>
@@ -69,7 +87,7 @@ export default function AnalyticsPage() {
             <StatCard
               title="Avg Response Time"
               value="2.3 min"
-              icon="fas fa-clock"
+              icon={Clock}
               color="blue"
               trend={{
                 direction: 'down',
@@ -80,7 +98,7 @@ export default function AnalyticsPage() {
             <StatCard
               title="Detection Accuracy"
               value="94.2%"
-              icon="fas fa-bullseye"
+              icon={Target}
               color="green"
               trend={{
                 direction: 'up',
@@ -91,7 +109,7 @@ export default function AnalyticsPage() {
             <StatCard
               title="False Positive Rate"
               value="5.8%"
-              icon="fas fa-exclamation-triangle"
+              icon={AlertTriangle}
               color="yellow"
               trend={{
                 direction: 'down',
@@ -102,7 +120,7 @@ export default function AnalyticsPage() {
             <StatCard
               title="System Uptime"
               value="99.1%"
-              icon="fas fa-wifi"
+              icon={Wifi}
               color="purple"
               trend={{
                 direction: 'up',
@@ -117,7 +135,7 @@ export default function AnalyticsPage() {
             <div className="bg-card rounded-lg border border-gray-800 overflow-hidden">
               <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
                 <h3 className="text-lg font-semibold flex items-center">
-                  <i className="fas fa-broadcast-tower text-blue-500 mr-2"></i>
+                  <Radio className="text-blue-500 mr-2 w-5 h-5" />
                   <span>Feed Status Overview</span>
                 </h3>
               </div>
@@ -184,7 +202,7 @@ export default function AnalyticsPage() {
             <div className="bg-card rounded-lg border border-gray-800 overflow-hidden">
               <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                 <h3 className="text-lg font-semibold flex items-center">
-                  <i className="fas fa-chart-bar text-purple-500 mr-2"></i>
+                  <BarChart2 className="text-purple-500 mr-2 w-5 h-5" />
                   <span>Feed Type Distribution</span>
                 </h3>
               </div>
@@ -194,7 +212,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <i className="fas fa-drone text-blue-400"></i>
+                        <PlaneTakeoff className="text-blue-400 w-4 h-4" />
                         <span className="text-sm font-medium text-gray-300">Drones</span>
                       </div>
                       <span className="text-lg font-bold text-blue-400">{droneCount}</span>
@@ -214,7 +232,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <i className="fas fa-video text-green-400"></i>
+                        <Video className="text-green-400 w-4 h-4" />
                         <span className="text-sm font-medium text-gray-300">CCTV</span>
                       </div>
                       <span className="text-lg font-bold text-green-400">{cctvCount}</span>
@@ -234,7 +252,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <i className="fas fa-user-shield text-purple-400"></i>
+                        <ShieldCheck className="text-purple-400 w-4 h-4" />
                         <span className="text-sm font-medium text-gray-300">Body Cameras</span>
                       </div>
                       <span className="text-lg font-bold text-purple-400">{bodyCamCount}</span>
@@ -266,7 +284,7 @@ export default function AnalyticsPage() {
             <div className="bg-card rounded-lg border border-gray-800 overflow-hidden">
               <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-green-500/10 to-emerald-500/10">
                 <h3 className="text-lg font-semibold flex items-center">
-                  <i className="fas fa-brain text-green-500 mr-2"></i>
+                  <Brain className="text-green-500 mr-2 w-5 h-5" />
                   <span>AI Detection Coverage</span>
                 </h3>
               </div>
@@ -306,7 +324,7 @@ export default function AnalyticsPage() {
                     {/* Center content */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div className="text-center">
-                        <i className="fas fa-brain text-5xl text-green-400 mb-2 animate-pulse"></i>
+                        <Brain className="w-12 h-12 text-green-400 mb-2 animate-pulse" />
                         <p className="text-4xl font-bold text-green-400">
                           {aiEnabledCount}/{totalStreams}
                         </p>
@@ -317,12 +335,12 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/30 hover:border-green-500/50 transition-all">
-                    <i className="fas fa-check-circle text-2xl text-green-400 mb-2"></i>
+                    <CheckCircle className="w-6 h-6 text-green-400 mb-2 mx-auto" />
                     <p className="text-2xl font-bold text-green-400">{aiEnabledCount}</p>
                     <p className="text-xs text-gray-400">AI Active</p>
                   </div>
                   <div className="text-center p-4 bg-gray-500/10 rounded-lg border border-gray-500/30">
-                    <i className="fas fa-times-circle text-2xl text-gray-400 mb-2"></i>
+                    <XCircle className="w-6 h-6 text-gray-400 mb-2 mx-auto" />
                     <p className="text-2xl font-bold text-gray-400">{totalStreams - aiEnabledCount}</p>
                     <p className="text-xs text-gray-400">No AI</p>
                   </div>
@@ -334,7 +352,7 @@ export default function AnalyticsPage() {
             <div className="bg-card rounded-lg border border-gray-800">
               <div className="p-4 border-b border-gray-800">
                 <h3 className="text-lg font-semibold flex items-center">
-                  <i className="fas fa-server text-orange-500 mr-2"></i>
+                  <Server className="text-orange-500 mr-2 w-5 h-5" />
                   <span>System Performance</span>
                 </h3>
               </div>
@@ -412,7 +430,7 @@ export default function AnalyticsPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold flex items-center">
-                <i className="fas fa-chart-bar text-blue-500 mr-2"></i>
+                <BarChart2 className="text-blue-500 mr-2 w-5 h-5" />
                 <span>Operational Summary</span>
               </h3>
             </div>
@@ -497,7 +515,7 @@ export default function AnalyticsPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold flex items-center">
-                <i className="fas fa-bell text-yellow-500 mr-2"></i>
+                <Bell className="text-yellow-500 mr-2 w-5 h-5" />
                 <span>Recent Performance Alerts</span>
               </h3>
             </div>

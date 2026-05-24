@@ -1,6 +1,18 @@
 "use client"
 
 import React, { useState, useCallback } from 'react'
+import {
+  ShieldAlert,
+  CheckCircle,
+  XCircle,
+  Brain,
+  TrendingUp,
+  Clock,
+  MapPin,
+  Video,
+  Eye,
+  AlertTriangle,
+} from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { StatCard } from '@/components/features/metrics/stat-card'
 import { SearchFilter } from '@/components/features/filters/search-filter'
@@ -146,35 +158,35 @@ export default function ThreatsPage() {
             <StatCard
               title="Total Threats"
               value={totalThreats}
-              icon="fas fa-shield-alt"
+              icon={ShieldAlert}
               color="blue"
             />
 
             <StatCard
               title="Verified"
               value={verifiedThreats}
-              icon="fas fa-check-circle"
+              icon={CheckCircle}
               color="green"
             />
 
             <StatCard
               title="Pending"
               value={pendingThreats}
-              icon="fas fa-times-circle"
+              icon={XCircle}
               color="orange"
             />
 
             <StatCard
               title="High Confidence"
               value={highConfidence}
-              icon="fas fa-brain"
+              icon={Brain}
               color="purple"
             />
 
             <StatCard
               title="Today"
               value={todayThreats}
-              icon="fas fa-chart-line"
+              icon={TrendingUp}
               color="red"
             />
           </div>
@@ -223,7 +235,7 @@ export default function ThreatsPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold flex items-center">
-                <i className="fas fa-shield-alt text-blue-500 mr-2"></i>
+                <ShieldAlert className="text-blue-500 mr-2 w-5 h-5" />
                 <span>Detected Threats ({filteredThreats.length})</span>
               </h3>
             </div>
@@ -258,39 +270,38 @@ export default function ThreatsPage() {
                             </p>
                           </div>
                           <button className="p-2 hover:bg-graybg rounded-md transition-colors">
-                            <i className="fas fa-eye text-gray-400"></i>
+                            <Eye className="text-gray-400 w-4 h-4" />
                           </button>
                         </div>
 
                         <div className="flex items-center space-x-6 text-xs text-gray-500">
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-clock"></i>
+                            <Clock className="w-3 h-3" />
                             <span>{formatTimeAgo(threat.detectedAt)}</span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-map-marker-alt"></i>
+                            <MapPin className="w-3 h-3" />
                             <span>{threat.latitude.toFixed(4)}, {threat.longitude.toFixed(4)}</span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className={threat.videoFeedId.startsWith('THM') ? "fas fa-thermometer-half" : "fas fa-video"}></i>
+                            <Video className="w-3 h-3" />
                             <span>{threat.videoFeedId.startsWith('THM') ? 'Thermal Sensor' : 'Video Source'}: {threat.videoFeedId}</span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-microchip"></i>
                             <span>Automated Analysis</span>
                           </div>
                         </div>
 
                         {!threat.isVerified && (
                           <div className="flex items-center space-x-2 pt-2">
-                            <button className="px-3 py-1 text-sm border border-green-600 text-green-600 rounded hover:bg-green-600 hover:text-white transition-colors">
-                              <i className="fas fa-check-circle mr-1"></i>Verify Threat
+                            <button className="px-3 py-1 text-sm border border-green-600 text-green-600 rounded hover:bg-green-600 hover:text-white transition-colors flex items-center">
+                              <CheckCircle className="w-3 h-3 mr-1" />Verify Threat
                             </button>
-                            <button className="px-3 py-1 text-sm border border-red-600 text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors">
-                              <i className="fas fa-times-circle mr-1"></i>Dismiss
+                            <button className="px-3 py-1 text-sm border border-red-600 text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors flex items-center">
+                              <XCircle className="w-3 h-3 mr-1" />Dismiss
                             </button>
-                            <button className="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-600 hover:text-white transition-colors">
-                              <i className="fas fa-exclamation-triangle mr-1"></i>Create Incident
+                            <button className="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-600 hover:text-white transition-colors flex items-center">
+                              <AlertTriangle className="w-3 h-3 mr-1" />Create Incident
                             </button>
                           </div>
                         )}

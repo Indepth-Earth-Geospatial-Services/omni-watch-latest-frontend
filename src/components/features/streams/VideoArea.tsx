@@ -1,7 +1,8 @@
 'use client';
 
 import React, { memo, useEffect, useRef } from 'react';
-import { Activity, WifiOff } from 'lucide-react';
+import { Activity, WifiOff, Battery, BatteryLow, BatteryWarning } from 'lucide-react';
+import { useTelemetry } from '@/hooks/useTelemetry';
 import type { StreamState } from './WebRTCPlayer';
 import type { DJIDevice } from '@/lib/types';
 
@@ -14,6 +15,12 @@ interface VideoAreaProps {
   onRetry?: () => void;
 }
 
+function batteryStyle(pct: number): { color: string; Icon: React.ElementType } {
+  if (pct < 20) return { color: '#f87171', Icon: BatteryLow };
+  if (pct < 40) return { color: '#facc15', Icon: BatteryWarning };
+  return { color: '#34d399', Icon: Battery };
+}
+
 export const VideoArea = memo(function VideoArea({
   device,
   mediaStream,
@@ -23,6 +30,9 @@ export const VideoArea = memo(function VideoArea({
   onRetry,
 }: VideoAreaProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { getProcessedDroneData } = useTelemetry();
+  const telemetry = getProcessedDroneData(device.deviceSn);
+  const battery = telemetry?.battery ?? null;
 
   useEffect(() => {
     if (videoRef.current) {
@@ -82,6 +92,20 @@ export const VideoArea = memo(function VideoArea({
                     Live
                   </span>
                 </div>
+
+                {battery !== null && (() => {
+                  const { color, Icon } = batteryStyle(battery);
+                  return (
+                    <div
+                      className='absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-md z-10'
+                      style={{ color }}
+                    >
+                      <Icon size={11} />
+                      <span className='text-[9px] font-bold font-mono'>{battery}%</span>
+                    </div>
+                  );
+                })()}
+
                 <span className='absolute bottom-2 right-2.5 text-[9px] font-mono text-zinc-800 select-none z-10'>
                   {device.deviceSn}
                 </span>

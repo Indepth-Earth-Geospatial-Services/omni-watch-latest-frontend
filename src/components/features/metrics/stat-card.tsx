@@ -2,11 +2,12 @@
 
 import React from 'react'
 import { cn } from '@/lib/utils'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 
 interface StatCardProps {
   title: string
   value: string | number
-  icon: string // FontAwesome icon class
+  icon: React.ComponentType<{ className?: string }>
   color: 'red' | 'yellow' | 'green' | 'blue' | 'purple' | 'orange' | 'indigo'
   trend?: {
     direction: 'up' | 'down'
@@ -58,7 +59,7 @@ const colorConfig = {
 export function StatCard({
   title,
   value,
-  icon,
+  icon: Icon,
   color,
   trend,
   className,
@@ -74,20 +75,17 @@ export function StatCard({
     )}>
       <div className="flex items-center space-x-4">
         <div className={cn("p-3 rounded-lg", colors.bg)}>
-          <i className={cn(icon, colors.text, "text-xl")}></i>
+          <Icon className={cn(colors.text, "text-xl w-5 h-5")} />
         </div>
         <div className={trend ? "flex-1" : ""}>
           <p className="text-2xl font-bold text-gray-100">{value}</p>
           <p className="text-sm text-gray-400">{title}</p>
           {trend && (
             <div className="flex items-center mt-1">
-              <i className={cn(
-                "text-xs mr-1",
-                trend.direction === 'up' ? "fas fa-arrow-up" : "fas fa-arrow-down",
-                trend.isPositive !== false
-                  ? (trend.direction === 'up' ? "text-green-400" : "text-red-400")
-                  : (trend.direction === 'up' ? "text-red-400" : "text-green-400")
-              )}></i>
+              {trend.direction === 'up'
+                ? <ArrowUp className={cn("w-3 h-3 mr-1", trend.isPositive !== false ? "text-green-400" : "text-red-400")} />
+                : <ArrowDown className={cn("w-3 h-3 mr-1", trend.isPositive !== false ? "text-red-400" : "text-green-400")} />
+              }
               <span className={cn(
                 "text-xs",
                 trend.isPositive !== false

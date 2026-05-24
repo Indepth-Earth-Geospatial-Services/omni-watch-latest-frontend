@@ -1,6 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  FileText,
+  Clock,
+  Download,
+  Eye,
+  Share2,
+  Loader2,
+  Settings,
+  Calendar,
+  CalendarDays,
+  Plus,
+  HardDrive,
+  User,
+  RefreshCw,
+} from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { StatCard } from "@/components/features/metrics/stat-card";
 
@@ -181,18 +196,18 @@ export default function ReportsPage() {
     }
   };
 
-  const getFormatIcon = (format: string) => {
+  const getFormatIcon = (format: string): { icon: React.ComponentType<{ className?: string }>; color: string } => {
     switch (format) {
       case "pdf":
-        return { icon: "fa-file-pdf", color: "text-red-500" };
+        return { icon: FileText, color: "text-red-500" };
       case "excel":
-        return { icon: "fa-file-excel", color: "text-green-500" };
+        return { icon: FileText, color: "text-green-500" };
       case "word":
-        return { icon: "fa-file-word", color: "text-blue-500" };
+        return { icon: FileText, color: "text-blue-500" };
       case "powerpoint":
-        return { icon: "fa-file-powerpoint", color: "text-orange-500" };
+        return { icon: FileText, color: "text-orange-500" };
       default:
-        return { icon: "fa-file", color: "text-gray-500" };
+        return { icon: FileText, color: "text-gray-500" };
     }
   };
 
@@ -233,11 +248,11 @@ export default function ReportsPage() {
         <div className="space-y-6">
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-3">
-            <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors">
-              <i className="fas fa-cog mr-2"></i>Templates
+            <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center">
+              <Settings className="w-4 h-4 mr-2" />Templates
             </button>
-            <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors">
-              <i className="fas fa-calendar mr-2"></i>Schedule
+            <button className="px-3 py-2 text-sm border border-gray-600 rounded-md hover:bg-graybg transition-colors flex items-center">
+              <Calendar className="w-4 h-4 mr-2" />Schedule
             </button>
           </div>
 
@@ -246,31 +261,31 @@ export default function ReportsPage() {
             <StatCard
               title="Total Reports"
               value="128"
-              icon="fas fa-file-alt"
+              icon={FileText}
               color="blue"
             />
             <StatCard
               title="This Month"
               value="24"
-              icon="fas fa-calendar-day"
+              icon={CalendarDays}
               color="green"
             />
             <StatCard
               title="Scheduled"
               value="8"
-              icon="fas fa-clock"
+              icon={Clock}
               color="orange"
             />
             <StatCard
               title="Downloads"
               value="347"
-              icon="fas fa-download"
+              icon={Download}
               color="purple"
             />
             <StatCard
               title="Storage Used"
               value="2.4GB"
-              icon="fas fa-database"
+              icon={HardDrive}
               color="red"
             />
           </div>
@@ -282,7 +297,7 @@ export default function ReportsPage() {
               <div className="bg-card p-6 rounded-lg border border-gray-800">
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold flex items-center">
-                    <i className="fas fa-plus text-blue-500 mr-2"></i>
+                    <Plus className="text-blue-500 mr-2 w-4 h-4" />
                     <span>Generate New Report</span>
                   </h3>
                 </div>
@@ -324,13 +339,13 @@ export default function ReportsPage() {
                                 : "border-gray-600 hover:bg-blue-500 hover:border-blue-500"
                             }`}
                           >
-                            <i
-                              className={`fas ${formatInfo.icon} ${
+                            <formatInfo.icon
+                              className={`${
                                 selectedFormat === format
                                   ? "text-white"
                                   : formatInfo.color
-                              } mr-2`}
-                            ></i>
+                              } mr-2 w-4 h-4`}
+                            />
                             {format === "ppt" ? "PowerPoint" : format.charAt(0).toUpperCase() + format.slice(1)}
                           </button>
                         );
@@ -416,7 +431,7 @@ export default function ReportsPage() {
                       onClick={handleGenerateReport}
                       className="w-full px-4 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center"
                     >
-                      <i className="fas fa-download mr-2"></i>
+                      <Download className="w-4 h-4 mr-2" />
                       <span>Generate Report</span>
                     </button>
                   </div>
@@ -500,7 +515,7 @@ export default function ReportsPage() {
           <div className="bg-card rounded-lg border border-gray-800">
             <div className="p-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold flex items-center">
-                <i className="fas fa-file-alt text-blue-500 mr-2"></i>
+                <FileText className="text-blue-500 mr-2 w-5 h-5" />
                 <span>
                   Generated Reports (<span>{sampleReports.length}</span>)
                 </span>
@@ -565,19 +580,16 @@ export default function ReportsPage() {
                             </p>
                           </div>
                           <button className="p-2 hover:bg-graybg rounded-md transition-colors">
-                            <i
-                              className={`fas ${
-                                report.status === "processing"
-                                  ? "fa-clock"
-                                  : "fa-download"
-                              } text-gray-400`}
-                            ></i>
+                            {report.status === "processing"
+                              ? <Clock className="text-gray-400 w-4 h-4" />
+                              : <Download className="text-gray-400 w-4 h-4" />
+                            }
                           </button>
                         </div>
 
                         <div className="flex items-center space-x-6 text-xs text-gray-500">
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-clock"></i>
+                            <Clock className="w-3 h-3" />
                             <span>
                               {report.status === "processing"
                                 ? "Started: " + formatTimeAgo(report.createdAt)
@@ -585,11 +597,11 @@ export default function ReportsPage() {
                             </span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-user"></i>
+                            <User className="w-3 h-3" />
                             <span>By: {report.createdBy}</span>
                           </div>
                           <div className="flex items-center space-x-1">
-                            <i className="fas fa-calendar"></i>
+                            <Calendar className="w-3 h-3" />
                             <span>Period: {report.period}</span>
                           </div>
                         </div>
@@ -597,20 +609,20 @@ export default function ReportsPage() {
                         {report.status === "processing" ? (
                           <div className="flex items-center space-x-2 pt-2">
                             <div className="text-sm text-yellow-400 flex items-center">
-                              <i className="fas fa-spinner fa-spin mr-2"></i>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Processing... 78% complete
                             </div>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2 pt-2">
-                            <button className="px-3 py-1 text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-600 hover:text-white transition-colors">
-                              <i className="fas fa-eye mr-1"></i>Preview
+                            <button className="px-3 py-1 text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-600 hover:text-white transition-colors flex items-center">
+                              <Eye className="w-3 h-3 mr-1" />Preview
                             </button>
-                            <button className="px-3 py-1 text-sm border border-green-600 text-green-600 rounded hover:bg-green-600 hover:text-white transition-colors">
-                              <i className="fas fa-download mr-1"></i>Download
+                            <button className="px-3 py-1 text-sm border border-green-600 text-green-600 rounded hover:bg-green-600 hover:text-white transition-colors flex items-center">
+                              <Download className="w-3 h-3 mr-1" />Download
                             </button>
-                            <button className="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-600 hover:text-white transition-colors">
-                              <i className="fas fa-share mr-1"></i>Share
+                            <button className="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-600 hover:text-white transition-colors flex items-center">
+                              <Share2 className="w-3 h-3 mr-1" />Share
                             </button>
                           </div>
                         )}
@@ -629,7 +641,7 @@ export default function ReportsPage() {
             <div className="bg-card p-6 rounded-lg border border-gray-800 max-w-sm w-full mx-4">
               <div className="text-center">
                 <div className="mb-4">
-                  <i className="fas fa-cog fa-spin text-blue-500 text-3xl"></i>
+                  <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-100 mb-2">
                   Generating Report

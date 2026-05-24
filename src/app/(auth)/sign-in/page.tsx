@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -120,7 +121,7 @@ function SignInForm() {
         <div className='text-center mb-8'>
           <Link href='/' className='inline-flex items-center space-x-3 mb-4'>
             <div className='relative'>
-              <i className='fas fa-shield-alt text-cyan-400 text-3xl' />
+              <ShieldAlert className='text-cyan-400 text-3xl' />
               <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse' />
             </div>
             <div>
@@ -237,7 +238,7 @@ function SignInForm() {
             href='/'
             className='text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1'
           >
-            <i className='fas fa-arrow-left' />
+            <ArrowLeft />
             <span>Back to home</span>
           </Link>
         </div>

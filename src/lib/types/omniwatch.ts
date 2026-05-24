@@ -121,6 +121,17 @@ export interface RegisterAdminResponse {
   password: string;
 }
 
+// ─── Legacy non-DJI-Cloud device shape (used by EditDeviceModal) ──────────────
+
+export interface DroneAPIResponse {
+  deviceSerialNumber: string;
+  deviceName: string;
+  deviceCategory: string;
+  streamIsOn: boolean;
+  streamUrl: string;
+  metadata?: { alias?: string; description?: string };
+}
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export type HealthCheckResponse = Record<string, string>;

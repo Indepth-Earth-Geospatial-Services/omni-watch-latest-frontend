@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlaneTakeoff } from 'lucide-react';
+import { PlaneTakeoff } from 'lucide-react';
 
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
@@ -19,7 +19,7 @@ export default function LiveFeedPage() {
   const router = useRouter();
   const { activeProject } = useProject();
   // Poll every 5 s on this page so device online/offline status reflects quickly
-  const { data: djiDevices = [], isLoading } = useDJIDevices({ refetchInterval: 5_000 });
+  const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({ refetchInterval: 5_000 });
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
@@ -114,19 +114,6 @@ export default function LiveFeedPage() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className='bg-background text-foreground min-h-screen'>
-        <MainLayout title='Live Feeds' subtitle={activeProject.name}>
-          <div className='flex flex-col items-center justify-center gap-3 py-24'>
-            <Loader2 className='w-8 h-8 text-[#1C93FF] animate-spin' />
-            <span className='text-sm text-zinc-500 font-poppins'>Loading devices…</span>
-          </div>
-        </MainLayout>
-      </div>
-    );
-  }
-
   if (activeProject.devices.length === 0) {
     return (
       <div className='bg-background text-foreground min-h-screen'>
@@ -177,6 +164,7 @@ export default function LiveFeedPage() {
             streamingDevices={streamingDevices}
             onSelect={(sn) => handleSelectDevice(sn, true)}
             onStop={stopDevice}
+            isLoading={devicesLoading}
           />
 
           <div className='flex-1 flex flex-col bg-[#0C0D10] border border-zinc-800 rounded-xl overflow-hidden min-w-0'>

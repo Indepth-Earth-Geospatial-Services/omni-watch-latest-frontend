@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Pencil,
@@ -28,8 +28,9 @@ import { ProjectTabType } from './ProjectTabs';
 import { useProjects, useDeleteProject, useUnassignDevice } from '@/hooks/useProjects';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useProject } from '@/providers/ProjectProvider';
-import DeleteConfirmModal from './DeleteConfirmModal';
-import AssignDeviceToProjectModal from './AssignDeviceToProjectModal';
+// Lazy — chunks downloaded only when the user first triggers each modal
+const DeleteConfirmModal           = lazy(() => import('./DeleteConfirmModal'));
+const AssignDeviceToProjectModal   = lazy(() => import('./AssignDeviceToProjectModal'));
 import type { Project } from '@/lib/types';
 
 const PAGE_SIZE = 5;
@@ -156,31 +157,6 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className='flex flex-col w-[calc(100%-2rem)] mx-4'>
-        <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 items-center justify-center gap-3'>
-          <Loader2 className='w-7 h-7 text-[#1C93FF] animate-spin' />
-          <span className='text-sm text-zinc-500'>Loading projects…</span>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Error ────────────────────────────────────────────────────────────────────
-  if (error) {
-    return (
-      <div className='flex flex-col w-[calc(100%-2rem)] mx-4'>
-        <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 items-center justify-center gap-3'>
-          <AlertCircle className='w-8 h-8 text-red-400' />
-          <span className='text-sm text-zinc-400'>Failed to load projects</span>
-          <span className='text-xs text-zinc-600 max-w-[300px] text-center'>{error.message}</span>
-        </div>
-      </div>
-    );
-  }
-
   // ── Table ────────────────────────────────────────────────────────────────────
   return (
     <div className='flex flex-col w-[calc(100%-2rem)] mx-4 font-poppins'>
@@ -230,7 +206,46 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
               </tr>
             </thead>
             <tbody className='divide-y divide-zinc-800/40'>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <tr key={i}>
+                    <td className='px-4 py-4'>
+                      <div className='w-4 h-4 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='flex flex-col gap-2'>
+                        <div className='h-3 w-32 bg-zinc-800 rounded animate-pulse' />
+                        <div className='h-2 w-16 bg-zinc-800/70 rounded animate-pulse' />
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='h-3 w-40 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='h-3 w-8 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='h-3 w-8 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='h-3 w-20 bg-zinc-800 rounded animate-pulse' />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='w-7 h-7 bg-zinc-800 rounded-md animate-pulse' />
+                    </td>
+                  </tr>
+                ))
+              ) : error ? (
+                <tr>
+                  <td colSpan={7} className='px-4 py-16 text-center'>
+                    <div className='flex flex-col items-center gap-2'>
+                      <AlertCircle className='w-7 h-7 text-red-400' />
+                      <span className='text-sm text-zinc-400'>Failed to load projects</span>
+                      <span className='text-xs text-red-400/80 font-mono max-w-[380px] text-center px-4'>{error.message}</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
                 <tr>
                   <td colSpan={7} className='px-4 py-16 text-center'>
                     <div className='flex flex-col items-center gap-2'>
@@ -704,17 +719,25 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
           );
         })()}
 
-      <DeleteConfirmModal
-        project={pendingDelete}
-        isDeleting={isDeleting}
-        onConfirm={handleConfirmDelete}
-        onClose={() => setPendingDelete(null)}
-      />
+      {pendingDelete && (
+        <Suspense fallback={null}>
+          <DeleteConfirmModal
+            project={pendingDelete}
+            isDeleting={isDeleting}
+            onConfirm={handleConfirmDelete}
+            onClose={() => setPendingDelete(null)}
+          />
+        </Suspense>
+      )}
 
-      <AssignDeviceToProjectModal
-        project={assignDeviceProject}
-        onClose={() => setAssignDeviceProject(null)}
-      />
+      {assignDeviceProject && (
+        <Suspense fallback={null}>
+          <AssignDeviceToProjectModal
+            project={assignDeviceProject}
+            onClose={() => setAssignDeviceProject(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
