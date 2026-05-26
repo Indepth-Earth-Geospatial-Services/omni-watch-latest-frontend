@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import TelemetryHeader from '@/components/features/control-components/TelemetryHeader';
-import FlightStatsBar from '@/components/features/control-components/FlightStatsBar';
-import MissionControlViewport from '@/components/features/control-components/MissionControlViewport';
-import TacticalMiniMap from '@/components/features/control-components/TacticalMiniMap';
-import DockMonitor from '@/components/features/control-components/DockMonitor';
-import SystemStatusFooter from '@/components/features/control-components/SystemStatusFooter';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import TelemetryHeader from '@/components/features/control/TelemetryHeader';
+import FlightStatsBar from '@/components/features/control/FlightStatsBar';
+import MissionControlViewport from '@/components/features/control/MissionControlViewport';
+import TacticalMiniMap from '@/components/features/control/TacticalMiniMap';
+import DockMonitor from '@/components/features/control/DockMonitor';
+import SystemStatusFooter from '@/components/features/control/SystemStatusFooter';
 import {
   useLiveCapacity,
   useStartStream,
@@ -14,6 +14,16 @@ import {
   useUpdateStreamQuality,
   useSwitchStreamCamera,
 } from '@/hooks/useLiveStreams';
+import { useTelemetry } from '@/hooks/useTelemetry';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { useAuth } from '@/providers/AuthProvider';
+
+function formatElapsed(s: number): string {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
 
 export default function ControlPage() {
   // ─── Livestream hooks ──────────────────────────────────────────────────────
@@ -23,6 +33,11 @@ export default function ControlPage() {
   const { mutate: updateQuality } = useUpdateStreamQuality();
   const { mutate: switchCamera } = useSwitchStreamCamera();
 
+  // ─── Telemetry & device data ───────────────────────────────────────────────
+  const { getProcessedDroneData } = useTelemetry();
+  const { data: deviceList = [] } = useDJIDevices();
+  const { user } = useAuth();
+
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
   const [selectedCameraId, setSelectedCameraId] = useState('');
@@ -30,6 +45,15 @@ export default function ControlPage() {
   const [selectedVideoType, setSelectedVideoType] = useState('zoom');
   const [streamQuality, setStreamQuality] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // ─── Elapsed time timer ────────────────────────────────────────────────────
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    if (!isStreaming) { setElapsedSeconds(0); return; }
+    const start = Date.now();
+    const id = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [isStreaming]);
 
   // ─── Derived selections ───────────────────────────────────────────────────
   const devices = capacityMap ? Array.from(capacityMap.values()) : [];
@@ -39,6 +63,17 @@ export default function ControlPage() {
   const videos = selectedCamera?.videos_list ?? [];
   // VideoCapacity has no switchVideoTypes — hide the lens selector
   const videoTypes: string[] = [];
+
+  // ─── Header data ──────────────────────────────────────────────────────────
+  // Find the dock (domain=1) whose child is the selected drone
+  const dockDevice = useMemo(
+    () => deviceList.find((d) => d.domain === '1' && d.childDeviceSn === selectedSn),
+    [deviceList, selectedSn]
+  );
+  const dockName = dockDevice?.nickname || dockDevice?.deviceName;
+
+  // Live OSD telemetry for the selected drone
+  const droneData = selectedSn ? getProcessedDroneData(selectedSn) : null;
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -56,13 +91,10 @@ export default function ControlPage() {
     setIsStreaming(false);
   }, []);
 
-  const handleVideoChange = useCallback(
-    (videoId: string) => {
-      setSelectedVideoId(videoId);
-      setIsStreaming(false);
-    },
-    []
-  );
+  const handleVideoChange = useCallback((videoId: string) => {
+    setSelectedVideoId(videoId);
+    setIsStreaming(false);
+  }, []);
 
   const handleStart = useCallback(() => {
     if (!selectedVideoId) return;
@@ -133,6 +165,11 @@ export default function ControlPage() {
               deviceName={selectedDevice?.name}
               cameraName={selectedCamera?.name}
               isStreaming={isStreaming}
+              workspaceName={user?.workspace_name}
+              dockName={dockName}
+              windSpeed={droneData?.windSpeed}
+              windDirection={droneData?.windDirection}
+              elapsedTime={formatElapsed(elapsedSeconds)}
             />
             <FlightStatsBar />
           </section>
@@ -169,7 +206,11 @@ export default function ControlPage() {
         </div>
       </main>
 
-      <SystemStatusFooter />
+      <SystemStatusFooter
+        droneData={droneData}
+        elapsedTime={formatElapsed(elapsedSeconds)}
+        deviceList={deviceList}
+      />
     </div>
   );
 }

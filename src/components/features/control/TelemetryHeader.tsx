@@ -22,23 +22,45 @@ const TelemetryItem = ({
   </div>
 );
 
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+function degToCompass(deg: number): string {
+  return COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+function windLabel(speedMs?: number, dirDeg?: number): string {
+  if (!speedMs) return '—';
+  const kmh = (speedMs * 3.6).toFixed(1);
+  const dir = dirDeg != null ? ` ${degToCompass(dirDeg)}` : '';
+  return `${kmh} km/h${dir}`;
+}
+
 interface TelemetryHeaderProps {
   deviceName?: string;
   cameraName?: string;
   isStreaming?: boolean;
+  workspaceName?: string;
+  dockName?: string;
+  windSpeed?: number;     // m/s from OSD
+  windDirection?: number; // degrees from OSD
+  elapsedTime?: string;   // HH:MM:SS
 }
 
 const TelemetryHeader = ({
   deviceName,
   cameraName,
   isStreaming = false,
+  workspaceName,
+  dockName,
+  windSpeed,
+  windDirection,
+  elapsedTime = '00:00:00',
 }: TelemetryHeaderProps) => {
   return (
     <div className='flex items-center justify-between w-full h-14 px-6 bg-[#1A1C20] border border-[#42475426]/15 rounded-lg'>
       {/* Left Section: Core Mission Data */}
       <div className='flex items-center gap-x-10'>
-        <TelemetryItem label='Mission' value='Alpha-7' />
-        <TelemetryItem label='Dock ID' value='NestPoint-03' />
+        <TelemetryItem label='Workspace' value={workspaceName ?? '—'} />
+        <TelemetryItem label='Dock' value={dockName ?? '—'} />
         <TelemetryItem
           label='Drone'
           value={deviceName ?? '—'}
@@ -57,7 +79,7 @@ const TelemetryHeader = ({
         <div className='flex items-center gap-2'>
           <Wind size={14} className='text-[#C2C6D7]' />
           <span className='text-xs font-normal font-poppins text-[#C2C6D7]'>
-            Wind: 12 km/h
+            {windLabel(windSpeed, windDirection)}
           </span>
         </div>
 
@@ -66,7 +88,7 @@ const TelemetryHeader = ({
             Elapsed
           </span>
           <span className='text-sm font-normal font-poppins text-[#45F0CF]'>
-            00:42:17
+            {isStreaming ? elapsedTime : '—'}
           </span>
         </div>
 
