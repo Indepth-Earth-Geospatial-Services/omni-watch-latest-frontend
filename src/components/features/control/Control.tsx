@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import TelemetryHeader from '@/components/features/control/TelemetryHeader';
 import FlightStatsBar from '@/components/features/control/FlightStatsBar';
 import MissionControlViewport from '@/components/features/control/MissionControlViewport';
@@ -17,6 +18,9 @@ import {
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useAuth } from '@/providers/AuthProvider';
+import { toast } from 'sonner';
+
+type PanelId = 'viewport' | 'map' | 'dock';
 
 function formatElapsed(s: number): string {
   const h = Math.floor(s / 3600);
@@ -38,13 +42,21 @@ export default function ControlPage() {
   const { data: deviceList = [] } = useDJIDevices();
   const { user } = useAuth();
 
+  // ─── Panel layout state ───────────────────────────────────────────────────
+  const [mainPanel, setMainPanel] = useState<PanelId>('viewport');
+
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
   const [selectedCameraId, setSelectedCameraId] = useState('');
   const [selectedVideoId, setSelectedVideoId] = useState('');
-  const [selectedVideoType, setSelectedVideoType] = useState('zoom');
+  const [selectedVideoType, setSelectedVideoType] = useState('');
   const [streamQuality, setStreamQuality] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+  // Composite video_id used to start the current stream — needed for stop/quality/switch
+  // Composite video_id used to start the current stream — needed for stop/quality/switch
+  const [activeStreamVideoId, setActiveStreamVideoId] = useState('');
+  // WebRTC playback URL returned by the DJI API when a stream successfully starts
+  const [activeStreamUrl, setActiveStreamUrl] = useState('');
 
   // ─── Elapsed time timer ────────────────────────────────────────────────────
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -74,86 +86,100 @@ export default function ControlPage() {
 
   // Live OSD telemetry for the selected drone
   const droneData = selectedSn ? getProcessedDroneData(selectedSn) : null;
+  // modeCode 0 = standby/docked, anything else = airborne
+  const isFlying = droneData ? droneData.modeCode !== 0 : false;
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
     setSelectedSn(sn);
     setSelectedCameraId('');
     setSelectedVideoId('');
-    setSelectedVideoType('zoom');
+    setSelectedVideoType('');
+    setActiveStreamVideoId('');
+    setActiveStreamUrl('');
     setIsStreaming(false);
   }, []);
 
   const handleCameraChange = useCallback((cameraId: string) => {
     setSelectedCameraId(cameraId);
     setSelectedVideoId('');
-    setSelectedVideoType('zoom');
+    setSelectedVideoType('');
+    setActiveStreamVideoId('');
+    setActiveStreamUrl('');
     setIsStreaming(false);
   }, []);
 
   const handleVideoChange = useCallback((videoId: string) => {
     setSelectedVideoId(videoId);
+    setActiveStreamVideoId('');
+    setActiveStreamUrl('');
     setIsStreaming(false);
-  }, []);
+    const video = videos.find((v) => v.id === videoId);
+    setSelectedVideoType(video?.type ?? '');
+  }, [videos]);
 
   const handleStart = useCallback(() => {
-    if (!selectedVideoId) return;
+    if (!selectedVideoId || !selectedVideoType) {
+      toast.error('Select a device, camera, and video source first');
+      return;
+    }
+    // DJI API requires composite video_id: {sn}/{camera_index}/{video_index}
+    const video = videos.find((v) => v.id === selectedVideoId);
+    const compositeId =
+      selectedCamera && video
+        ? `${selectedSn}/${selectedCamera.index}/${video.index}`
+        : null;
+    if (!compositeId) {
+      toast.error('Could not resolve video ID — try selecting device again');
+      return;
+    }
     startStream(
+      { url: '', video_id: compositeId, url_type: 4, video_quality: streamQuality, video_type: selectedVideoType },
       {
-        url: '',
-        video_id: selectedVideoId,
-        url_type: 4,
-        video_quality: streamQuality,
-        video_type: selectedVideoType,
-      },
-      { onSuccess: () => setIsStreaming(true) }
+        onSuccess: (data) => {
+          setIsStreaming(true);
+          setActiveStreamVideoId(compositeId);
+          setActiveStreamUrl(data?.url ?? '');
+          toast.success('Stream started');
+        },
+        onError: (err: Error) => toast.error(`Failed to start stream: ${err.message}`),
+      }
     );
-  }, [selectedVideoId, streamQuality, selectedVideoType, startStream]);
+  }, [selectedVideoId, selectedVideoType, videos, selectedCamera, selectedSn, streamQuality, startStream]);
 
   const handleStop = useCallback(() => {
-    if (!selectedVideoId) return;
+    if (!activeStreamVideoId) return;
     stopStream(
+      { url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: selectedVideoType },
       {
-        url: '',
-        video_id: selectedVideoId,
-        url_type: 4,
-        video_quality: streamQuality,
-        video_type: selectedVideoType,
-      },
-      { onSuccess: () => setIsStreaming(false) }
+        onSettled: () => {
+          setIsStreaming(false);
+          setActiveStreamVideoId('');
+          setActiveStreamUrl('');
+        },
+        onError: (err: Error) => toast.error(`Failed to stop stream: ${err.message}`),
+      }
     );
-  }, [selectedVideoId, streamQuality, selectedVideoType, stopStream]);
+  }, [activeStreamVideoId, streamQuality, selectedVideoType, stopStream]);
 
   const handleQualityChange = useCallback(
     (quality: number) => {
       setStreamQuality(quality);
-      if (isStreaming && selectedVideoId) {
-        updateQuality({
-          url: '',
-          video_id: selectedVideoId,
-          url_type: 4,
-          video_quality: quality,
-          video_type: selectedVideoType,
-        });
+      if (isStreaming && activeStreamVideoId) {
+        updateQuality({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: quality, video_type: selectedVideoType });
       }
     },
-    [isStreaming, selectedVideoId, selectedVideoType, updateQuality]
+    [isStreaming, activeStreamVideoId, selectedVideoType, updateQuality]
   );
 
   const handleVideoTypeChange = useCallback(
     (videoType: string) => {
       setSelectedVideoType(videoType);
-      if (isStreaming && selectedVideoId) {
-        switchCamera({
-          url: '',
-          video_id: selectedVideoId,
-          url_type: 4,
-          video_quality: streamQuality,
-          video_type: videoType,
-        });
+      if (isStreaming && activeStreamVideoId) {
+        switchCamera({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: videoType });
       }
     },
-    [isStreaming, selectedVideoId, streamQuality, switchCamera]
+    [isStreaming, activeStreamVideoId, streamQuality, switchCamera]
   );
 
   return (
@@ -171,38 +197,95 @@ export default function ControlPage() {
               windDirection={droneData?.windDirection}
               elapsedTime={formatElapsed(elapsedSeconds)}
             />
-            <FlightStatsBar />
+            <FlightStatsBar droneData={droneData} elapsedTime={formatElapsed(elapsedSeconds)} />
           </section>
 
-          <div className='flex flex-row gap-4 justify-center'>
-            <MissionControlViewport
-              devices={devices}
-              cameras={cameras}
-              videos={videos}
-              videoTypes={videoTypes}
-              selectedSn={selectedSn}
-              selectedCameraId={selectedCameraId}
-              selectedVideoId={selectedVideoId}
-              selectedVideoType={selectedVideoType}
-              streamQuality={streamQuality}
-              isStreaming={isStreaming}
-              isStarting={isStarting}
-              isStopping={isStopping}
-              capacityLoading={capacityLoading ?? false}
-              onDeviceChange={handleDeviceChange}
-              onCameraChange={handleCameraChange}
-              onVideoChange={handleVideoChange}
-              onVideoTypeChange={handleVideoTypeChange}
-              onQualityChange={handleQualityChange}
-              onStart={handleStart}
-              onStop={handleStop}
-            />
+          {(() => {
+            const swapBtn = (id: PanelId) => {
+              const isMain = mainPanel === id;
+              const pos = id === 'viewport' ? 'top-[50px] right-2' : 'top-2 right-2';
+              return (
+                <button
+                  key={`swap-${id}`}
+                  onClick={() => setMainPanel(isMain ? 'viewport' : id)}
+                  className={`absolute ${pos} z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
+                    isMain
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30'
+                      : 'bg-black/60 border-white/10 text-zinc-400 hover:text-white hover:bg-white/15 hover:border-white/25'
+                  }`}
+                  title={isMain ? 'Reset to default layout' : 'Switch to main view'}
+                >
+                  {isMain ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+                </button>
+              );
+            };
 
-            <aside className='flex flex-col gap-4'>
-              <TacticalMiniMap />
-              <DockMonitor />
-            </aside>
-          </div>
+            const viewportPanel = (isMain: boolean) => (
+              <MissionControlViewport
+                devices={devices}
+                cameras={cameras}
+                videos={videos}
+                videoTypes={videoTypes}
+                selectedSn={selectedSn}
+                selectedCameraId={selectedCameraId}
+                selectedVideoId={selectedVideoId}
+                selectedVideoType={selectedVideoType}
+                streamQuality={streamQuality}
+                isStreaming={isStreaming}
+                isStarting={isStarting}
+                isStopping={isStopping}
+                capacityLoading={capacityLoading ?? false}
+                isFlying={isFlying}
+                activeStreamUrl={activeStreamUrl}
+                onDeviceChange={handleDeviceChange}
+                onCameraChange={handleCameraChange}
+                onVideoChange={handleVideoChange}
+                onVideoTypeChange={handleVideoTypeChange}
+                onQualityChange={handleQualityChange}
+                onStart={handleStart}
+                onStop={handleStop}
+                className={isMain ? undefined : 'h-[342px]'}
+              />
+            );
+
+            const sidePanelIds = (['viewport', 'map', 'dock'] as const).filter(
+              (p) => p !== mainPanel
+            );
+
+            return (
+              <div className='flex flex-row gap-4 justify-center'>
+                {/* ── Main panel (left, big) ── */}
+                <div className='relative flex-1'>
+                  {swapBtn(mainPanel)}
+                  {mainPanel === 'viewport' && viewportPanel(true)}
+                  {mainPanel === 'map' && (
+                    <TacticalMiniMap droneData={droneData} className='w-full h-[700px]' />
+                  )}
+                  {mainPanel === 'dock' && (
+                    <DockMonitor
+                      dockDevice={dockDevice}
+                      droneData={droneData}
+                      className='w-full h-[700px]'
+                    />
+                  )}
+                </div>
+
+                {/* ── Side panels (right column) ── */}
+                <aside className='flex flex-col gap-4'>
+                  {sidePanelIds.map((id) => (
+                    <div key={id} className='relative'>
+                      {swapBtn(id)}
+                      {id === 'viewport' && viewportPanel(false)}
+                      {id === 'map' && <TacticalMiniMap droneData={droneData} />}
+                      {id === 'dock' && (
+                        <DockMonitor dockDevice={dockDevice} droneData={droneData} />
+                      )}
+                    </div>
+                  ))}
+                </aside>
+              </div>
+            );
+          })()}
         </div>
       </main>
 

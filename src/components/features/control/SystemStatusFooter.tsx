@@ -79,7 +79,7 @@ const SystemStatusFooter = ({ droneData, elapsedTime, deviceList = [] }: SystemS
   const onlineCount = deviceList.filter((d) => d.status).length;
 
   return (
-    <div className='fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none'>
+    <div className='fixed bottom-0 left-0 lg:left-64 right-0 z-50 flex flex-col items-center pointer-events-none'>
       <div className='w-[calc(100%-48px)] bg-[#0A0C10] shadow-2xl pointer-events-auto'>
         {/* Drag handle */}
         <div

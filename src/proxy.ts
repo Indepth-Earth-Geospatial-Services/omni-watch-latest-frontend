@@ -24,7 +24,11 @@ const DASHBOARD_ROUTES = [
   '/threats',
   '/users',
   '/analytics',
-  '/ai-detection',
+  '/member',
+  '/projects',
+  '/assets',
+  '/flightroutes',
+  '/control',
 ];
 
 // Routes that logged-in users should be bounced away from
@@ -36,9 +40,7 @@ export function proxy(request: NextRequest) {
   // Presence of this cookie means a valid token was stored by setToken()
   const isAuthenticated = request.cookies.has('dji_auth_token');
 
-  const isDashboardRoute = DASHBOARD_ROUTES.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isDashboardRoute = DASHBOARD_ROUTES.some((route) => pathname.startsWith(route));
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
 
   // Unauthenticated user trying to reach the dashboard → send to sign-in

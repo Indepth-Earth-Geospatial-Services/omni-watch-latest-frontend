@@ -25,10 +25,8 @@ async function forwardRequest(
   const { path } = await params;
   const segments = path.join('/');
 
-  const { pathname, search } = new URL(request.url);
-  // Preserve trailing slash so Django doesn't 301-redirect POST→GET
-  const trailingSlash = pathname.endsWith('/') ? '/' : '';
-  const targetUrl = `${AUTH_BASE_URL}/api/v1/auth/${segments}${trailingSlash}${search}`;
+  const { search } = new URL(request.url);
+  const targetUrl = `${AUTH_BASE_URL}/api/v1/auth/${segments}${search}`;
 
   const forwardedHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => {
@@ -47,11 +45,36 @@ async function forwardRequest(
     console.log(`[Auth Proxy] → ${request.method} ${targetUrl}`);
     console.log(`[Auth Proxy] Request body:`, body);
 
-    const authResponse = await fetch(targetUrl, {
+    // Use redirect:'manual' so we can detect Django 301s and re-send as the
+    // original method. The default behaviour follows 301 and downgrades
+    // POST→GET, which causes Django to return 403 on endpoints like /logout.
+    let authResponse = await fetch(targetUrl, {
       method: request.method,
       headers: forwardedHeaders,
       body,
+      redirect: 'manual',
     });
+
+    // Django adds a trailing slash and 301s if the path is missing it.
+    // Re-send the original method to the redirect location instead of
+    // letting fetch silently downgrade POST→GET.
+    if ((authResponse.status === 301 || authResponse.status === 302) && body !== undefined) {
+      const location = authResponse.headers.get('location');
+      if (location) {
+        console.log(`[Auth Proxy] 301 → re-POST to ${location}`);
+        authResponse = await fetch(location, {
+          method: request.method,
+          headers: forwardedHeaders,
+          body,
+        });
+      }
+    } else if (authResponse.status === 301 || authResponse.status === 302) {
+      // GET redirect — follow normally
+      const location = authResponse.headers.get('location');
+      if (location) {
+        authResponse = await fetch(location, { method: 'GET', headers: forwardedHeaders });
+      }
+    }
 
     const responseText = await authResponse.text();
     console.log(`[Auth Proxy] ← ${authResponse.status} from ${targetUrl}`);

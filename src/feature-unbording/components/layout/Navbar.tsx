@@ -107,6 +107,7 @@ const Navbar = () => {
                 src='/user-avatar.jpg'
                 alt='User Profile'
                 fill
+                sizes='32px'
                 className='object-cover'
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -133,6 +134,7 @@ const Navbar = () => {
                       src='/user-avatar.jpg'
                       alt='User Profile'
                       fill
+                      sizes='40px'
                       className='object-cover'
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).style.display = 'none';
