@@ -9,6 +9,7 @@
 // Messages:   JSON { biz_code: string; data: object }
 
 import { useEffect, useRef, useState, useCallback, startTransition } from 'react';
+import { create } from 'zustand';
 import { DJI_CONFIG } from '@/lib/config/config';
 import { getToken } from '@/lib/config/token-store';
 
@@ -113,24 +114,159 @@ interface EventHandlerMap {
   device_upgrade_progress: EventHandler<DeviceUpgradeProgressData>[];
 }
 
+// ─── Shared Zustand Store ──────────────────────────────────────────────────────
+
+interface WebSocketState {
+  isConnected: boolean;
+  deviceStates: Map<string, DeviceOnlineUpdateData>;
+  osdStates: Map<string, DeviceOSDData>;
+  upgradeStates: Map<string, DeviceUpgradeProgressData>;
+
+  setConnected: (connected: boolean) => void;
+  updateDeviceState: (sn: string, data: DeviceOnlineUpdateData) => void;
+  updateOsdState: (sn: string, data: DeviceOSDData) => void;
+  updateUpgradeState: (sn: string, data: DeviceUpgradeProgressData) => void;
+  removeUpgradeState: (sn: string) => void;
+}
+
+const useWebSocketStore = create<WebSocketState>((set) => ({
+  isConnected: false,
+  deviceStates: new Map(),
+  osdStates: new Map(),
+  upgradeStates: new Map(),
+
+  setConnected: (connected) => set({ isConnected: connected }),
+  updateDeviceState: (sn, data) => set((state) => {
+    const next = new Map(state.deviceStates);
+    next.set(sn, data);
+    return { deviceStates: next };
+  }),
+  updateOsdState: (sn, data) => set((state) => {
+    const next = new Map(state.osdStates);
+    next.set(sn, data);
+    return { osdStates: next };
+  }),
+  updateUpgradeState: (sn, data) => set((state) => {
+    const next = new Map(state.upgradeStates);
+    next.set(sn, data);
+    return { upgradeStates: next };
+  }),
+  removeUpgradeState: (sn) => set((state) => {
+    const next = new Map(state.upgradeStates);
+    next.delete(sn);
+    return { upgradeStates: next };
+  }),
+}));
+
+// ─── Global Connection Lifecycle & Subscriptions ─────────────────────────────────
+
+let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let subscribersCount = 0;
+
+const globalHandlers: EventHandlerMap = {
+  device_online_update: [],
+  device_osd: [],
+  hms_event: [],
+  task_progress: [],
+  flight_area_sync: [],
+  device_upgrade_progress: [],
+};
+
+function connectGlobalWS() {
+  if (ws) return; // already connected or connecting
+
+  const token = getToken();
+  if (!token) return;
+
+  const base = DJI_CONFIG.BASE_URL.replace(/^http/, 'ws');
+  const url = `${base}/api/v1/ws?x-auth-token=${token}`;
+
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    useWebSocketStore.getState().setConnected(true);
+  };
+
+  ws.onclose = (e) => {
+    ws = null;
+    useWebSocketStore.getState().setConnected(false);
+    
+    // Reconnect after 3 seconds unless deliberately closed, and we still have active mounts
+    if (e.code !== 1000 && subscribersCount > 0) {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectGlobalWS, 3000);
+    }
+  };
+
+  ws.onerror = () => {
+    console.error('[DJI WS] Connection error');
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data as string) as DJIMessage;
+      const { biz_code, data } = msg;
+
+      // Dispatch to registered handlers
+      if (biz_code in globalHandlers) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (globalHandlers[biz_code as BizCode] as any[]).forEach((h) => h(data));
+      }
+
+      // Wrap all state updates in startTransition so navigation takes priority
+      // over incoming telemetry re-renders.
+      startTransition(() => {
+        // Built-in: maintain device state map for device_online_update
+        if (biz_code === 'device_online_update') {
+          const update = data as DeviceOnlineUpdateData;
+          useWebSocketStore.getState().updateDeviceState(update.sn, update);
+        }
+
+        // Built-in: maintain OSD map — primary source of GPS + telemetry
+        if (biz_code === 'device_osd') {
+          const osd = data as DeviceOSDData;
+          useWebSocketStore.getState().updateOsdState(osd.sn, osd);
+        }
+
+        // Built-in: track OTA progress per device; remove entry once done/failed
+        if (biz_code === 'device_upgrade_progress') {
+          const upgrade = data as DeviceUpgradeProgressData;
+          const done = upgrade.host.status === 3 || upgrade.host.status === 4;
+          if (done) {
+            useWebSocketStore.getState().removeUpgradeState(upgrade.sn);
+          } else {
+            useWebSocketStore.getState().updateUpgradeState(upgrade.sn, upgrade);
+          }
+        }
+      });
+    } catch (err) {
+      console.error('[DJI WS] Failed to parse message:', err);
+    }
+  };
+}
+
+function disconnectGlobalWS() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  if (ws) {
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      ws.close(1000, 'all components unmounted');
+    }
+    ws = null;
+  }
+  useWebSocketStore.getState().setConnected(false);
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useDJIWebSocket() {
-  const wsRef = useRef<WebSocket | null>(null);
-  const handlersRef = useRef<EventHandlerMap>({
-    device_online_update: [],
-    device_osd: [],
-    hms_event: [],
-    task_progress: [],
-    flight_area_sync: [],
-    device_upgrade_progress: [],
-  });
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [isConnected, setIsConnected] = useState(false);
-  const [deviceStates, setDeviceStates] = useState<Map<string, DeviceOnlineUpdateData>>(new Map());
-  const [osdStates, setOsdStates] = useState<Map<string, DeviceOSDData>>(new Map());
-  const [upgradeStates, setUpgradeStates] = useState<Map<string, DeviceUpgradeProgressData>>(new Map());
+  const isConnected = useWebSocketStore((state) => state.isConnected);
+  const deviceStates = useWebSocketStore((state) => state.deviceStates);
+  const osdStates = useWebSocketStore((state) => state.osdStates);
+  const upgradeStates = useWebSocketStore((state) => state.upgradeStates);
 
   // Subscribe to a specific biz_code event; returns an unsubscribe function
   const on = useCallback(
@@ -147,10 +283,10 @@ export function useDJIWebSocket() {
       >
     ) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (handlersRef.current[bizCode] as any[]).push(handler);
+      (globalHandlers[bizCode] as any[]).push(handler);
       return () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const arr = handlersRef.current[bizCode] as any[];
+        const arr = globalHandlers[bizCode] as any[];
         const idx = arr.indexOf(handler);
         if (idx !== -1) arr.splice(idx, 1);
       };
@@ -159,111 +295,13 @@ export function useDJIWebSocket() {
   );
 
   useEffect(() => {
-    let cancelled = false;
-
-    function connect() {
-      const token = getToken();
-      if (!token || cancelled) return;
-
-      const base = DJI_CONFIG.BASE_URL.replace(/^http/, 'ws');
-      const url = `${base}/api/v1/ws?x-auth-token=${token}`;
-
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        if (cancelled) {
-          ws.close();
-          return;
-        }
-        console.log('[DJI WS] Connected');
-        setIsConnected(true);
-      };
-
-      ws.onclose = (e) => {
-        if (cancelled) return;
-        console.log('[DJI WS] Disconnected — code:', e.code);
-        setIsConnected(false);
-        // Reconnect after 3 seconds unless deliberately closed
-        if (e.code !== 1000) {
-          reconnectTimerRef.current = setTimeout(connect, 3000);
-        }
-      };
-
-      ws.onerror = () => {
-        if (!cancelled) {
-          console.error('[DJI WS] Connection error');
-        }
-      };
-
-      ws.onmessage = (event) => {
-        if (cancelled) return;
-        try {
-          const msg = JSON.parse(event.data as string) as DJIMessage;
-          const { biz_code, data } = msg;
-
-          // Debug: log every incoming WS message so we can inspect live telemetry
-          console.log('[DJI WS ←]', biz_code, data);
-
-          // Dispatch to registered handlers
-          if (biz_code in handlersRef.current) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (handlersRef.current[biz_code as BizCode] as any[]).forEach((h) => h(data));
-          }
-
-          // Wrap all state updates in startTransition so navigation takes priority
-          // over incoming telemetry re-renders.
-          startTransition(() => {
-            // Built-in: maintain device state map for device_online_update
-            if (biz_code === 'device_online_update') {
-              const update = data as DeviceOnlineUpdateData;
-              setDeviceStates((prev) => {
-                const next = new Map(prev);
-                next.set(update.sn, update);
-                return next;
-              });
-            }
-
-            // Built-in: maintain OSD map — primary source of GPS + telemetry
-            if (biz_code === 'device_osd') {
-              const osd = data as DeviceOSDData;
-              setOsdStates((prev) => {
-                const next = new Map(prev);
-                next.set(osd.sn, osd);
-                return next;
-              });
-            }
-
-            // Built-in: track OTA progress per device; remove entry once done/failed
-            if (biz_code === 'device_upgrade_progress') {
-              const upgrade = data as DeviceUpgradeProgressData;
-              setUpgradeStates((prev) => {
-                const next = new Map(prev);
-                const done = upgrade.host.status === 3 || upgrade.host.status === 4;
-                if (done) {
-                  next.delete(upgrade.sn);
-                } else {
-                  next.set(upgrade.sn, upgrade);
-                }
-                return next;
-              });
-            }
-          });
-        } catch (err) {
-          console.error('[DJI WS] Failed to parse message:', err);
-        }
-      };
-    }
-
-    connect();
+    subscribersCount++;
+    connectGlobalWS();
 
     return () => {
-      cancelled = true;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      // Only close from OPEN state — closing a CONNECTING socket throws a browser error.
-      // If still connecting, onopen will see cancelled=true and close it cleanly.
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.close(1000, 'component unmounted');
+      subscribersCount--;
+      if (subscribersCount === 0) {
+        disconnectGlobalWS();
       }
     };
   }, []);

@@ -15,7 +15,7 @@ interface StreamControlPanelProps {
   stream: any;
   externalStopSignal?: number;
   onStreamingChange?: (isStreaming: boolean, videoId?: string) => void;
-  /** Pass the active WHEP URL when a stream is already running (e.g. after a view switch). */
+  /** Pass the active stream URL when a stream is already running (e.g. after a view switch). */
   activeStreamUrl?: string | null;
 }
 
@@ -27,6 +27,17 @@ const QUALITY_OPTIONS = [
   { label: '4K', value: 4 },
 ] as const;
 
+// Format any video_type string from the DJI API into a readable label.
+// Splits on underscores and capitalizes each word, so it works for any
+// drone model without a hardcoded lookup: "infrared_thermal" → "Infrared Thermal".
+function videoTypeLabel(type: string): string {
+  return type
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+
 export function StreamControlPanel({
   stream,
   externalStopSignal,
@@ -35,9 +46,7 @@ export function StreamControlPanel({
 }: StreamControlPanelProps) {
   const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
-  // Initialise isStreaming from activeStreamUrl so the Stop button shows after a view switch.
-  // activeVideoId stays null — it falls back to liveVideoId (from capacity) which is always
-  // the correct DJI video_id regardless of whether the component was just mounted.
+  // Initialize isStreaming from activeStreamUrl so the Stop button shows after a view switch.
   const [isStreaming, setIsStreaming] = useState(() => !!activeStreamUrl);
   const [quality, setQuality] = useState(0);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
@@ -49,24 +58,29 @@ export function StreamControlPanel({
   const qualityMutation = useUpdateStreamQuality();
   const lensMutation = useSwitchStreamCamera();
 
-  // Build available lens options from capacity — falls back to empty until capacity loads.
+  // ─── Derived capacity values ──────────────────────────────────────────────
   const capacity = capacityMap?.get(deviceSn);
-  const firstCamera = capacity?.cameras_list?.[0];
-  const availableVideos = firstCamera?.videos_list ?? [];
+  const cameras = capacity?.cameras_list ?? [];
 
-  // Lens options are derived from what the drone actually reports.
+  const selectedCamera = cameras[0];
+  const availableVideos = selectedCamera?.videos_list ?? [];
+
+  // Lens options come entirely from what the selected camera reports.
+  // Labels are formatted dynamically from the raw type string — no hardcoded map.
   const lensOptions = availableVideos.map((v) => ({
-    label: v.type.charAt(0).toUpperCase() + v.type.slice(1),
+    label: videoTypeLabel(v.type),
     value: v.type,
   }));
 
-  // Auto-select the first available lens when capacity data arrives.
+  // Fall back to first available lens when none is selected yet.
   const effectiveLens = selectedLens ?? availableVideos[0]?.type ?? 'normal';
 
-  // Build the DJI video_id: {device_sn}/{camera_index}/{video_index}
+  // Build the DJI composite video_id: {device_sn}/{camera_index}/{video_index}
   const videoForLens = availableVideos.find((v) => v.type === effectiveLens) ?? availableVideos[0];
   const liveVideoId =
-    firstCamera && videoForLens ? `${deviceSn}/${firstCamera.index}/${videoForLens.index}` : '0';
+    selectedCamera && videoForLens
+      ? `${deviceSn}/${selectedCamera.index}/${videoForLens.index}`
+      : '0';
 
   // While a stream is active keep using the video_id it was started with.
   const currentVideoId = activeVideoId ?? liveVideoId;
@@ -80,61 +94,35 @@ export function StreamControlPanel({
 
   const streamFeedType = stream.feedType || stream.type || stream.device_type;
 
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+
   const handleStart = () => {
     startMutation.mutate(
-      {
-        url: '',
-        video_id: liveVideoId,
-        url_type: 4,
-        video_quality: quality,
-        video_type: effectiveLens,
-      },
+      { url: '', video_id: liveVideoId, url_type: 4, video_quality: quality, video_type: effectiveLens },
       {
         onSuccess: (data) => {
           setIsStreaming(true);
           setActiveVideoId(liveVideoId);
           onStreamingChange?.(true, data.url);
         },
+        onError: (err) => toast.error(`Stream start failed: ${err.message}`),
       }
     );
   };
 
   const handleStop = () => {
     stopMutation.mutate(
+      { url: '', video_id: currentVideoId, url_type: 4, video_quality: quality, video_type: effectiveLens },
       {
-        url: '',
-        video_id: currentVideoId,
-        url_type: 4,
-        video_quality: quality,
-        video_type: effectiveLens,
-      },
-      {
-        // Use onSettled (not onSuccess) so the UI always resets even when the API
-        // returns an error — e.g. the stream was already broken server-side.
         onSettled: () => {
           setIsStreaming(false);
           setActiveVideoId(null);
           onStreamingChange?.(false);
         },
+        onError: (err) => toast.error(`Stream stop failed: ${err.message}`),
       }
     );
   };
-
-  const isStreamingRef = useRef(isStreaming);
-  isStreamingRef.current = isStreaming;
-  const handleStopRef = useRef(handleStop);
-  handleStopRef.current = handleStop;
-  const prevSignalRef = useRef(0);
-
-  useEffect(() => {
-    const sig = externalStopSignal ?? 0;
-    if (sig > prevSignalRef.current) {
-      prevSignalRef.current = sig;
-      if (isStreamingRef.current) handleStopRef.current();
-    }
-  }, [externalStopSignal]);
-
-  if (streamFeedType !== 'DRONE') return null;
 
   const handleQualityChange = (newQuality: number) => {
     setQuality(newQuality);
@@ -158,29 +146,45 @@ export function StreamControlPanel({
 
     const newVideo = availableVideos.find((v) => v.type === newLens) ?? availableVideos[0];
     const newVideoId =
-      firstCamera && newVideo
-        ? `${deviceSn}/${firstCamera.index}/${newVideo.index}`
+      selectedCamera && newVideo
+        ? `${deviceSn}/${selectedCamera.index}/${newVideo.index}`
         : currentVideoId;
 
-    // Optimistically update the UI — revert on failure so current lens stays accurate.
     setSelectedLens(newLens);
     lensMutation.mutate(
       { url: '', video_id: newVideoId, url_type: 4, video_quality: quality, video_type: newLens },
       {
         onError: () => {
-          // Switch failed — revert the lens selector so it reflects what's actually streaming.
           setSelectedLens(effectiveLens);
           toast.error('Camera switch unavailable — drone MQTT not responding');
         },
-        onSuccess: () => {},
       }
     );
   };
 
+  // ─── External stop signal ──────────────────────────────────────────────────
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
+  const handleStopRef = useRef(handleStop);
+  handleStopRef.current = handleStop;
+  const prevSignalRef = useRef(0);
+
+  useEffect(() => {
+    const sig = externalStopSignal ?? 0;
+    if (sig > prevSignalRef.current) {
+      prevSignalRef.current = sig;
+      if (isStreamingRef.current) handleStopRef.current();
+    }
+  }, [externalStopSignal]);
+
+  if (streamFeedType !== 'DRONE' && streamFeedType !== 'DOCK') return null;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className='flex flex-wrap items-end gap-6'>
-      {/* Lens selector — built from capacity data */}
-      {lensOptions.length > 0 && (
+      {/* Lens / video-type selector — built entirely from the selected camera's videos_list */}
+      {lensOptions.length > 1 && (
         <div>
           <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
             Lens

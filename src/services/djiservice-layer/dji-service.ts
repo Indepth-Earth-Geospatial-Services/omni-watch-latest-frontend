@@ -331,11 +331,11 @@ export function sendPayloadCommand(sn: string, payload: PayloadCommandRequest): 
   return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(sn), payload);
 }
 
-/** Pause / resume / stop a running dock job (e.g. wayline mission). */
+/** Execute any dock job. Body is optional — simple commands (debug_mode_open, cover_open, etc.) need none. */
 export function executeJob(
   sn: string,
   serviceIdentifier: string,
-  body: JobActionRequest
+  body?: JobActionRequest
 ): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.job(sn, serviceIdentifier), body);
 }
@@ -356,8 +356,8 @@ export function cancelFlyToPoint(sn: string): Promise<void> {
 }
 
 /** Requests exclusive control of the drone's payload (camera/gimbal). */
-export function requestPayloadAuthority(sn: string, body: PayloadAuthorityRequest): Promise<void> {
-  return djiRequest.post<void>(DJI_URLS.dock.payloadAuthority(sn), body);
+export function requestPayloadAuthority(sn: string, body?: PayloadAuthorityRequest): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.dock.payloadAuthority(sn), body ?? {});
 }
 
 /** Requests exclusive flight control authority over the drone. */

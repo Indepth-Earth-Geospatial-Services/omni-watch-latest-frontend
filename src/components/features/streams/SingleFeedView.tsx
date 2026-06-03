@@ -104,18 +104,12 @@ export const SingleFeedView = memo(function SingleFeedView({
 
       {/* Controls — fixed height, never scrolls off screen */}
       <div className='flex-shrink-0'>
-        {drone ? (
-          <StreamControlPanel
-            stream={toStream(device)}
-            externalStopSignal={stopSignal}
-            onStreamingChange={onStreamingChange}
-            activeStreamUrl={activeStreamUrl}
-          />
-        ) : (
-          <p className='text-xs text-zinc-600 italic'>
-            Live streaming is only available for drone-type devices.
-          </p>
-        )}
+        <StreamControlPanel
+          stream={toStream(device)}
+          externalStopSignal={stopSignal}
+          onStreamingChange={onStreamingChange}
+          activeStreamUrl={activeStreamUrl}
+        />
       </div>
     </div>
   );

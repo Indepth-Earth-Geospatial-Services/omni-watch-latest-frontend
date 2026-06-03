@@ -28,7 +28,8 @@ import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
 
 const isDrone = (device: DJIDevice) => device.domain === '0';
-const isDock  = (device: DJIDevice) => device.domain === '1';
+// Domain 1 = dock, domain 3 = dock in some DJI deployments (see useDJIDevices.ts comment)
+const isDock  = (device: DJIDevice) => device.domain === '1' || device.domain === '3';
 
 interface AssetTableProps {
   activeTab: TabType;

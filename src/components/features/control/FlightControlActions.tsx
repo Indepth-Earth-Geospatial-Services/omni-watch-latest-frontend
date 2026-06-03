@@ -7,13 +7,15 @@ import { executeJob, cancelFlyToPoint } from '@/services/djiservice-layer/dji-se
 
 export interface FlightControlActionsProps {
   selectedSn?: string;
+  dockSn?: string;
   isFlying?: boolean;
 }
 
-const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightControlActionsProps) => {
+const FlightControlActions = ({ selectedSn = '', dockSn = '', isFlying = false }: FlightControlActionsProps) => {
   const [isPaused, setIsPaused] = useState(false);
 
   const canAct = !!selectedSn && isFlying;
+  const canRth = !!dockSn && isFlying;
 
   // Pause / resume an active wayline mission (action 0 = pause, 1 = resume)
   const { mutate: execJob, isPending: isExecPending } = useMutation({
@@ -26,7 +28,12 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
     mutationFn: (sn: string) => cancelFlyToPoint(sn),
   });
 
-  const isAnyPending = isExecPending || isCancelPending;
+  // Return to Home — POST jobs/return_home on the DOCK SN (not drone SN)
+  const { mutate: returnHome, isPending: isRthPending } = useMutation({
+    mutationFn: (sn: string) => executeJob(sn, 'return_home'),
+  });
+
+  const isAnyPending = isExecPending || isCancelPending || isRthPending;
 
   const handlePauseResume = () => {
     if (!canAct || isAnyPending) return;
@@ -36,27 +43,20 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
     );
   };
 
-  // Hover — pause fly-to-point and hold position
   const handleHover = () => {
     if (!canAct || isAnyPending) return;
     cancelFly(selectedSn);
   };
 
-  // Emergency land — stop mission entirely
   const handleLand = () => {
     if (!canAct || isAnyPending) return;
-    cancelFly(selectedSn, {
-      onSuccess: () => setIsPaused(false),
-    });
+    cancelFly(selectedSn, { onSuccess: () => setIsPaused(false) });
   };
 
-  // RTH — stop wayline mission, drone returns to dock (action 2 = stop)
+  // RTH uses the dock SN — POST /control/api/v1/devices/{dock_sn}/jobs/return_home
   const handleRTH = () => {
-    if (!canAct || isAnyPending) return;
-    execJob(
-      { sn: selectedSn, action: 2 },
-      { onSuccess: () => setIsPaused(false) }
-    );
+    if (!canRth || isAnyPending) return;
+    returnHome(dockSn, { onSuccess: () => setIsPaused(false) });
   };
 
   const ActiveGlow = ({ colorClass }: { colorClass: string }) => (
@@ -146,18 +146,18 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
 
       {/* ── Return to Home ──────────────────────────────────────────── */}
       <div className='relative flex-1 h-full'>
-        {isExecPending && isPaused === false && (
+        {isRthPending && (
           <ActiveGlow colorClass='ring-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.3)]' />
         )}
         <button
           onClick={handleRTH}
-          disabled={!canAct || isAnyPending}
-          title={!canAct ? 'No active flight' : 'Return drone to dock'}
+          disabled={!canRth || isAnyPending}
+          title={!canRth ? 'No active flight or dock not selected' : 'Return drone to dock'}
           className='relative z-10 w-full h-full flex items-center justify-center gap-2 rounded border transition-all outline-none select-none group
             focus:outline-none focus:ring-0 disabled:opacity-40 disabled:cursor-not-allowed
             bg-indigo-950/40 border-indigo-900/50 text-indigo-500/70 hover:bg-indigo-900/40 hover:border-indigo-400 hover:text-indigo-300'
         >
-          {isExecPending && !isPaused ? (
+          {isRthPending ? (
             <Loader2 size={15} className='animate-spin text-indigo-400' />
           ) : (
             <Home size={15} className='group-hover:scale-110 transition-transform' />

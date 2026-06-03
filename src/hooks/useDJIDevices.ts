@@ -18,6 +18,9 @@ import {
   unbindDevice,
   updateDJIDevice,
   deviceOTA,
+  executeJob,
+  requestFlightAuthority,
+  requestPayloadAuthority,
 } from '@/services/djiservice-layer/dji-service';
 import type {
   BindDeviceRequest,
@@ -279,6 +282,39 @@ export function useSetDeviceProperty() {
         queryKey: deviceKeys(workspaceId).detail(variables.deviceSn),
       });
     },
+  });
+}
+
+/**
+ * Toggles debug mode on a dock.
+ * open=true → POST jobs/debug_mode_open (no body, no prereqs)
+ * open=false → POST jobs/debug_mode_close
+ * Authority commands require debug mode to be open first.
+ */
+export function useToggleDebugMode() {
+  return useMutation<void, Error, { sn: string; open: boolean }>({
+    mutationFn: ({ sn, open }) =>
+      executeJob(sn, open ? 'debug_mode_open' : 'debug_mode_close'),
+  });
+}
+
+/**
+ * Grabs exclusive flight control authority over a dock-attached drone.
+ * The dock must be online and in DEBUG mode (mode 1) for this to succeed.
+ */
+export function useRequestFlightAuthority() {
+  return useMutation<void, Error, string>({
+    mutationFn: (dockSn) => requestFlightAuthority(dockSn),
+  });
+}
+
+/**
+ * Grabs exclusive payload (camera/gimbal) control authority over a dock-attached drone.
+ * The dock must be online and in DEBUG mode (mode 1) for this to succeed.
+ */
+export function useRequestPayloadAuthority() {
+  return useMutation<void, Error, { sn: string; body: PayloadAuthorityRequest }>({
+    mutationFn: ({ sn, body }) => requestPayloadAuthority(sn, body),
   });
 }
 

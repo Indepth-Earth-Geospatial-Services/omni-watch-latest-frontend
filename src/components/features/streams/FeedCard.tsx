@@ -89,18 +89,12 @@ export const FeedCard = memo(function FeedCard({
       />
 
       <div className='px-3.5 py-3 border-t border-zinc-800/40'>
-        {drone ? (
-          <StreamControlPanel
-            stream={toStream(device)}
-            externalStopSignal={stopSignal}
-            onStreamingChange={onStreamingChange}
-            activeStreamUrl={activeStreamUrl}
-          />
-        ) : (
-          <p className='text-[10px] text-zinc-700 italic text-center py-0.5'>
-            Streaming not available for docks
-          </p>
-        )}
+        <StreamControlPanel
+          stream={toStream(device)}
+          externalStopSignal={stopSignal}
+          onStreamingChange={onStreamingChange}
+          activeStreamUrl={activeStreamUrl}
+        />
       </div>
     </div>
   );

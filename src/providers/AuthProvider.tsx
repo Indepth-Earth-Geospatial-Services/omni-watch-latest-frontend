@@ -47,10 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Fetch the current user profile via OmniWatch /me ────────────────────
   // Uses the OmniWatch auth endpoint — never calls the DJI Cloud server.
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
-    console.log('[AuthProvider] fetchCurrentUser → calling authApi.me()');
     try {
       const me = await authApi.me();
-      console.log('[AuthProvider] fetchCurrentUser ✓ — user restored:', me);
       setUser({
         user_id: me.principal_id,
         username: '',
@@ -76,10 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
     const delay = Math.max((expiresInSeconds - 60) * 1000, 30_000);
-    console.log(`[AuthProvider] scheduleRefresh — will refresh in ${Math.round(delay / 1000)}s`);
 
     refreshTimerRef.current = setTimeout(async () => {
-      console.log('[AuthProvider] proactive token refresh firing');
       try {
         await authApi.refreshToken();
         scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
@@ -93,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── On mount: restore session if a token already exists ─────────────────
   useEffect(() => {
     const token = getToken();
-    console.log('[AuthProvider] mount — token in localStorage:', token ? '✓ present' : '✗ none');
 
     if (token) {
       fetchCurrentUser().then((ok) => {

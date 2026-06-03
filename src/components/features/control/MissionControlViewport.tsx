@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Crosshair, Navigation, VideoOff } from 'lucide-react';
-import SensorToolbar from './SensorToolBar';
 import FlightControlActions from './FlightControlActions';
-import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity, CameraCapacity, VideoCapacity } from '@/lib/types';
 
@@ -33,7 +31,12 @@ interface MissionControlViewportProps {
   onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
+  mediaStream: MediaStream | null;
+  streamConnectState: StreamState | null;
+  dockSn?: string;
+  droneSn?: string;
   className?: string;
+  compact?: boolean;
 }
 
 const QUALITY_LABELS: Record<string, string> = {
@@ -72,27 +75,25 @@ const MissionControlViewport = ({
   onQualityChange,
   onStart,
   onStop,
+  mediaStream,
+  streamConnectState,
+  dockSn,
+  droneSn,
   className,
+  compact = false,
 }: MissionControlViewportProps) => {
   const heading = 247;
   const canStart = !!selectedVideoId && !isStreaming;
   const canStop = !!selectedVideoId && isStreaming;
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
 
+  // Re-attach the media stream to the video element whenever it changes or
+  // this component remounts after a panel switch — ensures playback resumes
+  // without restarting the WebRTC connection.
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = mediaStream;
   }, [mediaStream]);
-
-  // Reset player state when stream URL is cleared
-  useEffect(() => {
-    if (!activeStreamUrl) {
-      setMediaStream(null);
-      setStreamConnectState(null);
-    }
-  }, [activeStreamUrl]);
 
   return (
     <div
@@ -106,113 +107,64 @@ const MissionControlViewport = ({
       /> */}
 
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
-      <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
-        {/* Device */}
-        <select
-          value={selectedSn}
-          onChange={(e) => onDeviceChange(e.target.value)}
-          disabled={capacityLoading || isStreaming}
-          className={selectCls}
-        >
-          <option value=''>{capacityLoading ? 'Loading devices…' : 'Select device'}</option>
-          {devices.map((d) => (
-            <option key={d.sn} value={d.sn}>
-              {d.name || d.sn}
-            </option>
-          ))}
-        </select>
-
-        {/* Camera */}
-        <select
-          value={selectedCameraId}
-          onChange={(e) => onCameraChange(e.target.value)}
-          disabled={!selectedSn || isStreaming}
-          className={selectCls}
-        >
-          <option value=''>Camera</option>
-          {cameras.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name || c.index}
-            </option>
-          ))}
-        </select>
-
-        {/* Video source */}
-        <select
-          value={selectedVideoId}
-          onChange={(e) => onVideoChange(e.target.value)}
-          disabled={!selectedCameraId || isStreaming}
-          className={selectCls}
-        >
-          <option value=''>Video</option>
-          {videos.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.type || v.index}
-            </option>
-          ))}
-        </select>
-
-        {/* Lens / video type */}
-        {videoTypes.length > 0 && (
+      {compact ? (
+        /* Compact: status pill only */
+        <div className='flex items-center gap-2 px-3 py-1.5 bg-[#12151C] border-b border-zinc-800/60'>
+          <div
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+          />
+          <span
+            className={`text-[9px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+          >
+            {isStreaming ? 'Live' : 'Idle'}
+          </span>
+          {selectedSn && (
+            <span className='text-[9px] font-mono text-zinc-600 ml-auto truncate max-w-[120px]'>
+              {selectedSn}
+            </span>
+          )}
+        </div>
+      ) : (
+        /* Full controls */
+        <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
+          {/* Device */}
           <select
-            value={selectedVideoType}
-            onChange={(e) => onVideoTypeChange(e.target.value)}
-            disabled={!selectedVideoId}
+            value={selectedSn}
+            onChange={(e) => onDeviceChange(e.target.value)}
+            disabled={capacityLoading || isStreaming}
             className={selectCls}
           >
-            {videoTypes.map((t) => (
-              <option key={t} value={t}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+            <option value=''>{capacityLoading ? 'Loading drones…' : 'Select drone'}</option>
+            {devices.map((d) => (
+              <option key={d.sn} value={d.sn}>
+                {d.name || d.sn}
               </option>
             ))}
           </select>
-        )}
 
-        {/* Quality */}
-        <select
-          value={streamQuality}
-          onChange={(e) => onQualityChange(Number(e.target.value))}
-          disabled={!selectedVideoId}
-          className={selectCls}
-        >
-          {Object.entries(QUALITY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        {/* Start / Stop */}
-        <button
-          onClick={canStart ? onStart : onStop}
-          disabled={(!canStart && !canStop) || isStarting || isStopping}
-          className={`ml-auto px-4 py-1.5 text-[11px] font-bold rounded border transition-all disabled:opacity-40 ${
-            isStreaming
-              ? 'bg-red-600/20 border-red-500/60 text-red-400 hover:bg-red-600/30'
-              : 'bg-emerald-600/20 border-emerald-500/60 text-emerald-400 hover:bg-emerald-600/30'
-          }`}
-        >
-          {isStarting
-            ? 'Starting…'
-            : isStopping
-              ? 'Stopping…'
-              : isStreaming
-                ? 'Stop Stream'
-                : 'Start Stream'}
-        </button>
-      </div>
+          {/* Start / Stop */}
+          <button
+            onClick={canStart ? onStart : onStop}
+            disabled={(!canStart && !canStop) || isStarting || isStopping}
+            className={`ml-auto px-4 py-1.5 text-[11px] font-bold rounded border transition-all disabled:opacity-40 ${
+              isStreaming
+                ? 'bg-red-600/20 border-red-500/60 text-red-400 hover:bg-red-600/30'
+                : 'bg-emerald-600/20 border-emerald-500/60 text-emerald-400 hover:bg-emerald-600/30'
+            }`}
+          >
+            {isStarting
+              ? 'Starting…'
+              : isStopping
+                ? 'Stopping…'
+                : isStreaming
+                  ? 'Stop Stream'
+                  : 'Start Stream'}
+          </button>
+        </div>
+      )}
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active */}
-        {activeStreamUrl && (
-          <WebRTCPlayer
-            url={activeStreamUrl}
-            onStateChange={(state) => setStreamConnectState(state)}
-            onMediaStream={setMediaStream}
-          />
-        )}
-
         {/* Video element — hidden until track arrives */}
         <video
           ref={videoRef}
@@ -260,13 +212,25 @@ const MissionControlViewport = ({
         </div>
 
         {/* Compass inset */}
-        <div className='absolute bottom-6 left-6 w-40 h-40 rounded-full border border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl flex items-center justify-center overflow-hidden'>
-          <div className='absolute inset-0 rounded-full border-[1px] border-white/5 m-2' />
-          <div className='absolute inset-0 p-3 flex flex-col justify-between items-center text-[10px] font-bold text-white/40 pointer-events-none'>
+        <div
+          className={`absolute rounded-full border border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl flex items-center justify-center overflow-hidden ${
+            compact ? 'bottom-3 left-3 w-16 h-16' : 'bottom-6 left-6 w-40 h-40'
+          }`}
+        >
+          <div className='absolute inset-0 rounded-full border-[1px] border-white/5 m-1' />
+          <div
+            className={`absolute inset-0 p-2 flex flex-col justify-between items-center font-bold text-white/40 pointer-events-none ${
+              compact ? 'text-[7px]' : 'text-[10px]'
+            }`}
+          >
             <span>N</span>
             <span>S</span>
           </div>
-          <div className='absolute inset-0 p-3 flex justify-between items-center text-[10px] font-bold text-white/40 pointer-events-none'>
+          <div
+            className={`absolute inset-0 p-2 flex justify-between items-center font-bold text-white/40 pointer-events-none ${
+              compact ? 'text-[7px]' : 'text-[10px]'
+            }`}
+          >
             <span>W</span>
             <span>E</span>
           </div>
@@ -275,8 +239,15 @@ const MissionControlViewport = ({
             style={{ transform: `rotate(${heading}deg)` }}
           >
             <div className='flex flex-col items-center'>
-              <Navigation className='text-emerald-400 fill-emerald-400/20' size={24} />
-              <div className='absolute -top-6 text-[10px] font-mono font-bold text-emerald-400'>
+              <Navigation
+                className='text-emerald-400 fill-emerald-400/20'
+                size={compact ? 12 : 24}
+              />
+              <div
+                className={`absolute font-mono font-bold text-emerald-400 ${
+                  compact ? '-top-3 text-[7px]' : '-top-6 text-[10px]'
+                }`}
+              >
                 {heading}°
               </div>
             </div>
@@ -285,32 +256,47 @@ const MissionControlViewport = ({
         </div>
 
         {/* HUD: Stream status (bottom right) */}
-        <div className='absolute bottom-6 right-6 flex flex-col items-end gap-1 bg-white/5 backdrop-blur-md border border-white/10 px-3 py-2 rounded-md shadow-xl pointer-events-none'>
-          <div className='flex items-center gap-2 mb-1'>
+        {compact ? (
+          /* Compact: single-line status pill */
+          <div className='absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 px-2 py-1 rounded shadow-lg pointer-events-none'>
             <div
-              className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
             />
             <span
               className={`text-[8px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
             >
-              {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              {isStreaming ? 'Live' : 'Idle'}
             </span>
           </div>
-          {selectedSn && (
-            <span className='text-[10px] font-mono text-white/70 tracking-tighter'>
-              {selectedSn}
+        ) : (
+          /* Full telemetry overlay */
+          <div className='absolute bottom-6 right-6 flex flex-col items-end gap-1 bg-white/5 backdrop-blur-md border border-white/10 px-3 py-2 rounded-md shadow-xl pointer-events-none'>
+            <div className='flex items-center gap-2 mb-1'>
+              <div
+                className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+              />
+              <span
+                className={`text-[8px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+              >
+                {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              </span>
+            </div>
+            {selectedSn && (
+              <span className='text-[10px] font-mono text-white/70 tracking-tighter'>
+                {selectedSn}
+              </span>
+            )}
+            <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
+              Lat: 6.5244° N
             </span>
-          )}
-          <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
-            Lat: 6.5244° N
-          </span>
-          <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
-            Lon: 3.3792° E
-          </span>
-        </div>
+            <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
+              Lon: 3.3792° E
+            </span>
+          </div>
+        )}
       </div>
 
-      <FlightControlActions selectedSn={selectedSn} isFlying={isFlying} />
+      {!compact && <FlightControlActions selectedSn={droneSn ?? selectedSn} dockSn={dockSn} isFlying={isFlying} />}
     </div>
   );
 };

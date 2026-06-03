@@ -72,8 +72,6 @@ async function request<T>(
   extraHeaders: Record<string, string> = {}
 ): Promise<T> {
   const token = getToken();
-  console.log(`[OmniWatch] → ${method} ${url}`);
-
   try {
     const res = await axios.request<OmniWatchEnvelope<T>>({
       method,
@@ -86,11 +84,8 @@ async function request<T>(
       },
     });
 
-    console.log(`[OmniWatch] ← ${method} ${url} — HTTP ${res.status}, code: ${res.data?.code}`);
-
     // 204 No Content (e.g. DELETE success with no body)
     if (res.status === 204 || !res.data) {
-      console.log(`[OmniWatch] ✓ ${method} ${url} — no content`);
       return undefined as unknown as T;
     }
 
@@ -103,7 +98,6 @@ async function request<T>(
       throw new Error(msg);
     }
 
-    console.log(`[OmniWatch] ✓ ${method} ${url}`, envelope.data);
     return envelope.data;
   } catch (err) {
     if (err instanceof AxiosError && err.response) {

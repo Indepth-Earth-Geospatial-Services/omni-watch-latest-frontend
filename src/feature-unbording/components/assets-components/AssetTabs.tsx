@@ -6,13 +6,14 @@ import { TabType } from './AssetManagement';
 interface AssetTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  counts: Record<TabType, number>;
 }
 
-const AssetTabs = ({ activeTab, onTabChange }: AssetTabsProps) => {
-  const tabs: { label: TabType; count: string }[] = [
-    { label: 'All', count: '22' },
-    { label: 'Drones', count: '08' },
-    { label: 'Docks', count: '14' },
+const AssetTabs = ({ activeTab, onTabChange, counts }: AssetTabsProps) => {
+  const tabs: { label: TabType }[] = [
+    { label: 'All' },
+    { label: 'Drones' },
+    { label: 'Docks' },
   ];
 
   return (
@@ -40,7 +41,7 @@ const AssetTabs = ({ activeTab, onTabChange }: AssetTabsProps) => {
                     : 'border-zinc-700 text-zinc-600'
                 }`}
               >
-                {tab.count}
+                {String(counts[tab.label]).padStart(2, '0')}
               </span>
             </button>
           );
