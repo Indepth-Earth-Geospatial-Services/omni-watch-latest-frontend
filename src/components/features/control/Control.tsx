@@ -30,17 +30,19 @@ function formatElapsed(s: number): string {
 }
 
 export default function ControlPage() {
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+  const { user, isLoading: authLoading } = useAuth();
+
   // ─── Livestream hooks ──────────────────────────────────────────────────────
-  const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity();
+  const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity({ enabled: !authLoading });
   const { mutate: startStream, isPending: isStarting } = useStartStream();
   const { mutate: stopStream, isPending: isStopping } = useStopStream();
   const { mutate: updateQuality } = useUpdateStreamQuality();
   const { mutate: switchCamera } = useSwitchStreamCamera();
 
   // ─── Telemetry & device data ───────────────────────────────────────────────
-  const { getProcessedDroneData } = useTelemetry();
+  const { getProcessedDroneData, getDroneTelemetry } = useTelemetry();
   const { data: deviceList = [] } = useDJIDevices();
-  const { user } = useAuth();
 
   // ─── Panel layout state ───────────────────────────────────────────────────
   const [mainPanel, setMainPanel] = useState<PanelId>('viewport');
@@ -61,7 +63,10 @@ export default function ControlPage() {
   // ─── Elapsed time timer ────────────────────────────────────────────────────
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => {
-    if (!isStreaming) { setElapsedSeconds(0); return; }
+    if (!isStreaming) {
+      setElapsedSeconds(0);
+      return;
+    }
     const start = Date.now();
     const id = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
     return () => clearInterval(id);
@@ -70,22 +75,34 @@ export default function ControlPage() {
   // ─── Derived selections ───────────────────────────────────────────────────
   const devices = capacityMap ? Array.from(capacityMap.values()) : [];
   const selectedDevice = selectedSn ? capacityMap?.get(selectedSn) : undefined;
-  const cameras = selectedDevice?.cameras_list ?? [];
+  // useMemo keeps references stable so auto-select effects don't loop
+  const cameras = useMemo(() => selectedDevice?.cameras_list ?? [], [selectedDevice]);
   const selectedCamera = cameras.find((c) => c.id === selectedCameraId);
-  const videos = selectedCamera?.videos_list ?? [];
+  const videos = useMemo(() => selectedCamera?.videos_list ?? [], [selectedCamera]);
   // VideoCapacity has no switchVideoTypes — hide the lens selector
   const videoTypes: string[] = [];
 
   // ─── Header data ──────────────────────────────────────────────────────────
-  // Find the dock (domain=1) whose child is the selected drone
+  // Find the dock independently — prefer online, fall back to any registered dock.
+  // DJI Dock 3 reports domain '3' in some firmware deployments.
   const dockDevice = useMemo(
-    () => deviceList.find((d) => d.domain === '1' && d.childDeviceSn === selectedSn),
-    [deviceList, selectedSn]
+    () =>
+      deviceList.find((d) => (d.domain === '1' || d.domain === '3') && d.status) ??
+      deviceList.find((d) => d.domain === '1' || d.domain === '3'),
+    [deviceList]
   );
   const dockName = dockDevice?.nickname || dockDevice?.deviceName;
 
+  // Real-time dock online status — WebSocket device_online_update is authoritative;
+  // REST API status (polled every 30s) is the fallback for the initial render before
+  // any WS event arrives.
+  const dockWsState = dockDevice ? getDroneTelemetry(dockDevice.deviceSn) : undefined;
+  const dockOnline = dockWsState ? dockWsState.online_status : (dockDevice?.status ?? false);
+
   // Live OSD telemetry for the selected drone
   const droneData = selectedSn ? getProcessedDroneData(selectedSn) : null;
+  // Dock OSD — battery, wind etc. from the dock's own WebSocket events
+  const dockData = dockDevice ? getProcessedDroneData(dockDevice.deviceSn) : null;
   // modeCode 0 = standby/docked, anything else = airborne
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
 
@@ -109,48 +126,75 @@ export default function ControlPage() {
     setIsStreaming(false);
   }, []);
 
-  const handleVideoChange = useCallback((videoId: string) => {
-    setSelectedVideoId(videoId);
-    setActiveStreamVideoId('');
-    setActiveStreamUrl('');
-    setIsStreaming(false);
-    const video = videos.find((v) => v.id === videoId);
-    setSelectedVideoType(video?.type ?? '');
-  }, [videos]);
+  const handleVideoChange = useCallback(
+    (videoId: string) => {
+      setSelectedVideoId(videoId);
+      setActiveStreamVideoId('');
+      setActiveStreamUrl('');
+      setIsStreaming(false);
+      const video = videos.find((v) => v.id === videoId);
+      setSelectedVideoType(video?.type || 'zoom');
+    },
+    [videos]
+  );
 
   const handleStart = useCallback(() => {
-    if (!selectedVideoId || !selectedVideoType) {
-      toast.error('Select a device, camera, and video source first');
+    if (!selectedVideoId) {
+      toast.error('No device selected — waiting for dock to come online');
       return;
     }
     // DJI API requires composite video_id: {sn}/{camera_index}/{video_index}
     const video = videos.find((v) => v.id === selectedVideoId);
     const compositeId =
-      selectedCamera && video
-        ? `${selectedSn}/${selectedCamera.index}/${video.index}`
-        : null;
+      selectedCamera && video ? `${selectedSn}/${selectedCamera.index}/${video.index}` : null;
     if (!compositeId) {
       toast.error('Could not resolve video ID — try selecting device again');
       return;
     }
+    const videoType = selectedVideoType || 'normal';
     startStream(
-      { url: '', video_id: compositeId, url_type: 4, video_quality: streamQuality, video_type: selectedVideoType },
+      {
+        url: '',
+        video_id: compositeId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: videoType,
+      },
       {
         onSuccess: (data) => {
+          const streamUrl = data?.url ?? '';
+          if (!streamUrl) {
+            toast.error('DJI returned no stream URL — verify the drone supports WebRTC (url_type 4)');
+            return;
+          }
           setIsStreaming(true);
           setActiveStreamVideoId(compositeId);
-          setActiveStreamUrl(data?.url ?? '');
+          setActiveStreamUrl(streamUrl);
           toast.success('Stream started');
         },
         onError: (err: Error) => toast.error(`Failed to start stream: ${err.message}`),
       }
     );
-  }, [selectedVideoId, selectedVideoType, videos, selectedCamera, selectedSn, streamQuality, startStream]);
+  }, [
+    selectedVideoId,
+    selectedVideoType,
+    videos,
+    selectedCamera,
+    selectedSn,
+    streamQuality,
+    startStream,
+  ]);
 
   const handleStop = useCallback(() => {
     if (!activeStreamVideoId) return;
     stopStream(
-      { url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: selectedVideoType },
+      {
+        url: '',
+        video_id: activeStreamVideoId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: selectedVideoType,
+      },
       {
         onSettled: () => {
           setIsStreaming(false);
@@ -166,7 +210,13 @@ export default function ControlPage() {
     (quality: number) => {
       setStreamQuality(quality);
       if (isStreaming && activeStreamVideoId) {
-        updateQuality({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: quality, video_type: selectedVideoType });
+        updateQuality({
+          url: '',
+          video_id: activeStreamVideoId,
+          url_type: 4,
+          video_quality: quality,
+          video_type: selectedVideoType,
+        });
       }
     },
     [isStreaming, activeStreamVideoId, selectedVideoType, updateQuality]
@@ -176,11 +226,39 @@ export default function ControlPage() {
     (videoType: string) => {
       setSelectedVideoType(videoType);
       if (isStreaming && activeStreamVideoId) {
-        switchCamera({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: videoType });
+        switchCamera({
+          url: '',
+          video_id: activeStreamVideoId,
+          url_type: 4,
+          video_quality: streamQuality,
+          video_type: videoType,
+        });
       }
     },
     [isStreaming, activeStreamVideoId, streamQuality, switchCamera]
   );
+
+  // Auto-select the drone paired to the dock once live capacity loads
+  useEffect(() => {
+    if (dockDevice?.childDeviceSn && !selectedSn && capacityMap?.has(dockDevice.childDeviceSn)) {
+      setSelectedSn(dockDevice.childDeviceSn);
+    }
+  }, [dockDevice, capacityMap, selectedSn]);
+
+  // Auto-select first camera when a device is chosen (only one camera per dock in practice)
+  useEffect(() => {
+    if (cameras.length > 0 && !selectedCameraId) {
+      handleCameraChange(cameras[0].id);
+    }
+  }, [cameras, selectedCameraId, handleCameraChange]);
+
+  // Auto-select first video source — controller drives which feed is active;
+  // the web app just needs a valid video_id to build the composite stream ID
+  useEffect(() => {
+    if (videos.length > 0 && !selectedVideoId) {
+      handleVideoChange(videos[0].id);
+    }
+  }, [videos, selectedVideoId, handleVideoChange]);
 
   return (
     <div className='bg-black text-zinc-100 flex flex-col font-sans selection:bg-blue-500/30'>
@@ -188,13 +266,13 @@ export default function ControlPage() {
         <div className='w-full space-y-4'>
           <section className='space-y-2'>
             <TelemetryHeader
-              deviceName={selectedDevice?.name}
-              cameraName={selectedCamera?.name}
-              isStreaming={isStreaming}
               workspaceName={user?.workspace_name}
               dockName={dockName}
-              windSpeed={droneData?.windSpeed}
-              windDirection={droneData?.windDirection}
+              dockOnline={dockOnline}
+              droneBattery={droneData?.battery ?? dockData?.battery}
+              remainFlightTime={droneData?.remainFlightTime}
+              cameraName={selectedCamera?.name}
+              isStreaming={isStreaming}
               elapsedTime={formatElapsed(elapsedSeconds)}
             />
             <FlightStatsBar droneData={droneData} elapsedTime={formatElapsed(elapsedSeconds)} />
@@ -223,11 +301,8 @@ export default function ControlPage() {
             const viewportPanel = (isMain: boolean) => (
               <MissionControlViewport
                 devices={devices}
-                cameras={cameras}
-                videos={videos}
                 videoTypes={videoTypes}
                 selectedSn={selectedSn}
-                selectedCameraId={selectedCameraId}
                 selectedVideoId={selectedVideoId}
                 selectedVideoType={selectedVideoType}
                 streamQuality={streamQuality}
@@ -238,13 +313,12 @@ export default function ControlPage() {
                 isFlying={isFlying}
                 activeStreamUrl={activeStreamUrl}
                 onDeviceChange={handleDeviceChange}
-                onCameraChange={handleCameraChange}
-                onVideoChange={handleVideoChange}
                 onVideoTypeChange={handleVideoTypeChange}
                 onQualityChange={handleQualityChange}
                 onStart={handleStart}
                 onStop={handleStop}
                 className={isMain ? undefined : 'h-[342px]'}
+                isMini={!isMain}
               />
             );
 
@@ -290,9 +364,9 @@ export default function ControlPage() {
       </main>
 
       <SystemStatusFooter
-        droneData={droneData}
-        elapsedTime={formatElapsed(elapsedSeconds)}
         deviceList={deviceList}
+        dockSn={dockDevice?.deviceSn}
+        dockOnline={dockOnline}
       />
     </div>
   );

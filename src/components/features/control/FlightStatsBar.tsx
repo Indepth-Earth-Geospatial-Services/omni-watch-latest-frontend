@@ -15,16 +15,16 @@ function degToCompass(deg: number): string {
 }
 
 const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
-  const battery     = droneData?.battery ?? 0;
-  const altitude    = droneData?.altitude;
-  const speedMs     = droneData?.speed;
-  const heading     = droneData?.heading;
-  const direction   = droneData?.direction;
-  const online      = droneData?.online;
-  const gpsNumber   = droneData?.gpsNumber ?? 0;
-  const isGPSFixed  = droneData?.isGPSFixed;
+  const battery = droneData?.battery ?? 0;
+  const altitude = droneData?.altitude;
+  const speedMs = droneData?.speed;
+  const heading = droneData?.heading;
+  const direction = droneData?.direction;
+  const online = droneData?.online;
+  const gpsNumber = droneData?.gpsNumber ?? 0;
+  const isGPSFixed = droneData?.isGPSFixed;
   const windSpeedMs = droneData?.windSpeed;
-  const windDir     = droneData?.windDirection;
+  const windDir = droneData?.windDirection;
 
   const batteryColor =
     battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-[#45F0CF]';
@@ -90,9 +90,7 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
       <div className='absolute top-3 left-4 flex items-center gap-2'>
         <div
           className={`w-2 h-2 rounded-full ${
-            droneData?.online
-              ? 'bg-[#2CAC73] shadow-[0px_0px_5px_0px_#45F0CF]'
-              : 'bg-zinc-600'
+            droneData?.online ? 'bg-[#2CAC73] shadow-[0px_0px_5px_0px_#45F0CF]' : 'bg-zinc-600'
           }`}
         />
         <span

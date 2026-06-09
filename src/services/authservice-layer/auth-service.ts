@@ -72,7 +72,9 @@ async function request<T>(
   extraHeaders: Record<string, string> = {}
 ): Promise<T> {
   const token = getToken();
-  console.log(`[OmniWatch] → ${method} ${url}`);
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
 
   try {
     const res = await axios.request<OmniWatchEnvelope<T>>({
@@ -86,11 +88,8 @@ async function request<T>(
       },
     });
 
-    console.log(`[OmniWatch] ← ${method} ${url} — HTTP ${res.status}, code: ${res.data?.code}`);
-
     // 204 No Content (e.g. DELETE success with no body)
     if (res.status === 204 || !res.data) {
-      console.log(`[OmniWatch] ✓ ${method} ${url} — no content`);
       return undefined as unknown as T;
     }
 
@@ -99,11 +98,9 @@ async function request<T>(
     if (envelope.code !== 0) {
       const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
       const msg = String(detail ?? envelope.message ?? `Request failed: ${res.status}`);
-      console.error(`[OmniWatch] ✗ ${method} ${url} — code ${envelope.code}: ${msg}`);
       throw new Error(msg);
     }
 
-    console.log(`[OmniWatch] ✓ ${method} ${url}`, envelope.data);
     return envelope.data;
   } catch (err) {
     if (err instanceof AxiosError && err.response) {
@@ -112,10 +109,8 @@ async function request<T>(
       const msg = String(
         detail ?? envelope?.message ?? `Request failed: ${err.response.status}`
       );
-      console.error(`[OmniWatch] ✗ ${method} ${url} — HTTP ${err.response.status}:`, msg, err.response.data);
       throw new Error(msg);
     }
-    console.error(`[OmniWatch] ✗ ${method} ${url} — network error:`, err);
     throw err;
   }
 }

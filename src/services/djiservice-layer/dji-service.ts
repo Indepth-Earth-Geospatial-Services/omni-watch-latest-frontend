@@ -331,11 +331,14 @@ export function sendPayloadCommand(sn: string, payload: PayloadCommandRequest): 
   return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(sn), payload);
 }
 
-/** Pause / resume / stop a running dock job (e.g. wayline mission). */
+/** Execute a dock job by service identifier.
+ *  body is optional — no-payload commands (cover_open, drone_open, etc.) omit it;
+ *  action commands (alarm_state_switch, sdr_workmode_switch, etc.) pass { action: N }.
+ */
 export function executeJob(
   sn: string,
   serviceIdentifier: string,
-  body: JobActionRequest
+  body?: object
 ): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.job(sn, serviceIdentifier), body);
 }

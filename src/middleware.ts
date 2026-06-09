@@ -34,7 +34,7 @@ const DASHBOARD_ROUTES = [
 // Routes that logged-in users should be bounced away from
 const AUTH_ROUTES = ['/sign-in', '/sign-up'];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Presence of this cookie means a valid token was stored by setToken()

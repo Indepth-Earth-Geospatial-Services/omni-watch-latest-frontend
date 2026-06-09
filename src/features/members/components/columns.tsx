@@ -2,7 +2,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Pencil, User } from 'lucide-react';
 import type { OrgUser } from '@/lib/types';
 
-const AVATAR_COLORS = [
+export const AVATAR_COLORS = [
   'bg-blue-600',
   'bg-emerald-600',
   'bg-amber-600',
@@ -13,19 +13,19 @@ const AVATAR_COLORS = [
   'bg-teal-600',
 ];
 
-function getInitials(name: string): string {
+export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.substring(0, 2).toUpperCase();
 }
 
-function getAvatarColor(id: string): string {
+export function getAvatarColor(id: string): string {
   let hash = 0;
   for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
-function formatDate(iso: string): string {
+export function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString('en-US', {
       year: 'numeric',

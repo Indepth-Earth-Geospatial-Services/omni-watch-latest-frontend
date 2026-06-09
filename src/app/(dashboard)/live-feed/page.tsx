@@ -18,7 +18,6 @@ import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 export default function LiveFeedPage() {
   const router = useRouter();
   const { activeProject } = useProject();
-  // Poll every 5 s on this page so device online/offline status reflects quickly
   const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({
     refetchInterval: 5_000,
   });
@@ -26,15 +25,11 @@ export default function LiveFeedPage() {
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
 
-  // SN → WHEP URL (present = actively streaming; drives the hidden WebRTCPlayer layer)
   const [streamingDevices, setStreamingDevices] = useState<Map<string, string>>(new Map());
-  // SN → live MediaStream from WebRTCPlayer (shared to whichever view is visible)
   const [mediaStreams, setMediaStreams] = useState<Map<string, MediaStream | null>>(new Map());
-  // SN → WebRTC connection state
   const [streamStates, setStreamStates] = useState<
     Map<string, { state: StreamState; errorMsg?: string }>
   >(new Map());
-  // Increment to signal stop to a specific device's StreamControlPanel
   const [stopSignals, setStopSignals] = useState<Map<string, number>>(new Map());
 
   const projectSnSet = useMemo(
@@ -55,7 +50,6 @@ export default function LiveFeedPage() {
     if (switchToSingle) setViewMode('single');
   }, []);
 
-  // Called by StreamControlPanel when a stream starts (url = WHEP URL) or stops
   const handleStreamingChange = useCallback((sn: string, isStreaming: boolean, url?: string) => {
     setStreamingDevices((prev) => {
       const next = new Map(prev);
@@ -77,12 +71,10 @@ export default function LiveFeedPage() {
     }
   }, []);
 
-  // Fired by the hidden WebRTCPlayer layer when a MediaStream track arrives or tears down
   const handleMediaStream = useCallback((sn: string, stream: MediaStream | null) => {
     setMediaStreams((prev) => new Map(prev).set(sn, stream));
   }, []);
 
-  // Fired by the hidden WebRTCPlayer layer on connection state changes
   const handleStreamState = useCallback((sn: string, state: StreamState, errorMsg?: string) => {
     setStreamStates((prev) => new Map(prev).set(sn, { state, errorMsg }));
   }, []);
@@ -138,12 +130,6 @@ export default function LiveFeedPage() {
 
   return (
     <div className='bg-background text-foreground min-h-screen'>
-      {/*
-        Persistent hidden WebRTC layer — one connection per actively streaming device.
-        Lives OUTSIDE the single/multi view switch so unmounting a view never
-        closes the RTCPeerConnection. The resulting MediaStream is shared via props
-        to whichever view component is currently rendered.
-      */}
       <div className='sr-only' aria-hidden>
         {Array.from(streamingDevices.entries()).map(([sn, url]) => (
           <WebRTCPlayer
@@ -157,16 +143,21 @@ export default function LiveFeedPage() {
 
       <MainLayout title='Live Feeds' subtitle={activeProject.name}>
         <div className='flex gap-4 h-[calc(100vh-10rem)] font-poppins'>
-          <DeviceSidebar
-            projectDevices={projectDevices}
-            unboundDevices={activeProject.devices}
-            selectedSn={selectedSn}
-            viewMode={viewMode}
-            streamingDevices={streamingDevices}
-            onSelect={(sn) => handleSelectDevice(sn, true)}
-            onStop={stopDevice}
-            isLoading={devicesLoading}
-          />
+          {/* Sidebar — desktop only */}
+          <div className='hidden lg:flex h-full'>
+            <DeviceSidebar
+              projectDevices={projectDevices}
+              unboundDevices={activeProject.devices}
+              selectedSn={selectedSn}
+              viewMode={viewMode}
+              streamingDevices={streamingDevices}
+              onSelect={(sn) => handleSelectDevice(sn, true)}
+              onStop={stopDevice}
+              isLoading={devicesLoading}
+              isOpen={true}
+              onClose={() => {}}
+            />
+          </div>
 
           <div className='flex-1 flex flex-col bg-[#0C0D10] border border-zinc-800 rounded-xl overflow-hidden min-w-0'>
             <FeedToolbar

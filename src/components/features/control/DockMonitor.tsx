@@ -17,12 +17,12 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
   const [isDoorOpen, setIsDoorOpen] = useState(false);
   const { mutate: setProperty, isPending } = useSetDeviceProperty();
 
-  const dockOnline   = dockDevice?.status ?? false;
-  const dockName     = dockDevice?.nickname || dockDevice?.deviceName || 'No Dock';
-  const dockSn       = dockDevice?.deviceSn ?? '—';
-  const firmware     = dockDevice?.firmwareVersion ?? '—';
+  const dockOnline = dockDevice?.status ?? false;
+  const dockName = dockDevice?.nickname || dockDevice?.deviceName || 'No Dock';
+  const dockSn = dockDevice?.deviceSn ?? '—';
+  const firmware = dockDevice?.firmwareVersion ?? '—';
   // modeCode 0 = standby / in dock; anything else = airborne
-  const droneInDock  = droneData ? droneData.modeCode === 0 : null;
+  const droneInDock = droneData ? droneData.modeCode === 0 : null;
 
   const handleOpen = () => {
     if (!dockDevice || isPending) return;
@@ -68,10 +68,7 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
               : 'bg-zinc-800/50 border-zinc-700 text-zinc-500'
           }`}
         >
-          {isDoorOpen
-            ? <DoorOpen size={12} />
-            : <DoorClosed size={12} />
-          }
+          {isDoorOpen ? <DoorOpen size={12} /> : <DoorClosed size={12} />}
           <span className='text-[9px] font-black tracking-widest uppercase'>
             {isDoorOpen ? 'Door Open' : 'Door Closed'}
           </span>
@@ -79,11 +76,14 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
 
         {/* Dock online/offline badge */}
         <div className='absolute top-3 right-3 flex items-center gap-1.5'>
-          {dockOnline
-            ? <Wifi size={12} className='text-emerald-400' />
-            : <WifiOff size={12} className='text-zinc-500' />
-          }
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${dockOnline ? 'text-emerald-400' : 'text-zinc-500'}`}>
+          {dockOnline ? (
+            <Wifi size={12} className='text-emerald-400' />
+          ) : (
+            <WifiOff size={12} className='text-zinc-500' />
+          )}
+          <span
+            className={`text-[9px] font-bold uppercase tracking-wider ${dockOnline ? 'text-emerald-400' : 'text-zinc-500'}`}
+          >
             {dockOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -100,11 +100,10 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
             {/* Drone-in-dock indicator */}
             {droneInDock !== null && (
               <div className='flex items-center gap-1'>
-                <Send
-                  size={10}
-                  className={droneInDock ? 'text-emerald-400' : 'text-blue-400'}
-                />
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${droneInDock ? 'text-emerald-400' : 'text-blue-400'}`}>
+                <Send size={10} className={droneInDock ? 'text-emerald-400' : 'text-blue-400'} />
+                <span
+                  className={`text-[9px] font-bold uppercase tracking-wider ${droneInDock ? 'text-emerald-400' : 'text-blue-400'}`}
+                >
                   {droneInDock ? 'Docked' : 'Airborne'}
                 </span>
               </div>
@@ -117,9 +116,7 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
               {dockSn !== '—' ? `SN: ${dockSn.slice(-8)}` : 'No dock linked'}
             </span>
             {firmware !== '—' && (
-              <span className='text-[8px] font-mono text-zinc-600'>
-                fw {firmware}
-              </span>
+              <span className='text-[8px] font-mono text-zinc-600'>fw {firmware}</span>
             )}
           </div>
         </div>
@@ -131,9 +128,10 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
           onClick={handleOpen}
           disabled={!dockOnline || isPending || isDoorOpen}
           className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
-            ${isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            ${
+              isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
             }`}
         >
           {isPending && isDoorOpen ? '…' : 'Open'}
@@ -142,9 +140,10 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
           onClick={handleClose}
           disabled={!dockOnline || isPending || !isDoorOpen}
           className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
-            ${!isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            ${
+              !isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
             }`}
         >
           {isPending && !isDoorOpen ? '…' : 'Close'}

@@ -349,8 +349,8 @@ function GeoMap() {
       duration: 2000,
       essential: true,
     });
-    setSelectedDrone(drone);       // opens the map popup
-    setPanelSelectedSn(drone.sn);  // highlights the panel button
+    setSelectedDrone(drone); // opens the map popup
+    setPanelSelectedSn(drone.sn); // highlights the panel button
   }, []);
 
   const handleMapClick = useCallback(

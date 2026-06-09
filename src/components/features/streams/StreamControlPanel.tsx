@@ -15,7 +15,6 @@ interface StreamControlPanelProps {
   stream: any;
   externalStopSignal?: number;
   onStreamingChange?: (isStreaming: boolean, videoId?: string) => void;
-  /** Pass the active WHEP URL when a stream is already running (e.g. after a view switch). */
   activeStreamUrl?: string | null;
 }
 
@@ -35,9 +34,6 @@ export function StreamControlPanel({
 }: StreamControlPanelProps) {
   const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
-  // Initialise isStreaming from activeStreamUrl so the Stop button shows after a view switch.
-  // activeVideoId stays null — it falls back to liveVideoId (from capacity) which is always
-  // the correct DJI video_id regardless of whether the component was just mounted.
   const [isStreaming, setIsStreaming] = useState(() => !!activeStreamUrl);
   const [quality, setQuality] = useState(0);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
@@ -49,26 +45,19 @@ export function StreamControlPanel({
   const qualityMutation = useUpdateStreamQuality();
   const lensMutation = useSwitchStreamCamera();
 
-  // Build available lens options from capacity — falls back to empty until capacity loads.
   const capacity = capacityMap?.get(deviceSn);
   const firstCamera = capacity?.cameras_list?.[0];
   const availableVideos = firstCamera?.videos_list ?? [];
 
-  // Lens options are derived from what the drone actually reports.
   const lensOptions = availableVideos.map((v) => ({
     label: v.type.charAt(0).toUpperCase() + v.type.slice(1),
     value: v.type,
   }));
 
-  // Auto-select the first available lens when capacity data arrives.
   const effectiveLens = selectedLens ?? availableVideos[0]?.type ?? 'normal';
-
-  // Build the DJI video_id: {device_sn}/{camera_index}/{video_index}
   const videoForLens = availableVideos.find((v) => v.type === effectiveLens) ?? availableVideos[0];
   const liveVideoId =
     firstCamera && videoForLens ? `${deviceSn}/${firstCamera.index}/${videoForLens.index}` : '0';
-
-  // While a stream is active keep using the video_id it was started with.
   const currentVideoId = activeVideoId ?? liveVideoId;
 
   const disabled = !(stream.isOnline || stream.status);
@@ -109,8 +98,6 @@ export function StreamControlPanel({
         video_type: effectiveLens,
       },
       {
-        // Use onSettled (not onSuccess) so the UI always resets even when the API
-        // returns an error — e.g. the stream was already broken server-side.
         onSettled: () => {
           setIsStreaming(false);
           setActiveVideoId(null);
@@ -162,13 +149,11 @@ export function StreamControlPanel({
         ? `${deviceSn}/${firstCamera.index}/${newVideo.index}`
         : currentVideoId;
 
-    // Optimistically update the UI — revert on failure so current lens stays accurate.
     setSelectedLens(newLens);
     lensMutation.mutate(
       { url: '', video_id: newVideoId, url_type: 4, video_quality: quality, video_type: newLens },
       {
         onError: () => {
-          // Switch failed — revert the lens selector so it reflects what's actually streaming.
           setSelectedLens(effectiveLens);
           toast.error('Camera switch unavailable — drone MQTT not responding');
         },
@@ -178,14 +163,14 @@ export function StreamControlPanel({
   };
 
   return (
-    <div className='flex flex-wrap items-end gap-6'>
-      {/* Lens selector — built from capacity data */}
+    <div className='flex flex-wrap items-end gap-3 sm:gap-6'>
+      {/* Lens selector */}
       {lensOptions.length > 0 && (
         <div>
           <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
             Lens
           </p>
-          <div className='flex gap-1'>
+          <div className='flex gap-1 flex-wrap'>
             {lensOptions.map(({ label, value }) => (
               <button
                 key={value}
@@ -210,7 +195,7 @@ export function StreamControlPanel({
         <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
           Quality
         </p>
-        <div className='flex gap-1'>
+        <div className='flex gap-1 flex-wrap'>
           {QUALITY_OPTIONS.map(({ label, value }) => (
             <button
               key={value}
@@ -229,8 +214,8 @@ export function StreamControlPanel({
         </div>
       </div>
 
-      {/* Start / Stop */}
-      <div className='ml-auto'>
+      {/* Start / Stop — full width on very small screens */}
+      <div className='sm:ml-auto w-full sm:w-auto'>
         <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
           Stream
         </p>
@@ -238,7 +223,7 @@ export function StreamControlPanel({
           <button
             disabled={disabled || isPending}
             onClick={handleStop}
-            className='px-4 py-1.5 text-[11px] font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
           >
             {stopMutation.isPending ? 'Stopping…' : 'Stop Stream'}
           </button>
@@ -246,7 +231,7 @@ export function StreamControlPanel({
           <button
             disabled={disabled || isPending}
             onClick={handleStart}
-            className='px-4 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
           >
             {startMutation.isPending ? 'Starting…' : 'Start Stream'}
           </button>

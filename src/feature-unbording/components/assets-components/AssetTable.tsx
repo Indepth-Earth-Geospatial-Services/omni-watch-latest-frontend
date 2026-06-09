@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
 
 const isDrone = (device: DJIDevice) => device.domain === '0';
-const isDock  = (device: DJIDevice) => device.domain === '1';
+const isDock  = (device: DJIDevice) => device.domain === '1' || device.domain === '3';
 
 interface AssetTableProps {
   activeTab: TabType;
@@ -81,7 +81,15 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
       return;
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMenuPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    const menuHeight = 220; // estimated dropdown menu height
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    let top = rect.bottom + 6;
+    if (spaceBelow < menuHeight && rect.top > menuHeight) {
+      top = rect.top - menuHeight - 6;
+    }
+    
+    setMenuPosition({ top, right: window.innerWidth - rect.right });
     setOpenMenuSn(sn);
   };
 
@@ -93,10 +101,10 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
     ? assignedProjectFor(activeMenuDevice.deviceSn)
     : undefined;
 
-
   return (
     <>
-      <div className='w-[calc(100%-1rem)] overflow-hidden bg-[#1D2026] rounded-lg border border-zinc-800/50 shadow-2xl mx-2 font-poppins'>
+      {/* Desktop Table (Hidden on mobile) */}
+      <div className='hidden md:block w-[calc(100%-1rem)] overflow-hidden bg-[#1D2026] rounded-lg border border-zinc-800/50 shadow-2xl mx-2 font-poppins'>
         <div className='overflow-x-auto'>
           <table className='w-full text-left border-collapse min-w-[900px]'>
             <thead>
@@ -298,6 +306,143 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
           </table>
         </div>
       </div>
+
+      {/* Mobile Card List (Visible only on mobile/tablet) */}
+      <div className='md:hidden space-y-4 px-4'>
+        {devicesLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 animate-pulse'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-8 h-8 rounded bg-zinc-800' />
+                  <div className='h-4 w-24 bg-zinc-800 rounded' />
+                </div>
+                <div className='w-6 h-6 bg-zinc-800 rounded' />
+              </div>
+              <div className='grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/50'>
+                <div className='h-3 w-16 bg-zinc-800 rounded' />
+                <div className='h-3 w-20 bg-zinc-800 rounded' />
+                <div className='h-3 w-16 bg-zinc-800 rounded' />
+                <div className='h-3 w-20 bg-zinc-800 rounded' />
+              </div>
+            </div>
+          ))
+        ) : devicesError ? (
+          <div className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-8 text-center'>
+            <AlertCircle className='w-7 h-7 text-red-400 mx-auto mb-2' />
+            <p className='text-sm text-zinc-400'>Failed to load devices</p>
+            <p className='text-xs text-red-400/80 font-mono mt-1'>{devicesError.message}</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-8 text-center'>
+            <PlaneTakeoff className='w-7 h-7 text-zinc-700 mx-auto mb-2' />
+            <p className='text-sm text-zinc-600'>No devices found.</p>
+          </div>
+        ) : (
+          filtered.map((device, idx) => {
+            const drone = isDrone(device);
+            const online = device.status;
+            const assignedProject = assignedProjectFor(device.deviceSn);
+            const upgrade = upgradeStates.get(device.deviceSn);
+
+            return (
+              <div
+                key={device.deviceSn ?? `device-card-${idx}`}
+                className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 font-poppins'
+              >
+                {/* Header */}
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-8 h-8 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
+                      {drone ? (
+                        <Activity size={14} className='text-blue-400' />
+                      ) : (
+                        <Box size={14} className='text-cyan-400' />
+                      )}
+                    </div>
+                    <div className='min-w-0'>
+                      <p className='text-sm font-bold text-zinc-100 truncate'>
+                        {device.nickname || device.deviceName || '—'}
+                      </p>
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border mt-0.5 ${
+                          drone
+                            ? 'bg-blue-500/5 border-blue-500/20 text-blue-400'
+                            : 'bg-cyan-500/5 border-cyan-500/20 text-cyan-400'
+                        }`}
+                      >
+                        {drone ? 'Drone' : isDock(device) ? 'Dock' : 'Other'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleMenuOpen(e, device.deviceSn)}
+                    className={`p-1.5 rounded-md border transition-colors ${
+                      openMenuSn === device.deviceSn
+                        ? 'bg-zinc-700 border-zinc-600 text-zinc-100'
+                        : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600'
+                    }`}
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                </div>
+
+                {/* Details Grid */}
+                <div className='grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-zinc-800/30 text-xs'>
+                  <div>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Serial Number</span>
+                    <span className='font-mono text-zinc-300 truncate block mt-0.5'>{device.deviceSn}</span>
+                  </div>
+
+                  <div>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Status</span>
+                    <div className='flex items-center gap-1.5 mt-0.5'>
+                      <Wifi size={12} className={online ? 'text-emerald-400' : 'text-zinc-600'} />
+                      <span className={`font-semibold ${online ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                        {online ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Firmware</span>
+                    <div className='mt-0.5'>
+                      {upgrade ? (
+                        <div className='space-y-1'>
+                          <span className='text-[9px] text-blue-400 font-semibold capitalize animate-pulse'>
+                            {upgrade.host.progress.step_key}… {upgrade.host.progress.percent}%
+                          </span>
+                          <div className='w-full h-1 bg-zinc-800 rounded-full overflow-hidden'>
+                            <div
+                              className='h-full bg-blue-500 rounded-full'
+                              style={{ width: `${upgrade.host.progress.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className='font-mono text-zinc-300'>{device.firmwareVersion || '—'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Project</span>
+                    <div className='mt-0.5'>
+                      {assignedProject ? (
+                        <span className='font-semibold text-[#1C93FF] truncate block'>
+                          {assignedProject.name}
+                        </span>
+                      ) : (
+                        <span className='text-zinc-600 italic block'>Unassigned</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}    </div>
 
       {/* ── Fixed-position action dropdown ────────────────────────────────────── */}
       {activeMenuDevice && (

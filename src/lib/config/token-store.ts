@@ -1,22 +1,33 @@
-// JWT token storage with two-layer persistence:
-//   - localStorage  → holds the real token + expiry, read by client.ts for API requests
-//   - Cookie signal → holds "true" so Next.js middleware can check auth state on the Edge
+// 🛡️ Secure token storage — JWT held in-memory only, never in localStorage.
 //
-// 🛡️ Security Analyst Note:
-// While this two-layer approach is functional, storing the raw JWT in localStorage
-// makes it accessible to any XSS vulnerabilities. A more secure, best-practice approach
-// would be to store the token exclusively in an HttpOnly, Secure, SameSite=Strict cookie
-// and have your Next.js API proxy automatically attach it to DJI requests, preventing
-// client-side JavaScript from ever accessing the raw token.
+// Architecture:
+//   - In-memory variable  → holds the actual JWT, used by client.ts and auth-api.ts
+//   - localStorage         → holds ONLY the expiry timestamp (not sensitive)
+//   - Cookie signal        → holds "true" so Next.js middleware can check auth state on the Edge
+//
+// Why in-memory instead of localStorage:
+//   localStorage is accessible to any XSS vulnerability via localStorage.getItem().
+//   An in-memory module variable cannot be read by a simple XSS payload — the attacker
+//   would need to hook into the module system or intercept network requests, which is
+//   significantly harder.
+//
+// Page refresh behaviour:
+//   On refresh, the in-memory token is lost. AuthProvider detects this via hasSession()
+//   (checks if an expiry timestamp exists in localStorage) and calls authApi.refreshToken()
+//   which uses the HttpOnly refresh cookie (set by Django) to obtain a new access token.
+//   The user's session is restored transparently.
 
 const StorageKeys = {
-  TOKEN: 'dji_auth_token',
   EXPIRES: 'dji_token_expires',
+  SIGNAL: 'dji_auth_token',
 } as const;
 
-// -----------------------------------------------------------------------------
-// Core Utilities (Modularity & DRY)
-// -----------------------------------------------------------------------------
+// ─── In-memory token store ───────────────────────────────────────────────────
+// The raw JWT lives here — never in localStorage, never in a JS-readable cookie.
+
+let inMemoryToken: string | null = null;
+
+// ─── Core Utilities ──────────────────────────────────────────────────────────
 
 const isSSR = () => typeof window === 'undefined';
 
@@ -53,47 +64,66 @@ const getExpiryTime = (): number | null => {
 // -----------------------------------------------------------------------------
 
 /**
- * Returns the stored JWT, or null if missing / expired.
- * Automatically cleans up an expired token.
+ * Returns the in-memory JWT, or null if missing / expired.
+ * After a page refresh the token is lost — AuthProvider calls refreshToken()
+ * to restore it using the HttpOnly refresh cookie.
  */
 export function getToken(): string | null {
   const expiryTime = getExpiryTime();
-  
+
   if (expiryTime && Date.now() > expiryTime) {
-    clearToken(); // token has expired — remove it rather than returning a dead token
+    clearToken(); // token has expired — clean up
     return null;
   }
 
-  return LocalStorageUtils.get(StorageKeys.TOKEN);
+  return inMemoryToken;
 }
 
 /**
- * Persists the JWT from a successful login or token refresh.
- * @param token     - The raw JWT string returned by the DJI server
+ * Stores the JWT in memory (never localStorage) after a successful login or token refresh.
+ *
+ * @param token     - The raw JWT string returned by the OmniWatch server
  * @param expiresIn - Lifetime in seconds (e.g. 3600 for 1 hour). Optional but strongly recommended.
  */
 export function setToken(token: string, expiresIn?: number): void {
-  LocalStorageUtils.set(StorageKeys.TOKEN, token);
+  // Store JWT in memory only — this is the key security improvement
+  inMemoryToken = token;
 
   const maxAge = expiresIn ?? 3600;
 
   if (expiresIn) {
-    // Store absolute expiry timestamp so getToken() can compare against Date.now()
+    // Store absolute expiry timestamp so getToken() can detect expiration
+    // and AuthProvider can schedule proactive refresh.
+    // This is NOT sensitive — it's just a number (e.g. 1717500000000).
     LocalStorageUtils.set(StorageKeys.EXPIRES, String(Date.now() + expiresIn * 1000));
   }
 
-  // Cookie signal for Next.js middleware
-  CookieUtils.setStrictSignal(StorageKeys.TOKEN, maxAge);
+  // Cookie signal for Next.js Edge middleware — still needed because middleware
+  // runs before any client-side JS and can't access in-memory variables.
+  CookieUtils.setStrictSignal(StorageKeys.SIGNAL, maxAge);
 }
 
 /**
- * Clears the token from both localStorage and the cookie.
+ * Clears the in-memory token, expiry, and signal cookie.
  * Called on logout or when a 401 cannot be recovered.
  */
 export function clearToken(): void {
-  LocalStorageUtils.remove(StorageKeys.TOKEN);
+  inMemoryToken = null;
   LocalStorageUtils.remove(StorageKeys.EXPIRES);
-  CookieUtils.clearSignal(StorageKeys.TOKEN);
+  CookieUtils.clearSignal(StorageKeys.SIGNAL);
+}
+
+/**
+ * Returns true if a session was previously established (expiry timestamp exists).
+ * Used by AuthProvider on mount to decide whether to attempt a token refresh
+ * after a page refresh has wiped the in-memory token.
+ *
+ * Note: This does NOT guarantee the session is still valid — the refresh cookie
+ * may have expired. AuthProvider handles that case by catching the refresh error
+ * and redirecting to sign-in.
+ */
+export function hasSession(): boolean {
+  return getExpiryTime() !== null;
 }
 
 /**

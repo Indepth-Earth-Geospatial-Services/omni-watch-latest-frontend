@@ -30,11 +30,7 @@ async function forwardRequest(
     const NO_BODY = ['GET', 'HEAD', 'DELETE'];
     const body = NO_BODY.includes(request.method) ? undefined : await request.text();
 
-    console.log(`[OmniWatch Proxy] → ${request.method} ${targetUrl}`);
-
     const res = await fetch(targetUrl, { method: request.method, headers: forwardedHeaders, body });
-
-    console.log(`[OmniWatch Proxy] ← ${res.status}`);
 
     // 204 No Content — must not include a body in the response
     if (res.status === 204) {
@@ -59,7 +55,6 @@ async function forwardRequest(
 
     return new NextResponse(text, { status: res.status, headers: responseHeaders });
   } catch (error) {
-    console.error('[OmniWatch Proxy] Error:', error);
     return NextResponse.json({ detail: 'Failed to reach OmniWatch server.' }, { status: 503 });
   }
 }

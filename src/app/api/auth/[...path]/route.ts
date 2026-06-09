@@ -42,9 +42,6 @@ async function forwardRequest(
 
     const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
 
-    console.log(`[Auth Proxy] → ${request.method} ${targetUrl}`);
-    console.log(`[Auth Proxy] Request body:`, body);
-
     // Use redirect:'manual' so we can detect Django 301s and re-send as the
     // original method. The default behaviour follows 301 and downgrades
     // POST→GET, which causes Django to return 403 on endpoints like /logout.
@@ -61,7 +58,6 @@ async function forwardRequest(
     if ((authResponse.status === 301 || authResponse.status === 302) && body !== undefined) {
       const location = authResponse.headers.get('location');
       if (location) {
-        console.log(`[Auth Proxy] 301 → re-POST to ${location}`);
         authResponse = await fetch(location, {
           method: request.method,
           headers: forwardedHeaders,
@@ -77,8 +73,6 @@ async function forwardRequest(
     }
 
     const responseText = await authResponse.text();
-    console.log(`[Auth Proxy] ← ${authResponse.status} from ${targetUrl}`);
-    console.log(`[Auth Proxy] Response body:`, responseText.substring(0, 500));
 
     // Build response headers — forward Content-Type plus all Set-Cookie headers.
     // Set-Cookie must be forwarded so the browser stores the HttpOnly refresh token
@@ -98,8 +92,6 @@ async function forwardRequest(
           ? [authResponse.headers.get('set-cookie')!]
           : [];
 
-    console.log(`[Auth Proxy] Set-Cookie headers:`, setCookies);
-
     for (const cookie of setCookies) {
       // Strip Domain so the browser stores the cookie for THIS origin (Next.js app),
       // not the backend IP. Without this, the browser scopes the cookie to the backend
@@ -113,7 +105,6 @@ async function forwardRequest(
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('Auth Proxy Error:', error);
     return NextResponse.json(
       {
         code: 503,

@@ -9,8 +9,8 @@ interface MembersHeaderProps {
 
 export default function MembersHeader({ onSearch, onInviteClick }: MembersHeaderProps) {
   return (
-    <div className='flex items-center justify-between w-full px-6 py-4 bg-transparent'>
-      <div className='relative w-full max-w-sm'>
+    <div className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-[calc(100%-2rem)] mx-4 py-4 bg-transparent gap-3'>
+      <div className='relative w-full sm:max-w-sm'>
         <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
           <Search className='w-4 h-4 text-zinc-500' />
         </div>
@@ -25,7 +25,7 @@ export default function MembersHeader({ onSearch, onInviteClick }: MembersHeader
       <button
         type='button'
         onClick={onInviteClick}
-        className='inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:scale-95 transition-all shadow-sm'
+        className='inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500 active:scale-95 transition-all shadow-sm w-full sm:w-auto flex-shrink-0'
       >
         <UserPlus className='w-4 h-4' />
         Add Member

@@ -57,7 +57,7 @@ export default function SignUpPage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    void values;
     // TODO: Implement sign up logic
     alert("Sign up functionality will be implemented here");
   }

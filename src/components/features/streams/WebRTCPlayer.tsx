@@ -54,19 +54,22 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      await new Promise<void>((resolve) => {
-        if (pc.iceGatheringState === 'complete') {
-          resolve();
-          return;
-        }
-        const handler = () => {
-          if (pc.iceGatheringState === 'complete') {
-            pc.removeEventListener('icegatheringstatechange', handler);
-            resolve();
-          }
-        };
-        pc.addEventListener('icegatheringstatechange', handler);
-      });
+      // Wait for ICE gathering, but cap at 5 s. If STUN is unreachable or
+      // slow, we proceed with whatever candidates we have — the WHEP server
+      // can complete ICE via trickle after the SDP exchange.
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          if (pc.iceGatheringState === 'complete') { resolve(); return; }
+          const handler = () => {
+            if (pc.iceGatheringState === 'complete') {
+              pc.removeEventListener('icegatheringstatechange', handler);
+              resolve();
+            }
+          };
+          pc.addEventListener('icegatheringstatechange', handler);
+        }),
+        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+      ]);
 
       const token = getToken();
       const headers: HeadersInit = { 'Content-Type': 'application/sdp' };
