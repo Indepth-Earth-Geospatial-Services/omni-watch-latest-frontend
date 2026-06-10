@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // ─── Static Imports (Navbar and Hero are loaded statically for LCP optimization) ───
-import Navbar from '@/components/features/website/Navbar';
-import Hero from '@/components/features/website/Hero';
+import Navbar from '@/components/features/landing-page/Navbar';
+import Hero from '@/components/features/landing-page/Hero';
 
 // ─── Loading Skeletons to prevent Cumulative Layout Shift (CLS) ───
 function StatsSkeleton() {
@@ -45,27 +45,27 @@ function FooterSkeleton() {
 }
 
 // ─── Below-the-Fold Dynamic Imports (Code Splitting) ───
-const Stats = dynamic(() => import('@/components/features/website/Stats'), {
+const Stats = dynamic(() => import('@/components/features/landing-page/Stats'), {
   loading: () => <StatsSkeleton />,
   ssr: true,
 });
 
-const Features = dynamic(() => import('@/components/features/website/Features'), {
+const Features = dynamic(() => import('@/components/features/landing-page/Features'), {
   loading: () => <FeaturesSkeleton />,
   ssr: true,
 });
 
-const SystemOverview = dynamic(() => import('@/components/features/website/SystemOverview'), {
+const SystemOverview = dynamic(() => import('@/components/features/landing-page/SystemOverview'), {
   loading: () => <SystemOverviewSkeleton />,
   ssr: true,
 });
 
-const CTA = dynamic(() => import('@/components/features/website/CTA'), {
+const CTA = dynamic(() => import('@/components/features/landing-page/CTA'), {
   loading: () => <CTASkeleton />,
   ssr: true,
 });
 
-const Footer = dynamic(() => import('@/components/features/website/Footer'), {
+const Footer = dynamic(() => import('@/components/features/landing-page/Footer'), {
   loading: () => <FooterSkeleton />,
   ssr: true,
 });

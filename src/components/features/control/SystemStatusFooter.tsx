@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useExecuteJob } from '@/hooks/useDockController';
+import { useExecuteJob, useRequestFlightAuthority } from '@/hooks/useDockController';
 import type { DJIDevice } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -127,6 +127,8 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
   const [confirmPending, setConfirmPending] = useState<string | null>(null);
 
   const { mutate: runJob, isPending } = useExecuteJob(dockSn);
+  // Flight authority is required before debug_mode_open — DJI rejects the command without it
+  const { mutate: grabAuthority } = useRequestFlightAuthority(dockSn);
 
   const exec = useCallback(
     (serviceIdentifier: string, body?: object) => {
@@ -157,21 +159,48 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
   const handleDebugToggle = (on: boolean) => {
     if (!dockOnline) return;
     setIsToggling(true);
-    runJob(
-      { serviceIdentifier: on ? 'debug_mode_open' : 'debug_mode_close' },
-      {
+
+    if (on) {
+      // Grab flight authority first — DJI rejects debug_mode_open without it
+      grabAuthority(undefined, {
         onSuccess: () => {
-          setDebugActive(on);
-          setIsToggling(false);
-          toast.success(on ? 'Debug mode enabled' : 'Debug mode disabled');
-          if (!on) setConfirmPending(null);
+          runJob(
+            { serviceIdentifier: 'debug_mode_open' },
+            {
+              onSuccess: () => {
+                setDebugActive(true);
+                setIsToggling(false);
+                toast.success('Debug mode enabled');
+              },
+              onError: (err) => {
+                setIsToggling(false);
+                toast.error(`Debug mode failed: ${err.message}`);
+              },
+            },
+          );
         },
         onError: (err) => {
           setIsToggling(false);
-          toast.error(`Debug toggle failed: ${err.message}`);
+          toast.error(`Authority grab failed: ${err.message}`);
         },
-      },
-    );
+      });
+    } else {
+      runJob(
+        { serviceIdentifier: 'debug_mode_close' },
+        {
+          onSuccess: () => {
+            setDebugActive(false);
+            setIsToggling(false);
+            setConfirmPending(null);
+            toast.success('Debug mode disabled');
+          },
+          onError: (err) => {
+            setIsToggling(false);
+            toast.error(`Debug mode failed: ${err.message}`);
+          },
+        },
+      );
+    }
   };
 
   const restricted = !debugActive || !dockOnline;

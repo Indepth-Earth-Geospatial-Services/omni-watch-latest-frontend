@@ -181,4 +181,16 @@ export const DJI_URLS = {
 
     flightAuthority: (sn: string) => `${CONTROL}/devices/${sn}/authority/flight`,
   },
+
+  // ── DRC (Drone Remote Control) ───────────────────────────────────────────
+  drc: {
+    /** Get MQTT broker credentials for the DRC session */
+    connect: (workspaceId: string) => `${CONTROL}/workspaces/${workspaceId}/drc/connect`,
+
+    /** Enter DRC mode — returns MQTT pub/sub topics for flight commands */
+    enter: (workspaceId: string) => `${CONTROL}/workspaces/${workspaceId}/drc/enter`,
+
+    /** Exit DRC mode — closes the flight control session */
+    exit: (workspaceId: string) => `${CONTROL}/workspaces/${workspaceId}/drc/exit`,
+  },
 } as const;

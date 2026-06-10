@@ -11,19 +11,18 @@ import { AuthProvider } from './AuthProvider';
 import { ProjectProvider } from './ProjectProvider';
 import QueryProvider from './QueryProvider';
 import { ThemeProvider } from './ThemeProvider';
-// import { Toaster } from "@/components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
-      attribute='class' // next-themes toggles className on <html> ("dark" | "light")
-      defaultTheme='dark' // matches the current hardcoded className="dark" on <html>
-      disableTransitionOnChange // prevents a flash of unstyled content on theme switch
+      attribute='class'
+      defaultTheme='dark'
+      enableSystem={false}
+      disableTransitionOnChange
     >
       <AuthProvider>
         <QueryProvider>
           <ProjectProvider>{children}</ProjectProvider>
-          {/* <Toaster richColors position='top-right' /> */}
         </QueryProvider>
       </AuthProvider>
     </ThemeProvider>

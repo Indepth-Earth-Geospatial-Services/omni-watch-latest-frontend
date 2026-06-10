@@ -6,14 +6,15 @@ import { useMutation } from '@tanstack/react-query';
 import { executeJob, cancelFlyToPoint } from '@/services/djiservice-layer/dji-service';
 
 export interface FlightControlActionsProps {
-  selectedSn?: string;
+  dockSn?: string;
   isFlying?: boolean;
+  dockOnline?: boolean;
 }
 
-const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightControlActionsProps) => {
+const FlightControlActions = ({ dockSn = '', isFlying = false, dockOnline = false }: FlightControlActionsProps) => {
   const [isPaused, setIsPaused] = useState(false);
 
-  const canAct = !!selectedSn && isFlying;
+  const canAct = !!dockSn && isFlying && dockOnline;
 
   // Pause / resume an active wayline mission (action 0 = pause, 1 = resume)
   const { mutate: execJob, isPending: isExecPending } = useMutation({
@@ -31,7 +32,7 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
   const handlePauseResume = () => {
     if (!canAct || isAnyPending) return;
     execJob(
-      { sn: selectedSn, action: isPaused ? 1 : 0 },
+      { sn: dockSn, action: isPaused ? 1 : 0 },
       { onSuccess: () => setIsPaused((p) => !p) }
     );
   };
@@ -39,13 +40,13 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
   // Hover — pause fly-to-point and hold position
   const handleHover = () => {
     if (!canAct || isAnyPending) return;
-    cancelFly(selectedSn);
+    cancelFly(dockSn);
   };
 
   // Emergency land — stop mission entirely
   const handleLand = () => {
     if (!canAct || isAnyPending) return;
-    cancelFly(selectedSn, {
+    cancelFly(dockSn, {
       onSuccess: () => setIsPaused(false),
     });
   };
@@ -53,10 +54,7 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
   // RTH — stop wayline mission, drone returns to dock (action 2 = stop)
   const handleRTH = () => {
     if (!canAct || isAnyPending) return;
-    execJob(
-      { sn: selectedSn, action: 2 },
-      { onSuccess: () => setIsPaused(false) }
-    );
+    execJob({ sn: dockSn, action: 2 }, { onSuccess: () => setIsPaused(false) });
   };
 
   const ActiveGlow = ({ colorClass }: { colorClass: string }) => (
@@ -81,9 +79,10 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
           title={!canAct ? 'No active flight' : isPaused ? 'Resume mission' : 'Pause mission'}
           className={`relative z-10 w-full h-full flex items-center justify-center gap-2 rounded border transition-all outline-none select-none group
             focus:outline-none focus:ring-0 disabled:opacity-40 disabled:cursor-not-allowed
-            ${isPaused && canAct
-              ? 'bg-[#1E2024] text-white border-zinc-400 shadow-inner'
-              : 'bg-[#1E2024]/60 border-zinc-700/50 text-white hover:text-zinc-300 hover:border-zinc-600'
+            ${
+              isPaused && canAct
+                ? 'bg-[#1E2024] text-white border-zinc-400 shadow-inner'
+                : 'bg-[#1E2024]/60 border-zinc-700/50 text-white hover:text-zinc-300 hover:border-zinc-600'
             }`}
         >
           {isExecPending && !isPaused ? (
@@ -129,15 +128,17 @@ const FlightControlActions = ({ selectedSn = '', isFlying = false }: FlightContr
           title={!canAct ? 'No active flight' : 'Emergency land now'}
           className={`relative z-10 w-full h-full flex items-center justify-center gap-2 rounded border transition-all outline-none select-none group
             focus:outline-none focus:ring-0 disabled:opacity-40 disabled:cursor-not-allowed
-            ${isCancelPending
-              ? 'bg-red-600 text-white border-red-400 scale-[0.98]'
-              : 'bg-red-950/40 border-red-900/50 text-red-500/70 hover:bg-red-900/40 hover:text-red-400'
+            ${
+              isCancelPending
+                ? 'bg-red-600 text-white border-red-400 scale-[0.98]'
+                : 'bg-red-950/40 border-red-900/50 text-red-500/70 hover:bg-red-900/40 hover:text-red-400'
             }`}
         >
-          {isCancelPending
-            ? <Loader2 size={15} className='animate-spin' />
-            : <AlertTriangle size={15} className='group-hover:scale-110 transition-transform' />
-          }
+          {isCancelPending ? (
+            <Loader2 size={15} className='animate-spin' />
+          ) : (
+            <AlertTriangle size={15} className='group-hover:scale-110 transition-transform' />
+          )}
           <span className='text-[10px] font-black tracking-[0.15em] uppercase'>
             {isCancelPending ? 'Landing…' : 'Land'}
           </span>

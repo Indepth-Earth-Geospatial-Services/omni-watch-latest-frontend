@@ -36,7 +36,7 @@ export function useLiveCapacity(options?: { enabled?: boolean }) {
     retry: 1,
     retryDelay: 1500,
     refetchInterval: 30_000,
-    staleTime: 10_000,
+    staleTime: 0,
     select: toCapacityMap,
     enabled: options?.enabled !== false,
   });

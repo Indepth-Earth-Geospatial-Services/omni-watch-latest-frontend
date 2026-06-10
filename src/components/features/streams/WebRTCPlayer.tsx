@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { getToken } from '@/lib/config/token-store';
 
 export type StreamState = 'connecting' | 'playing' | 'error';
 
@@ -25,9 +24,9 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
   useEffect(() => {
     let cancelled = false;
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+    // No STUN servers — DJI's WHEP server and drone are on the same local network.
+    // Host candidates are sufficient; STUN would only add latency here.
+    const pc = new RTCPeerConnection();
 
     onStateChangeRef.current('connecting');
 
@@ -71,14 +70,13 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
         new Promise<void>((resolve) => setTimeout(resolve, 5000)),
       ]);
 
-      const token = getToken();
-      const headers: HeadersInit = { 'Content-Type': 'application/sdp' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-auth-token'] = token;
-      }
-
-      const res = await fetch(url, { method: 'POST', headers, body: pc.localDescription!.sdp });
+      // DJI's WHEP endpoint expects only Content-Type: application/sdp — no auth headers.
+      // Adding Authorization triggers a CORS preflight that the DJI server rejects.
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: pc.localDescription!.sdp,
+      });
 
       if (res.status !== 201 && !res.ok) {
         throw new Error(`WHEP ${res.status} ${res.statusText}`);

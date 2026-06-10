@@ -4,11 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import Map, { Marker, type MapRef } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Plane, Moon, Globe, Layers } from 'lucide-react';
+import { Globe, HardDrive, Layers, Moon, Plane } from 'lucide-react';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
 
 export interface TacticalMiniMapProps {
   droneData?: ProcessedDroneData | null;
+  dockData?: ProcessedDroneData | null;
   className?: string;
 }
 
@@ -40,23 +41,37 @@ const DEFAULT_LNG = 3.3792;
 const DEFAULT_LAT = 6.5244;
 const ALT_MAX     = 400;
 
-const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
+const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProps) => {
   const mapRef = useRef<MapRef>(null);
   const [activeStyle, setActiveStyle] = useState<MapStyleKey>('dark');
   const [pickerOpen, setPickerOpen]   = useState(false);
 
-  const lat         = droneData?.latitude  ?? 0;
-  const lng         = droneData?.longitude ?? 0;
-  const heading     = droneData?.heading   ?? 0;
-  const altitude    = droneData?.altitude  ?? 0;
-  const hasPosition = lat !== 0 || lng !== 0;
-  const altPct      = Math.min((altitude / ALT_MAX) * 100, 100);
+  // ─── Drone position ───────────────────────────────────────────────────────
+  const droneLat      = droneData?.latitude  ?? 0;
+  const droneLng      = droneData?.longitude ?? 0;
+  const heading       = droneData?.heading   ?? 0;
+  const altitude      = droneData?.altitude  ?? 0;
+  const hasPosition   = droneLat !== 0 || droneLng !== 0;
+  const altPct        = Math.min((altitude / ALT_MAX) * 100, 100);
 
-  // Re-center map whenever the drone position updates
+  // ─── Dock position ────────────────────────────────────────────────────────
+  const dockLat        = dockData?.latitude  ?? 0;
+  const dockLng        = dockData?.longitude ?? 0;
+  const hasDockPos     = dockLat !== 0 || dockLng !== 0;
+  const dockOnline     = dockData?.online ?? false;
+
+  // ─── Initial map center — prefer drone GPS, then dock, then default ───────
+  const initLat = hasPosition ? droneLat : hasDockPos ? dockLat : DEFAULT_LAT;
+  const initLng = hasPosition ? droneLng : hasDockPos ? dockLng : DEFAULT_LNG;
+
+  // ─── Follow drone when airborne; fall back to dock when grounded ──────────
   useEffect(() => {
-    if (!hasPosition) return;
-    mapRef.current?.easeTo({ center: [lng, lat], duration: 1000 });
-  }, [lat, lng, hasPosition]);
+    if (hasPosition) {
+      mapRef.current?.easeTo({ center: [droneLng, droneLat], duration: 1000 });
+    } else if (hasDockPos) {
+      mapRef.current?.easeTo({ center: [dockLng, dockLat], duration: 1000 });
+    }
+  }, [droneLat, droneLng, hasPosition, dockLat, dockLng, hasDockPos]);
 
   return (
     <div
@@ -67,8 +82,8 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
       <Map
         ref={mapRef}
         initialViewState={{
-          longitude: hasPosition ? lng : DEFAULT_LNG,
-          latitude:  hasPosition ? lat : DEFAULT_LAT,
+          longitude: initLng,
+          latitude:  initLat,
           zoom: 15,
           pitch: 45,
         }}
@@ -76,8 +91,23 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
         mapStyle={MAP_STYLES[activeStyle]}
         attributionControl={false}
       >
+        {/* Dock marker — fixed ground station with pulsing ring when online */}
+        {hasDockPos && (
+          <Marker longitude={dockLng} latitude={dockLat} anchor='center'>
+            <div className='relative flex items-center justify-center'>
+              {dockOnline && (
+                <div className='absolute w-10 h-10 rounded-full border-2 border-emerald-500/40 animate-ping' />
+              )}
+              <div className='w-7 h-7 rounded-full border border-emerald-500/60 bg-emerald-950/90 flex items-center justify-center drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]'>
+                <HardDrive size={14} className='text-emerald-400' />
+              </div>
+            </div>
+          </Marker>
+        )}
+
+        {/* Drone marker — rotates with heading */}
         {hasPosition && (
-          <Marker longitude={lng} latitude={lat} anchor='center'>
+          <Marker longitude={droneLng} latitude={droneLat} anchor='center'>
             <div
               style={{ transform: `rotate(${heading}deg)` }}
               className='transition-transform duration-700 ease-out drop-shadow-[0_0_8px_rgba(59,130,246,0.9)]'
@@ -93,7 +123,7 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
         {/* Vignette */}
         <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(12,14,18,0.65)_100%)]' />
 
-        {/* Altitude bar — right */}
+        {/* Altitude bar — right (drone altitude only) */}
         <div className='absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2'>
           <span className='text-[8px] font-black text-white/30 uppercase tracking-[0.2em]'>Alt</span>
           <span className={`text-[10px] font-mono font-bold ${hasPosition ? 'text-blue-400' : 'text-zinc-600'}`}>
@@ -112,11 +142,29 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
           </div>
         </div>
 
+        {/* Legend — shown when both markers are active */}
+        {(hasPosition || hasDockPos) && (
+          <div className='absolute bottom-10 right-4 flex flex-col gap-1.5'>
+            {hasPosition && (
+              <div className='flex items-center gap-1.5'>
+                <Plane size={10} className='text-blue-400 fill-blue-400' />
+                <span className='text-[8px] font-mono text-blue-400/70 uppercase tracking-wide'>Drone</span>
+              </div>
+            )}
+            {hasDockPos && (
+              <div className='flex items-center gap-1.5'>
+                <HardDrive size={10} className='text-emerald-400' />
+                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Dock</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Top-left corner bracket */}
         <div className='absolute top-3 left-3 flex flex-col gap-1'>
           <div className='w-2.5 h-2.5 border-t-2 border-l-2 border-white/30 rounded-tl' />
           <span className='text-[8px] font-mono text-white/25 uppercase tracking-wider'>
-            {hasPosition ? 'GPS Lock' : 'No Signal'}
+            {hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
           </span>
         </div>
 
@@ -126,7 +174,6 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
 
       {/* ── Style switcher — pointer-events-auto, sits above HUD ──────── */}
       <div className='absolute bottom-3 left-3 z-20 flex flex-col items-start gap-1.5'>
-        {/* Popup options — slide up above the trigger */}
         {pickerOpen && (
           <div className='flex flex-col gap-1.5 mb-0.5'>
             {STYLE_OPTIONS.map(({ key, icon: Icon, label }) => {
@@ -149,7 +196,6 @@ const TacticalMiniMap = ({ droneData, className }: TacticalMiniMapProps) => {
           </div>
         )}
 
-        {/* Main trigger button */}
         <button
           onClick={() => setPickerOpen((p) => !p)}
           title='Switch map style'

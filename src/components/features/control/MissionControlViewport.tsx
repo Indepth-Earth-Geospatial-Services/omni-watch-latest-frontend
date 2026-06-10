@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Crosshair, Navigation, VideoOff } from 'lucide-react';
-import SensorToolbar from './SensorToolBar';
 import FlightControlActions from './FlightControlActions';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
@@ -23,6 +22,8 @@ interface MissionControlViewportProps {
   capacityLoading: boolean;
   isFlying: boolean;
   activeStreamUrl: string;
+  dockSn?: string;
+  dockOnline?: boolean;
   onDeviceChange: (sn: string) => void;
   onVideoTypeChange: (type: string) => void;
   onQualityChange: (quality: number) => void;
@@ -58,6 +59,8 @@ const MissionControlViewport = ({
   capacityLoading,
   isFlying,
   activeStreamUrl,
+  dockSn,
+  dockOnline,
   onDeviceChange,
   onVideoTypeChange,
   onQualityChange,
@@ -97,12 +100,6 @@ const MissionControlViewport = ({
             : { padding: '0px 0px', height: '700px' }
       }
     >
-      {/* <SensorToolbar
-        selectedVideoType={selectedVideoType}
-        onVideoTypeChange={onVideoTypeChange}
-        isStreaming={isStreaming}
-      /> */}
-
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
       {!isMini && (
         <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
@@ -309,7 +306,7 @@ const MissionControlViewport = ({
         </div>
       </div>
 
-      {!isMini && <FlightControlActions selectedSn={selectedSn} isFlying={isFlying} />}
+      {!isMini && <FlightControlActions isFlying={isFlying} dockOnline={dockOnline} />}
     </div>
   );
 };
