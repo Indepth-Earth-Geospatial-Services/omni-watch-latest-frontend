@@ -34,7 +34,9 @@ export default function ControlPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   // ─── Livestream hooks ──────────────────────────────────────────────────────
-  const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity({ enabled: !authLoading });
+  const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity({
+    enabled: !authLoading,
+  });
   const { mutate: startStream, isPending: isStarting } = useStartStream();
   const { mutate: stopStream, isPending: isStopping } = useStopStream();
   const { mutate: updateQuality } = useUpdateStreamQuality();
@@ -164,7 +166,9 @@ export default function ControlPage() {
         onSuccess: (data) => {
           const streamUrl = data?.url ?? '';
           if (!streamUrl) {
-            toast.error('DJI returned no stream URL — verify the drone supports WebRTC (url_type 4)');
+            toast.error(
+              'DJI returned no stream URL — verify the drone supports WebRTC (url_type 4)'
+            );
             return;
           }
           setIsStreaming(true);
