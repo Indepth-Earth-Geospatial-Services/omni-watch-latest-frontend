@@ -1,32 +1,24 @@
 'use client';
 
 import React from 'react';
-import type { DJIDevice } from '@/lib/types';
 import { TabType } from './AssetManagement';
 
 interface AssetTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  devices?: DJIDevice[];
+  counts: Record<TabType, number>;
 }
 
-function fmt(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-const AssetTabs = ({ activeTab, onTabChange, devices = [] }: AssetTabsProps) => {
-  const droneCount = devices.filter((d) => d.domain === '0').length;
-  const dockCount  = devices.filter((d) => d.domain === '1' || d.domain === '3').length;
-
-  const tabs: { label: TabType; count: string }[] = [
-    { label: 'All',    count: fmt(devices.length) },
-    { label: 'Drones', count: fmt(droneCount) },
-    { label: 'Docks',  count: fmt(dockCount) },
+const AssetTabs = ({ activeTab, onTabChange, counts }: AssetTabsProps) => {
+  const tabs: { label: TabType }[] = [
+    { label: 'All' },
+    { label: 'Drones' },
+    { label: 'Docks' },
   ];
 
   return (
-    <div className='flex items-center justify-center ml-2 font-poppins w-full max-w-[300px]'>
-      <div className='flex bg-[#1A1C20] rounded-lg w-full border border-zinc-800/30 p-3 gap-3'>
+    <div className='flex items-center justify-center ml-2 font-poppins'>
+      <div className='flex bg-[#1A1C20] rounded-lg w-[300px] border border-zinc-800/30 p-3 gap-3'>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.label;
           return (
@@ -49,7 +41,7 @@ const AssetTabs = ({ activeTab, onTabChange, devices = [] }: AssetTabsProps) => 
                     : 'border-zinc-700 text-zinc-600'
                 }`}
               >
-                {tab.count}
+                {String(counts[tab.label]).padStart(2, '0')}
               </span>
             </button>
           );

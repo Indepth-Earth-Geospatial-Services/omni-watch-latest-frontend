@@ -72,10 +72,6 @@ async function request<T>(
   extraHeaders: Record<string, string> = {}
 ): Promise<T> {
   const token = getToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-
   try {
     const res = await axios.request<OmniWatchEnvelope<T>>({
       method,
@@ -98,6 +94,7 @@ async function request<T>(
     if (envelope.code !== 0) {
       const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
       const msg = String(detail ?? envelope.message ?? `Request failed: ${res.status}`);
+      console.error(`[OmniWatch] ✗ ${method} ${url} — code ${envelope.code}: ${msg}`);
       throw new Error(msg);
     }
 
@@ -109,8 +106,10 @@ async function request<T>(
       const msg = String(
         detail ?? envelope?.message ?? `Request failed: ${err.response.status}`
       );
+      console.error(`[OmniWatch] ✗ ${method} ${url} — HTTP ${err.response.status}:`, msg, err.response.data);
       throw new Error(msg);
     }
+    console.error(`[OmniWatch] ✗ ${method} ${url} — network error:`, err);
     throw err;
   }
 }

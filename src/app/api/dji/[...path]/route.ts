@@ -62,7 +62,8 @@ async function forwardRequest(
         'Content-Type': djResponse.headers.get('Content-Type') ?? 'application/json',
       },
     });
-  } catch {
+  } catch (error) {
+    console.error('[DJI Proxy] Error forwarding request:', error);
     // DJI server is unreachable — return a clean error, never a raw exception stack
     return NextResponse.json(
       { code: 502, message: 'Failed to reach DJI server. Check that the backend is running.' },

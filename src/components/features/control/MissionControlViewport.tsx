@@ -1,19 +1,20 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Crosshair, Navigation, VideoOff } from 'lucide-react';
-import SensorToolbar from './SensorToolBar';
 import FlightControlActions from './FlightControlActions';
-import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
-import type { LiveCapacity } from '@/lib/types';
+import type { LiveCapacity, CameraCapacity, VideoCapacity } from '@/lib/types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MissionControlViewportProps {
   devices: LiveCapacity[];
+  cameras: CameraCapacity[];
+  videos: VideoCapacity[];
   videoTypes: string[];
   selectedSn: string;
+  selectedCameraId: string;
   selectedVideoId: string;
   selectedVideoType: string;
   streamQuality: number;
@@ -24,12 +25,18 @@ interface MissionControlViewportProps {
   isFlying: boolean;
   activeStreamUrl: string;
   onDeviceChange: (sn: string) => void;
+  onCameraChange: (cameraId: string) => void;
+  onVideoChange: (videoId: string) => void;
   onVideoTypeChange: (type: string) => void;
   onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
+  mediaStream: MediaStream | null;
+  streamConnectState: StreamState | null;
+  dockSn?: string;
+  droneSn?: string;
   className?: string;
-  isMini?: boolean;
+  compact?: boolean;
 }
 
 const QUALITY_LABELS: Record<string, string> = {
@@ -47,8 +54,11 @@ const selectCls =
 
 const MissionControlViewport = ({
   devices,
+  cameras,
+  videos,
   videoTypes,
   selectedSn,
+  selectedCameraId,
   selectedVideoId,
   selectedVideoType,
   streamQuality,
@@ -59,43 +69,36 @@ const MissionControlViewport = ({
   isFlying,
   activeStreamUrl,
   onDeviceChange,
+  onCameraChange,
+  onVideoChange,
   onVideoTypeChange,
   onQualityChange,
   onStart,
   onStop,
+  mediaStream,
+  streamConnectState,
+  dockSn,
+  droneSn,
   className,
-  isMini = false,
+  compact = false,
 }: MissionControlViewportProps) => {
   const heading = 247;
   const canStart = !!selectedVideoId && !isStreaming;
   const canStop = !!selectedVideoId && isStreaming;
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
 
+  // Re-attach the media stream to the video element whenever it changes or
+  // this component remounts after a panel switch — ensures playback resumes
+  // without restarting the WebRTC connection.
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = mediaStream;
   }, [mediaStream]);
 
-  // Reset player state when stream URL is cleared
-  useEffect(() => {
-    if (!activeStreamUrl) {
-      setMediaStream(null);
-      setStreamConnectState(null);
-    }
-  }, [activeStreamUrl]);
-
   return (
     <div
-      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col mb-2 ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
-      style={
-        isMini
-          ? { width: '301px', height: '342px' }
-          : className
-            ? undefined
-            : { padding: '0px 0px', height: '700px' }
-      }
+      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col w-full mb-2${className ? ` ${className}` : ''}`}
+      style={className ? undefined : { padding: '0px 0px', height: '700px' }}
     >
       {/* <SensorToolbar
         selectedVideoType={selectedVideoType}
@@ -104,7 +107,25 @@ const MissionControlViewport = ({
       /> */}
 
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
-      {!isMini && (
+      {compact ? (
+        /* Compact: status pill only */
+        <div className='flex items-center gap-2 px-3 py-1.5 bg-[#12151C] border-b border-zinc-800/60'>
+          <div
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+          />
+          <span
+            className={`text-[9px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+          >
+            {isStreaming ? 'Live' : 'Idle'}
+          </span>
+          {selectedSn && (
+            <span className='text-[9px] font-mono text-zinc-600 ml-auto truncate max-w-[120px]'>
+              {selectedSn}
+            </span>
+          )}
+        </div>
+      ) : (
+        /* Full controls */
         <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
           {/* Device */}
           <select
@@ -113,40 +134,10 @@ const MissionControlViewport = ({
             disabled={capacityLoading || isStreaming}
             className={selectCls}
           >
-            <option value=''>{capacityLoading ? 'Loading devices…' : 'Select device'}</option>
+            <option value=''>{capacityLoading ? 'Loading drones…' : 'Select drone'}</option>
             {devices.map((d) => (
               <option key={d.sn} value={d.sn}>
                 {d.name || d.sn}
-              </option>
-            ))}
-          </select>
-
-          {/* Lens / video type */}
-          {videoTypes.length > 0 && (
-            <select
-              value={selectedVideoType}
-              onChange={(e) => onVideoTypeChange(e.target.value)}
-              disabled={!selectedVideoId}
-              className={selectCls}
-            >
-              {videoTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Quality */}
-          <select
-            value={streamQuality}
-            onChange={(e) => onQualityChange(Number(e.target.value))}
-            disabled={!selectedVideoId}
-            className={selectCls}
-          >
-            {Object.entries(QUALITY_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
               </option>
             ))}
           </select>
@@ -174,15 +165,6 @@ const MissionControlViewport = ({
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active */}
-        {activeStreamUrl && (
-          <WebRTCPlayer
-            url={activeStreamUrl}
-            onStateChange={(state) => setStreamConnectState(state)}
-            onMediaStream={setMediaStream}
-          />
-        )}
-
         {/* Video element — hidden until track arrives */}
         <video
           ref={videoRef}
@@ -232,23 +214,21 @@ const MissionControlViewport = ({
         {/* Compass inset */}
         <div
           className={`absolute rounded-full border border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl flex items-center justify-center overflow-hidden ${
-            isMini ? 'bottom-3 left-3 w-20 h-20' : 'bottom-6 left-6 w-40 h-40'
+            compact ? 'bottom-3 left-3 w-16 h-16' : 'bottom-6 left-6 w-40 h-40'
           }`}
         >
+          <div className='absolute inset-0 rounded-full border-[1px] border-white/5 m-1' />
           <div
-            className={`absolute inset-0 rounded-full border-[1px] border-white/5 ${isMini ? 'm-1' : 'm-2'}`}
-          />
-          <div
-            className={`absolute inset-0 flex flex-col justify-between items-center font-bold text-white/40 pointer-events-none ${
-              isMini ? 'p-1.5 text-[8px]' : 'p-3 text-[10px]'
+            className={`absolute inset-0 p-2 flex flex-col justify-between items-center font-bold text-white/40 pointer-events-none ${
+              compact ? 'text-[7px]' : 'text-[10px]'
             }`}
           >
             <span>N</span>
             <span>S</span>
           </div>
           <div
-            className={`absolute inset-0 flex justify-between items-center font-bold text-white/40 pointer-events-none ${
-              isMini ? 'p-1.5 text-[8px]' : 'p-3 text-[10px]'
+            className={`absolute inset-0 p-2 flex justify-between items-center font-bold text-white/40 pointer-events-none ${
+              compact ? 'text-[7px]' : 'text-[10px]'
             }`}
           >
             <span>W</span>
@@ -261,10 +241,12 @@ const MissionControlViewport = ({
             <div className='flex flex-col items-center'>
               <Navigation
                 className='text-emerald-400 fill-emerald-400/20'
-                size={isMini ? 14 : 24}
+                size={compact ? 12 : 24}
               />
               <div
-                className={`absolute font-mono font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
+                className={`absolute font-mono font-bold text-emerald-400 ${
+                  compact ? '-top-3 text-[7px]' : '-top-6 text-[10px]'
+                }`}
               >
                 {heading}°
               </div>
@@ -274,42 +256,47 @@ const MissionControlViewport = ({
         </div>
 
         {/* HUD: Stream status (bottom right) */}
-        <div
-          className={`absolute flex flex-col items-end bg-white/5 backdrop-blur-md border border-white/10 rounded-md shadow-xl pointer-events-none ${
-            isMini ? 'bottom-3 right-3 px-2 py-1 gap-0.5' : 'bottom-6 right-6 px-3 py-2 gap-1'
-          }`}
-        >
-          <div className='flex items-center gap-2 mb-1'>
+        {compact ? (
+          /* Compact: single-line status pill */
+          <div className='absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 px-2 py-1 rounded shadow-lg pointer-events-none'>
             <div
-              className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
             />
             <span
-              className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+              className={`text-[8px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
             >
-              {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              {isStreaming ? 'Live' : 'Idle'}
             </span>
           </div>
-          {selectedSn && (
-            <span
-              className={`font-mono text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-            >
-              {selectedSn}
+        ) : (
+          /* Full telemetry overlay */
+          <div className='absolute bottom-6 right-6 flex flex-col items-end gap-1 bg-white/5 backdrop-blur-md border border-white/10 px-3 py-2 rounded-md shadow-xl pointer-events-none'>
+            <div className='flex items-center gap-2 mb-1'>
+              <div
+                className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+              />
+              <span
+                className={`text-[8px] font-bold uppercase tracking-widest ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+              >
+                {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              </span>
+            </div>
+            {selectedSn && (
+              <span className='text-[10px] font-mono text-white/70 tracking-tighter'>
+                {selectedSn}
+              </span>
+            )}
+            <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
+              Lat: 6.5244° N
             </span>
-          )}
-          <span
-            className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-          >
-            Lat: 6.5244° N
-          </span>
-          <span
-            className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-          >
-            Lon: 3.3792° E
-          </span>
-        </div>
+            <span className='text-[10px] font-mono text-white/90 tracking-tighter leading-none'>
+              Lon: 3.3792° E
+            </span>
+          </div>
+        )}
       </div>
 
-      {!isMini && <FlightControlActions selectedSn={selectedSn} isFlying={isFlying} />}
+      {!compact && <FlightControlActions selectedSn={droneSn ?? selectedSn} dockSn={dockSn} isFlying={isFlying} />}
     </div>
   );
 };

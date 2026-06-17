@@ -4,17 +4,16 @@
 // "Is there a logged-in user, and who are they?"
 //
 // Lifecycle:
-//   1. On mount → check in-memory token OR try to restore via refresh cookie
-//   2. Token in memory → call GET /api/auth/me (OmniWatch) to restore the session
-//   3. Token lost (page refresh) but session exists → refreshToken() → restore
-//   4. No session at all → user = null → middleware redirects to /sign-in
-//   5. After login → user state set, proactive refresh timer scheduled
-//   6. Timer fires 60s before expiry → silently exchanges token → reschedules
+//   1. On mount → check localStorage for an existing valid token
+//   2. Token found → call GET /api/auth/me (OmniWatch) to restore the session
+//   3. Token missing/expired → user = null → middleware redirects to /sign-in
+//   4. After login → user state set, proactive refresh timer scheduled
+//   5. Timer fires 60s before expiry → silently exchanges token → reschedules
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { authApi } from '@/services/authservice-layer/auth-api';
-import { clearToken, getToken, getTokenExpiresInSeconds, hasSession } from '@/lib/config/token-store';
+import { clearToken, getToken, getTokenExpiresInSeconds } from '@/lib/config/token-store';
 import type { CurrentUser } from '@/lib/types';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
@@ -62,7 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         workspace_description: '',
       });
       return true;
-    } catch {
+    } catch (err) {
+      console.warn('[AuthProvider] fetchCurrentUser ✗ — clearing token. Error:', err);
       clearToken();
       setUser(null);
       return false;
@@ -79,41 +79,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await authApi.refreshToken();
         scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
-      } catch {
+      } catch (err) {
+        console.warn('[AuthProvider] proactive refresh failed — logging out:', err);
         setUser(null);
       }
     }, delay);
   }, []);
 
-  // ── On mount: restore session ───────────────────────────────────────────
-  // The JWT is stored in memory (not localStorage), so after a page refresh
-  // it's gone. We detect this via hasSession() which checks if an expiry
-  // timestamp exists in localStorage. If it does, we call refreshToken()
-  // which uses the HttpOnly refresh cookie (from Django) to get a new
-  // access token transparently.
+  // ── On mount: restore session if a token already exists ─────────────────
   useEffect(() => {
     const token = getToken();
-    const sessionExists = hasSession();
 
     if (token) {
       fetchCurrentUser().then((ok) => {
         if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
         setIsLoading(false);
       });
-    } else if (sessionExists) {
-      // Page was refreshed — token lost from memory but a session existed before.
-      // Try to restore it using the HttpOnly refresh cookie from Django.
-      authApi
-        .refreshToken()
-        .then(() => fetchCurrentUser())
-        .then((ok) => {
-          if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
-          setIsLoading(false);
-        })
-        .catch(() => {
-          clearToken();
-          setIsLoading(false);
-        });
     } else {
       setIsLoading(false);
     }

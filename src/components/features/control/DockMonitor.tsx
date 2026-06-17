@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { DoorOpen, DoorClosed, Wifi, WifiOff, HardDrive, Send, VideoOff } from 'lucide-react';
-import { useSetDeviceProperty } from '@/hooks/useDJIDevices';
+import { useMutation } from '@tanstack/react-query';
+import { executeJob } from '@/services/djiservice-layer/dji-service';
+import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
 
@@ -13,31 +15,37 @@ export interface DockMonitorProps {
 }
 
 const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => {
-  // Optimistic local door state — reflects last command sent until real OSD arrives
   const [isDoorOpen, setIsDoorOpen] = useState(false);
-  const { mutate: setProperty, isPending } = useSetDeviceProperty();
 
-  const dockOnline = dockDevice?.status ?? false;
-  const dockName = dockDevice?.nickname || dockDevice?.deviceName || 'No Dock';
-  const dockSn = dockDevice?.deviceSn ?? '—';
-  const firmware = dockDevice?.firmwareVersion ?? '—';
-  // modeCode 0 = standby / in dock; anything else = airborne
+  // Cover commands use the CONTROL jobs endpoint (debug mode required on dock).
+  const { mutate: openCover,  isPending: isOpening  } = useMutation<void, Error, string>({
+    mutationFn: (sn) => executeJob(sn, 'cover_open'),
+  });
+  const { mutate: closeCover, isPending: isClosing } = useMutation<void, Error, string>({
+    mutationFn: (sn) => executeJob(sn, 'cover_close'),
+  });
+  const isPending = isOpening || isClosing;
+
+  const dockOnline  = dockDevice?.status ?? false;
+  const dockName    = dockDevice?.nickname || dockDevice?.deviceName || 'No Dock';
+  const dockSn      = dockDevice?.deviceSn ?? '—';
+  const firmware    = dockDevice?.firmwareVersion ?? '—';
   const droneInDock = droneData ? droneData.modeCode === 0 : null;
 
   const handleOpen = () => {
     if (!dockDevice || isPending) return;
-    setProperty(
-      { deviceSn: dockDevice.deviceSn, property: { cover_state: 1 } },
-      { onSuccess: () => setIsDoorOpen(true) }
-    );
+    openCover(dockDevice.deviceSn, {
+      onSuccess: () => setIsDoorOpen(true),
+      onError:   (err) => toast.error(`Cover open failed: ${err.message}`),
+    });
   };
 
   const handleClose = () => {
     if (!dockDevice || isPending) return;
-    setProperty(
-      { deviceSn: dockDevice.deviceSn, property: { cover_state: 0 } },
-      { onSuccess: () => setIsDoorOpen(false) }
-    );
+    closeCover(dockDevice.deviceSn, {
+      onSuccess: () => setIsDoorOpen(false),
+      onError:   (err) => toast.error(`Cover close failed: ${err.message}`),
+    });
   };
 
   return (
@@ -47,7 +55,6 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
     >
       {/* ── Camera viewport ───────────────────────────────────────────── */}
       <div className='relative flex-1 bg-black overflow-hidden'>
-        {/* No-feed placeholder — replace with actual dock camera stream when available */}
         <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
           <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
           <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
@@ -56,7 +63,6 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
           <span className='text-[8px] font-mono text-zinc-800 uppercase tracking-wider'>
             CAM-02
           </span>
-          {/* Subtle scanline effect */}
           <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
         </div>
 
@@ -74,21 +80,18 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
           </span>
         </div>
 
-        {/* Dock online/offline badge */}
+        {/* Online/offline badge */}
         <div className='absolute top-3 right-3 flex items-center gap-1.5'>
-          {dockOnline ? (
-            <Wifi size={12} className='text-emerald-400' />
-          ) : (
-            <WifiOff size={12} className='text-zinc-500' />
-          )}
-          <span
-            className={`text-[9px] font-bold uppercase tracking-wider ${dockOnline ? 'text-emerald-400' : 'text-zinc-500'}`}
-          >
+          {dockOnline
+            ? <Wifi size={12} className='text-emerald-400' />
+            : <WifiOff size={12} className='text-zinc-500' />
+          }
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${dockOnline ? 'text-emerald-400' : 'text-zinc-500'}`}>
             {dockOnline ? 'Online' : 'Offline'}
           </span>
         </div>
 
-        {/* Dock info overlay — bottom of viewport */}
+        {/* Info overlay — bottom */}
         <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-1.5'>
@@ -97,20 +100,15 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
                 {dockName}
               </span>
             </div>
-            {/* Drone-in-dock indicator */}
             {droneInDock !== null && (
               <div className='flex items-center gap-1'>
                 <Send size={10} className={droneInDock ? 'text-emerald-400' : 'text-blue-400'} />
-                <span
-                  className={`text-[9px] font-bold uppercase tracking-wider ${droneInDock ? 'text-emerald-400' : 'text-blue-400'}`}
-                >
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${droneInDock ? 'text-emerald-400' : 'text-blue-400'}`}>
                   {droneInDock ? 'Docked' : 'Airborne'}
                 </span>
               </div>
             )}
           </div>
-
-          {/* SN + firmware row */}
           <div className='flex items-center justify-between mt-0.5'>
             <span className='text-[8px] font-mono text-zinc-600 truncate max-w-[160px]'>
               {dockSn !== '—' ? `SN: ${dockSn.slice(-8)}` : 'No dock linked'}
@@ -127,24 +125,22 @@ const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => 
         <button
           onClick={handleOpen}
           disabled={!dockOnline || isPending || isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
-            ${
-              isDoorOpen
-                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-            }`}
+          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            isDoorOpen
+              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+          }`}
         >
           {isPending && isDoorOpen ? '…' : 'Open'}
         </button>
         <button
           onClick={handleClose}
           disabled={!dockOnline || isPending || !isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
-            ${
-              !isDoorOpen
-                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-            }`}
+          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            !isDoorOpen
+              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+          }`}
         >
           {isPending && !isDoorOpen ? '…' : 'Close'}
         </button>

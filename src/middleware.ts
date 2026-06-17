@@ -1,5 +1,4 @@
 // Route guard — runs on the Edge before any page renders.
-// Previously named middleware.ts; renamed to proxy.ts in Next.js v16.
 //
 // What it does:
 //   - Blocks unauthenticated users from reaching any dashboard route → redirects to /sign-in

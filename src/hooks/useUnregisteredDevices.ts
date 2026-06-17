@@ -26,13 +26,8 @@ export function useUnregisteredDevices() {
       transports: ['websocket', 'polling'],
     });
 
-    socketInstance.on('connect', () => {
-      setIsConnected(true);
-    });
-
-    socketInstance.on('disconnect', () => {
-      setIsConnected(false);
-    });
+    socketInstance.on('connect', () => { setIsConnected(true); });
+    socketInstance.on('disconnect', () => { setIsConnected(false); });
 
     // Listen for drone data updates
     // Server emits: io.emit('droneDataUpdate', droneData, sn);
@@ -70,8 +65,9 @@ export function useUnregisteredDevices() {
             }
           });
         }
-      } catch {
-        // ignore telemetry processing errors
+
+      } catch (error) {
+        console.error('Error processing telemetry:', error);
       }
     });
 
