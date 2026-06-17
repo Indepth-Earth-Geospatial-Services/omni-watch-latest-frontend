@@ -16,12 +16,12 @@ function fmt(n: number): string {
 
 const AssetTabs = ({ activeTab, onTabChange, devices = [] }: AssetTabsProps) => {
   const droneCount = devices.filter((d) => d.domain === '0').length;
-  const dockCount  = devices.filter((d) => d.domain === '1' || d.domain === '3').length;
+  const dockCount = devices.filter((d) => d.domain === '1' || d.domain === '3').length;
 
   const tabs: { label: TabType; count: string }[] = [
-    { label: 'All',    count: fmt(devices.length) },
+    { label: 'All', count: fmt(devices.length) },
     { label: 'Drones', count: fmt(droneCount) },
-    { label: 'Docks',  count: fmt(dockCount) },
+    { label: 'Docks', count: fmt(dockCount) },
   ];
 
   return (

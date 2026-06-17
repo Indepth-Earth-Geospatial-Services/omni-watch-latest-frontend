@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { ShieldAlert, ArrowLeft } from "lucide-react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -14,44 +14,42 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z
   .object({
-    fullName: z
-      .string()
-      .min(2, { message: "Full name must be at least 2 characters" }),
-    email: z.string().email({ message: "Invalid email address" }),
+    fullName: z.string().min(2, { message: 'Full name must be at least 2 characters' }),
+    email: z.string().email({ message: 'Invalid email address' }),
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters" })
+      .min(8, { message: 'Password must be at least 8 characters' })
       .regex(/[A-Z]/, {
-        message: "Password must contain at least one uppercase letter",
+        message: 'Password must contain at least one uppercase letter',
       })
       .regex(/[a-z]/, {
-        message: "Password must contain at least one lowercase letter",
+        message: 'Password must contain at least one lowercase letter',
       })
-      .regex(/[0-9]/, { message: "Password must contain at least one number" }),
+      .regex(/[0-9]/, { message: 'Password must contain at least one number' }),
     confirmPassword: z.string(),
     terms: z.boolean().refine((val) => val === true, {
-      message: "You must accept the terms and conditions",
+      message: 'You must accept the terms and conditions',
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
-    path: ["confirmPassword"],
+    path: ['confirmPassword'],
   });
 
 export default function SignUpPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
       terms: false,
     },
   });
@@ -59,103 +57,118 @@ export default function SignUpPage() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     void values;
     // TODO: Implement sign up logic
-    alert("Sign up functionality will be implemented here");
+    alert('Sign up functionality will be implemented here');
   }
 
   return (
-    <div className="bg-background text-foreground min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden">
+    <div className='bg-background text-foreground min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden'>
       {/* Animated Gradient Mesh Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <div className='fixed inset-0 pointer-events-none overflow-hidden'>
         {/* Moving gradient blobs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }}></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '4s' }}></div>
+        <div
+          className='absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '8s' }}
+        ></div>
+        <div
+          className='absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '10s', animationDelay: '2s' }}
+        ></div>
+        <div
+          className='absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '12s', animationDelay: '4s' }}
+        ></div>
 
         {/* Surveillance Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+        <div className='absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:50px_50px]'></div>
 
         {/* Hexagonal pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")`,
-        }}></div>
+        <div
+          className='absolute inset-0 opacity-[0.03]'
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")`,
+          }}
+        ></div>
 
         {/* Scanline effect */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent h-full w-full animate-scan"></div>
+        <div className='absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent h-full w-full animate-scan'></div>
 
         {/* Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background"></div>
-
+        <div className='absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background'></div>
       </div>
 
       {/* Custom CSS animations */}
       <style jsx>{`
         @keyframes scan {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
+          0% {
+            transform: translateY(-100%);
+          }
+          100% {
+            transform: translateY(100%);
+          }
         }
         .animate-scan {
           animation: scan 8s linear infinite;
         }
       `}</style>
 
-      <div className="w-full max-w-md relative z-10">
+      <div className='w-full max-w-md relative z-10'>
         {/* Logo/Branding */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-3 mb-4">
-            <div className="relative">
-              <ShieldAlert className="text-cyan-400 text-3xl" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <div className='text-center mb-8'>
+          <Link href='/' className='inline-flex items-center space-x-3 mb-4'>
+            <div className='relative'>
+              <ShieldAlert className='text-cyan-400 text-3xl' />
+              <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse'></div>
             </div>
             <div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <span className='text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
                 SENTINEL
               </span>
-              <div className="text-[10px] text-gray-500 font-mono tracking-wider">ISR COMMAND & CONTROL</div>
+              <div className='text-[10px] text-gray-500 font-mono tracking-wider'>
+                ISR COMMAND & CONTROL
+              </div>
             </div>
           </Link>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Create Your Account</h1>
-          <p className="text-gray-400">
-            Get started with your command center today
-          </p>
+          <h1 className='text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
+            Create Your Account
+          </h1>
+          <p className='text-gray-400'>Get started with your command center today</p>
         </div>
 
         {/* Sign Up Form */}
-        <div className="bg-card/50 backdrop-blur-xl p-8 rounded-2xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10">
+        <div className='bg-card/50 backdrop-blur-xl p-8 rounded-2xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10'>
           {/* Social Sign Up */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <Button variant="outline" type="button" className="w-full">
-              <span className="text-red-500 mr-2 font-bold">G</span>
+          <div className='grid grid-cols-2 gap-3 mb-6'>
+            <Button variant='outline' type='button' className='w-full'>
+              <span className='text-red-500 mr-2 font-bold'>G</span>
               Google
             </Button>
-            <Button variant="outline" type="button" className="w-full">
-              <span className="text-blue-400 mr-2 font-bold">M</span>
+            <Button variant='outline' type='button' className='w-full'>
+              <span className='text-blue-400 mr-2 font-bold'>M</span>
               Microsoft
             </Button>
           </div>
 
           {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+          <div className='relative my-6'>
+            <div className='absolute inset-0 flex items-center'>
+              <div className='w-full border-t border-gray-700'></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-card text-gray-400">
-                Or sign up with email
-              </span>
+            <div className='relative flex justify-center text-sm'>
+              <span className='px-2 bg-card text-gray-400'>Or sign up with email</span>
             </div>
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
               {/* Full Name Field */}
               <FormField
                 control={form.control}
-                name="fullName"
+                name='fullName'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder='John Doe' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,16 +178,12 @@ export default function SignUpPage() {
               {/* Email Field */}
               <FormField
                 control={form.control}
-                name="email"
+                name='email'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="you@example.com"
-                        {...field}
-                      />
+                      <Input type='email' placeholder='you@example.com' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -184,12 +193,12 @@ export default function SignUpPage() {
               {/* Password Field */}
               <FormField
                 control={form.control}
-                name="password"
+                name='password'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type='password' placeholder='••••••••' {...field} />
                     </FormControl>
                     <FormDescription>
                       Must be 8+ characters with uppercase, lowercase, and number
@@ -202,12 +211,12 @@ export default function SignUpPage() {
               {/* Confirm Password Field */}
               <FormField
                 control={form.control}
-                name="confirmPassword"
+                name='confirmPassword'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type='password' placeholder='••••••••' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,23 +226,20 @@ export default function SignUpPage() {
               {/* Terms & Conditions */}
               <FormField
                 control={form.control}
-                name="terms"
+                name='terms'
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormItem className='flex flex-row items-start space-x-3 space-y-0'>
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-normal cursor-pointer">
-                        I agree to the{" "}
-                        <Link href="#" className="text-blue-400 hover:text-blue-300">
+                    <div className='space-y-1 leading-none'>
+                      <FormLabel className='text-sm font-normal cursor-pointer'>
+                        I agree to the{' '}
+                        <Link href='#' className='text-blue-400 hover:text-blue-300'>
                           Terms of Service
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="#" className="text-blue-400 hover:text-blue-300">
+                        </Link>{' '}
+                        and{' '}
+                        <Link href='#' className='text-blue-400 hover:text-blue-300'>
                           Privacy Policy
                         </Link>
                       </FormLabel>
@@ -244,7 +250,7 @@ export default function SignUpPage() {
               />
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full">
+              <Button type='submit' className='w-full'>
                 Create Account
               </Button>
             </form>
@@ -252,21 +258,18 @@ export default function SignUpPage() {
         </div>
 
         {/* Sign In Link */}
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Already have an account?{" "}
-          <Link
-            href="/sign-in"
-            className="text-blue-400 hover:text-blue-300 font-medium"
-          >
+        <p className='mt-6 text-center text-sm text-gray-400'>
+          Already have an account?{' '}
+          <Link href='/sign-in' className='text-blue-400 hover:text-blue-300 font-medium'>
             Sign in
           </Link>
         </p>
 
         {/* Back to Home */}
-        <div className="mt-4 text-center">
+        <div className='mt-4 text-center'>
           <Link
-            href="/"
-            className="text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1"
+            href='/'
+            className='text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1'
           >
             <ArrowLeft />
             <span>Back to home</span>

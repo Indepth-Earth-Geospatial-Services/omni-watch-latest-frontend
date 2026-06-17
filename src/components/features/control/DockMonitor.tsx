@@ -1,127 +1,41 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AlertTriangle,
-  DoorClosed,
-  DoorOpen,
-  HardDrive,
-  Radio,
-  RefreshCw,
-  Send,
-  VideoOff,
-  Wifi,
-  WifiOff,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { DoorOpen, DoorClosed, Wifi, WifiOff, HardDrive, Send, VideoOff } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { executeJob } from '@/services/djiservice-layer/dji-service';
 import { toast } from 'sonner';
-import type { DJIDevice, LiveCapacity } from '@/lib/types';
+import type { DJIDevice } from '@/lib/types';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
-import { useStartStream, useStopStream } from '@/hooks/useLiveStreams';
-import { WebRTCPlayer, type StreamState } from '@/components/features/streams/WebRTCPlayer';
 
 export interface DockMonitorProps {
   dockDevice?: DJIDevice;
   droneData?: ProcessedDroneData | null;
-  dockCapacity?: LiveCapacity;
   className?: string;
-  /** Called whenever the physical cover is opened or closed */
-  onCoverChange?: (open: boolean) => void;
 }
 
-const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverChange }: DockMonitorProps) => {
+const DockMonitor = ({ dockDevice, droneData, className }: DockMonitorProps) => {
   const [isDoorOpen, setIsDoorOpen] = useState(false);
-  const [streamUrl, setStreamUrl] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamState, setStreamState] = useState<StreamState | null>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const activeIdRef = useRef('');
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { mutate: openCover, isPending: isOpening } = useMutation<void, Error, string>({
-    mutationFn: (sn) => executeJob(sn, 'cover_open'),
+  const { mutate: openCover, isPending: isOpening } = useMutation({
+    mutationFn: (sn: string) => executeJob(sn, 'cover_open', { action: 0 }),
   });
-  const { mutate: closeCover, isPending: isClosing } = useMutation<void, Error, string>({
-    mutationFn: (sn) => executeJob(sn, 'cover_close'),
+  const { mutate: closeCover, isPending: isClosing } = useMutation({
+    mutationFn: (sn: string) => executeJob(sn, 'cover_close', { action: 0 }),
   });
-  const { mutate: startDockStream, isPending: isStarting } = useStartStream();
-  const { mutate: stopDockStream } = useStopStream();
-
   const isPending = isOpening || isClosing;
+
   const dockOnline = dockDevice?.status ?? false;
   const dockName = dockDevice?.nickname || dockDevice?.deviceName || 'No Dock';
-  const dockSn = dockDevice?.deviceSn ?? '';
+  const dockSn = dockDevice?.deviceSn ?? '—';
   const firmware = dockDevice?.firmwareVersion ?? '—';
+  // modeCode 0 = standby / in dock; anything else = airborne
   const droneInDock = droneData ? droneData.modeCode === 0 : null;
-
-  // Find the dock's wide-angle camera from capacity
-  const dockCamera = dockCapacity?.cameras_list?.[0];
-  const dockVideo =
-    dockCamera?.videos_list?.find((v) => v.type === 'wide') ?? dockCamera?.videos_list?.[0];
-  const dockCompositeId =
-    dockSn && dockCamera && dockVideo ? `${dockSn}/${dockCamera.index}/${dockVideo.index}` : '';
-
-  // Sync mediaStream → video element
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.srcObject = mediaStream;
-    if (mediaStream) el.play().catch(() => undefined);
-  }, [mediaStream]);
-
-  // Auto-start dock camera when online and capacity is available
-  useEffect(() => {
-    if (!dockCompositeId || !dockOnline || isStreaming || isStarting || streamUrl) return;
-    startDockStream(
-      { url: '', video_id: dockCompositeId, url_type: 4, video_quality: 0, video_type: 'wide' },
-      {
-        onSuccess: (data) => {
-          const url = data?.url ?? '';
-          if (!url) return;
-          activeIdRef.current = dockCompositeId;
-          setStreamUrl(url);
-          setIsStreaming(true);
-        },
-        onError: (err) => {
-          console.error('[DockMonitor] stream start failed:', err.message);
-        },
-      }
-    );
-  }, [dockCompositeId, dockOnline, isStreaming, isStarting, streamUrl, startDockStream]);
-
-  // Stop stream when dock goes offline
-  useEffect(() => {
-    if (dockOnline || !activeIdRef.current) return;
-    stopDockStream({ url: '', video_id: activeIdRef.current, url_type: 4, video_quality: 0, video_type: 'wide' });
-    activeIdRef.current = '';
-    setStreamUrl('');
-    setIsStreaming(false);
-    setMediaStream(null);
-    setStreamState(null);
-  }, [dockOnline, stopDockStream]);
-
-  const handleReconnect = useCallback(() => {
-    if (activeIdRef.current) {
-      stopDockStream({
-        url: '',
-        video_id: activeIdRef.current,
-        url_type: 4,
-        video_quality: 0,
-        video_type: 'wide',
-      });
-      activeIdRef.current = '';
-    }
-    setStreamUrl('');
-    setIsStreaming(false);
-    setMediaStream(null);
-    setStreamState(null);
-  }, [stopDockStream]);
 
   const handleOpen = () => {
     if (!dockDevice || isPending) return;
     openCover(dockDevice.deviceSn, {
-      onSuccess: () => { setIsDoorOpen(true); onCoverChange?.(true); },
+      onSuccess: () => setIsDoorOpen(true),
       onError: (err) => toast.error(`Cover open failed: ${err.message}`),
     });
   };
@@ -129,7 +43,7 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
   const handleClose = () => {
     if (!dockDevice || isPending) return;
     closeCover(dockDevice.deviceSn, {
-      onSuccess: () => { setIsDoorOpen(false); onCoverChange?.(false); },
+      onSuccess: () => setIsDoorOpen(false),
       onError: (err) => toast.error(`Cover close failed: ${err.message}`),
     });
   };
@@ -141,75 +55,16 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
     >
       {/* ── Camera viewport ───────────────────────────────────────────── */}
       <div className='relative flex-1 bg-black overflow-hidden'>
-        {/* Video element always in DOM — opacity reveals it when playing */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-            streamState === 'playing' ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-
-        {/* Dock offline */}
-        {!dockOnline && (
-          <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
-            <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
-              Dock Offline
-            </span>
-            <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
-          </div>
-        )}
-
-        {/* Connecting / buffering */}
-        {dockOnline && (isStarting || streamState === 'connecting') && (
-          <div className='absolute inset-0 bg-[#0A0C10]/80 flex flex-col items-center justify-center gap-2'>
-            <div className='w-6 h-6 border-2 border-zinc-600 border-t-emerald-400 rounded-full animate-spin' />
-            <span className='text-[10px] font-mono text-zinc-500 uppercase tracking-widest'>
-              Connecting…
-            </span>
-          </div>
-        )}
-
-        {/* Stream error */}
-        {dockOnline && streamState === 'error' && (
-          <div className='absolute inset-0 bg-[#0A0C10]/90 flex flex-col items-center justify-center gap-2'>
-            <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-red-500 uppercase tracking-widest'>
-              Stream Error
-            </span>
-            <button
-              onClick={handleReconnect}
-              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
-            >
-              <RefreshCw size={9} /> Reconnect
-            </button>
-          </div>
-        )}
-
-        {/* No feed / waiting for capacity */}
-        {dockOnline && !streamUrl && !isStarting && !streamState && (
-          <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
-            <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
-              No Feed
-            </span>
-            <span className='text-[8px] font-mono text-zinc-800 uppercase tracking-wider'>
-              CAM-02
-            </span>
-            <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
-          </div>
-        )}
-
-        {/* Live badge */}
-        {streamState === 'playing' && (
-          <div className='absolute top-3 right-[72px] flex items-center gap-1 px-1.5 py-0.5 bg-red-600/90 rounded'>
-            <Radio size={8} className='text-white' />
-            <span className='text-[8px] font-black text-white uppercase tracking-widest'>Live</span>
-          </div>
-        )}
+        <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
+          <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
+          <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
+            No Feed
+          </span>
+          <span className='text-[8px] font-mono text-zinc-800 uppercase tracking-wider'>
+            CAM-02
+          </span>
+          <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
+        </div>
 
         {/* Door state badge */}
         <div
@@ -261,7 +116,7 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
           </div>
           <div className='flex items-center justify-between mt-0.5'>
             <span className='text-[8px] font-mono text-zinc-600 truncate max-w-[160px]'>
-              {dockSn ? `SN: ${dockSn.slice(-8)}` : 'No dock linked'}
+              {dockSn !== '—' ? `SN: ${dockSn.slice(-8)}` : 'No dock linked'}
             </span>
             {firmware !== '—' && (
               <span className='text-[8px] font-mono text-zinc-600'>fw {firmware}</span>
@@ -275,41 +130,28 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
         <button
           onClick={handleOpen}
           disabled={!dockOnline || isPending || isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-          }`}
+          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
+            ${
+              isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            }`}
         >
           {isPending && isDoorOpen ? '…' : 'Open'}
         </button>
         <button
           onClick={handleClose}
           disabled={!dockOnline || isPending || !isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            !isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-          }`}
+          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed
+            ${
+              !isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            }`}
         >
           {isPending && !isDoorOpen ? '…' : 'Close'}
         </button>
       </div>
-
-      {/* Headless WebRTC player — only mounts when we have a WHEP URL */}
-      {isStreaming && streamUrl && (
-        <WebRTCPlayer
-          url={streamUrl}
-          onStateChange={(state, errMsg) => {
-            setStreamState(state);
-            if (state === 'error') {
-              console.error(`[DockMonitor] WebRTC error: ${errMsg}`);
-              toast.error(`[Dock Camera] ${errMsg ?? 'Stream error'}`, { id: 'dock-stream-error' });
-            }
-          }}
-          onMediaStream={setMediaStream}
-        />
-      )}
     </div>
   );
 };

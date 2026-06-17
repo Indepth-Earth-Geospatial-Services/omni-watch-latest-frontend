@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
 
 const isDrone = (device: DJIDevice) => device.domain === '0';
-const isDock  = (device: DJIDevice) => device.domain === '1' || device.domain === '3';
+const isDock = (device: DJIDevice) => device.domain === '1' || device.domain === '3';
 
 interface AssetTableProps {
   activeTab: TabType;
@@ -37,7 +37,12 @@ interface AssetTableProps {
   error: Error | null;
 }
 
-const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devicesError }: AssetTableProps) => {
+const AssetTable = ({
+  activeTab,
+  devices,
+  isLoading: devicesLoading,
+  error: devicesError,
+}: AssetTableProps) => {
   const { data: projectsPage } = useProjects();
   const { mutate: unassign, isPending: isUnassigning } = useUnassignDevice();
   const { mutate: unbind, isPending: isUnbinding } = useUnbindDevice();
@@ -83,18 +88,18 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const menuHeight = 220; // estimated dropdown menu height
     const spaceBelow = window.innerHeight - rect.bottom;
-    
+
     let top = rect.bottom + 6;
     if (spaceBelow < menuHeight && rect.top > menuHeight) {
       top = rect.top - menuHeight - 6;
     }
-    
+
     setMenuPosition({ top, right: window.innerWidth - rect.right });
     setOpenMenuSn(sn);
   };
 
   const activeMenuDevice = openMenuSn
-    ? filtered.find((d) => d.deviceSn === openMenuSn) ?? null
+    ? (filtered.find((d) => d.deviceSn === openMenuSn) ?? null)
     : null;
 
   const activeMenuProject = activeMenuDevice
@@ -109,7 +114,15 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
           <table className='w-full text-left border-collapse min-w-[900px]'>
             <thead>
               <tr className='border-b border-zinc-800/50 bg-[#191C22]'>
-                {['Asset Identity', 'Serial Number', 'Type', 'Status', 'Firmware', 'Project', 'Actions'].map((col) => (
+                {[
+                  'Asset Identity',
+                  'Serial Number',
+                  'Type',
+                  'Status',
+                  'Firmware',
+                  'Project',
+                  'Actions',
+                ].map((col) => (
                   <th
                     key={col}
                     className='px-5 py-4 text-[10px] font-black tracking-[0.18em] text-zinc-500 uppercase'
@@ -206,7 +219,9 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
 
                       {/* Serial Number */}
                       <td className='px-5 py-4'>
-                        <span className='text-[11px] font-mono text-zinc-400'>{device.deviceSn}</span>
+                        <span className='text-[11px] font-mono text-zinc-400'>
+                          {device.deviceSn}
+                        </span>
                       </td>
 
                       {/* Type */}
@@ -311,7 +326,10 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
       <div className='md:hidden space-y-4 px-4'>
         {devicesLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 animate-pulse'>
+            <div
+              key={i}
+              className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 animate-pulse'
+            >
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-3'>
                   <div className='w-8 h-8 rounded bg-zinc-800' />
@@ -391,22 +409,32 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
                 {/* Details Grid */}
                 <div className='grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-zinc-800/30 text-xs'>
                   <div>
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Serial Number</span>
-                    <span className='font-mono text-zinc-300 truncate block mt-0.5'>{device.deviceSn}</span>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>
+                      Serial Number
+                    </span>
+                    <span className='font-mono text-zinc-300 truncate block mt-0.5'>
+                      {device.deviceSn}
+                    </span>
                   </div>
 
                   <div>
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Status</span>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>
+                      Status
+                    </span>
                     <div className='flex items-center gap-1.5 mt-0.5'>
                       <Wifi size={12} className={online ? 'text-emerald-400' : 'text-zinc-600'} />
-                      <span className={`font-semibold ${online ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                      <span
+                        className={`font-semibold ${online ? 'text-emerald-400' : 'text-zinc-600'}`}
+                      >
                         {online ? 'Online' : 'Offline'}
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Firmware</span>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>
+                      Firmware
+                    </span>
                     <div className='mt-0.5'>
                       {upgrade ? (
                         <div className='space-y-1'>
@@ -421,13 +449,17 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
                           </div>
                         </div>
                       ) : (
-                        <span className='font-mono text-zinc-300'>{device.firmwareVersion || '—'}</span>
+                        <span className='font-mono text-zinc-300'>
+                          {device.firmwareVersion || '—'}
+                        </span>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Project</span>
+                    <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>
+                      Project
+                    </span>
                     <div className='mt-0.5'>
                       {assignedProject ? (
                         <span className='font-semibold text-[#1C93FF] truncate block'>
@@ -442,7 +474,8 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
               </div>
             );
           })
-        )}    </div>
+        )}{' '}
+      </div>
 
       {/* ── Fixed-position action dropdown ────────────────────────────────────── */}
       {activeMenuDevice && (
@@ -453,9 +486,13 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
         >
           {/* Context label */}
           <div className='px-3.5 py-2.5 border-b border-zinc-800/70'>
-            <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>Device</p>
+            <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>
+              Device
+            </p>
             <p className='text-xs font-bold text-zinc-200 truncate mt-0.5'>
-              {activeMenuDevice.nickname || activeMenuDevice.deviceName || activeMenuDevice.deviceSn}
+              {activeMenuDevice.nickname ||
+                activeMenuDevice.deviceName ||
+                activeMenuDevice.deviceSn}
             </p>
           </div>
 
@@ -466,7 +503,10 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
                 setOpenMenuSn(null);
                 setAssignTarget({
                   sn: activeMenuDevice.deviceSn,
-                  name: activeMenuDevice.nickname || activeMenuDevice.deviceName || activeMenuDevice.deviceSn,
+                  name:
+                    activeMenuDevice.nickname ||
+                    activeMenuDevice.deviceName ||
+                    activeMenuDevice.deviceSn,
                 });
               }}
               disabled={!!activeMenuProject}
@@ -522,7 +562,10 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
                 setOpenMenuSn(null);
                 setPendingUnbind({
                   sn: activeMenuDevice.deviceSn,
-                  name: activeMenuDevice.nickname || activeMenuDevice.deviceName || activeMenuDevice.deviceSn,
+                  name:
+                    activeMenuDevice.nickname ||
+                    activeMenuDevice.deviceName ||
+                    activeMenuDevice.deviceSn,
                 });
               }}
               className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors text-left'
@@ -535,137 +578,161 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
       )}
 
       {/* ── OTA firmware update confirmation modal ───────────────────────────── */}
-      {pendingOTA && createPortal(
-        <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
-          <div className='absolute inset-0 bg-black/70 backdrop-blur-sm' onClick={() => setPendingOTA(null)} />
-          <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
-            <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
-              <div className='flex items-center gap-3'>
-                <div className='p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg'>
-                  <RefreshCw size={15} className='text-emerald-400' />
+      {pendingOTA &&
+        createPortal(
+          <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
+            <div
+              className='absolute inset-0 bg-black/70 backdrop-blur-sm'
+              onClick={() => setPendingOTA(null)}
+            />
+            <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+              <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
+                <div className='flex items-center gap-3'>
+                  <div className='p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg'>
+                    <RefreshCw size={15} className='text-emerald-400' />
+                  </div>
+                  <div>
+                    <h2 className='text-sm font-bold text-zinc-100'>Update Firmware</h2>
+                    <p className='text-[11px] text-zinc-500 truncate max-w-[180px]'>
+                      {pendingOTA.nickname || pendingOTA.deviceName || pendingOTA.deviceSn}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className='text-sm font-bold text-zinc-100'>Update Firmware</h2>
-                  <p className='text-[11px] text-zinc-500 truncate max-w-[180px]'>
-                    {pendingOTA.nickname || pendingOTA.deviceName || pendingOTA.deviceSn}
+                <button
+                  onClick={() => setPendingOTA(null)}
+                  className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+                >
+                  <X size={15} />
+                </button>
+              </div>
+              <div className='px-5 py-4 space-y-3'>
+                <p className='text-sm text-zinc-300'>
+                  Send a firmware update request to this device. The RC will prompt the operator to
+                  confirm and begin downloading.
+                </p>
+                <div className='bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 space-y-1'>
+                  <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600'>
+                    Current version
+                  </p>
+                  <p className='text-xs font-mono text-zinc-300'>
+                    {pendingOTA.firmwareVersion || '—'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setPendingOTA(null)}
-                className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
-              >
-                <X size={15} />
-              </button>
-            </div>
-            <div className='px-5 py-4 space-y-3'>
-              <p className='text-sm text-zinc-300'>
-                Send a firmware update request to this device. The RC will prompt the operator to confirm and begin downloading.
-              </p>
-              <div className='bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 space-y-1'>
-                <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600'>Current version</p>
-                <p className='text-xs font-mono text-zinc-300'>{pendingOTA.firmwareVersion || '—'}</p>
+              <div className='flex items-center gap-2 px-5 py-4 border-t border-zinc-800'>
+                <button
+                  onClick={() => setPendingOTA(null)}
+                  className='flex-1 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!pendingOTA) return;
+                    triggerOTA(
+                      [
+                        {
+                          deviceName: pendingOTA.deviceName,
+                          sn: pendingOTA.deviceSn,
+                          productVersion: pendingOTA.firmwareVersion ?? '',
+                          firmwareUpgradeType: 1,
+                        },
+                      ],
+                      {
+                        onSuccess: () => {
+                          toast.success('Firmware update sent — confirm on the RC screen');
+                          setPendingOTA(null);
+                        },
+                        onError: (err) => {
+                          toast.error(`Update failed: ${err.message}`);
+                        },
+                      }
+                    );
+                  }}
+                  disabled={isOTAPending}
+                  className='flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                >
+                  {isOTAPending ? (
+                    <Loader2 size={12} className='animate-spin' />
+                  ) : (
+                    <RefreshCw size={12} />
+                  )}
+                  Send Update
+                </button>
               </div>
             </div>
-            <div className='flex items-center gap-2 px-5 py-4 border-t border-zinc-800'>
-              <button
-                onClick={() => setPendingOTA(null)}
-                className='flex-1 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (!pendingOTA) return;
-                  triggerOTA(
-                    [
-                      {
-                        deviceName: pendingOTA.deviceName,
-                        sn: pendingOTA.deviceSn,
-                        productVersion: pendingOTA.firmwareVersion ?? '',
-                        firmwareUpgradeType: 1,
-                      },
-                    ],
-                    {
-                      onSuccess: () => {
-                        toast.success('Firmware update sent — confirm on the RC screen');
-                        setPendingOTA(null);
-                      },
-                      onError: (err) => {
-                        toast.error(`Update failed: ${err.message}`);
-                      },
-                    }
-                  );
-                }}
-                disabled={isOTAPending}
-                className='flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              >
-                {isOTAPending ? <Loader2 size={12} className='animate-spin' /> : <RefreshCw size={12} />}
-                Send Update
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ── Unbind confirmation modal ────────────────────────────────────────── */}
-      {pendingUnbind && createPortal(
-        <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
-          <div className='absolute inset-0 bg-black/70 backdrop-blur-sm' onClick={() => setPendingUnbind(null)} />
-          <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
-            {/* Header */}
-            <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
-              <div className='flex items-center gap-3'>
-                <div className='p-2 bg-red-500/10 border border-red-500/20 rounded-lg'>
-                  <AlertTriangle size={15} className='text-red-400' />
+      {pendingUnbind &&
+        createPortal(
+          <div className='fixed inset-0 z-[9999] flex items-center justify-center font-poppins'>
+            <div
+              className='absolute inset-0 bg-black/70 backdrop-blur-sm'
+              onClick={() => setPendingUnbind(null)}
+            />
+            <div className='relative z-10 w-full max-w-sm mx-4 bg-[#1A1C20] border border-zinc-800 rounded-xl shadow-2xl shadow-black/60'>
+              {/* Header */}
+              <div className='flex items-center justify-between px-5 py-4 border-b border-zinc-800'>
+                <div className='flex items-center gap-3'>
+                  <div className='p-2 bg-red-500/10 border border-red-500/20 rounded-lg'>
+                    <AlertTriangle size={15} className='text-red-400' />
+                  </div>
+                  <div>
+                    <h2 className='text-sm font-bold text-zinc-100'>Unbind Device</h2>
+                    <p className='text-[11px] text-zinc-500 truncate max-w-[180px]'>
+                      {pendingUnbind.name}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className='text-sm font-bold text-zinc-100'>Unbind Device</h2>
-                  <p className='text-[11px] text-zinc-500 truncate max-w-[180px]'>{pendingUnbind.name}</p>
-                </div>
+                <button
+                  onClick={() => setPendingUnbind(null)}
+                  className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
+                >
+                  <X size={15} />
+                </button>
               </div>
-              <button
-                onClick={() => setPendingUnbind(null)}
-                className='p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors'
-              >
-                <X size={15} />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className='px-5 py-4 space-y-2'>
-              <p className='text-sm text-zinc-300'>
-                Are you sure you want to unbind this device from the workspace?
-              </p>
-              <p className='text-xs text-zinc-500'>
-                The device will be removed from all projects and will need to be re-bound to appear again.
-              </p>
-            </div>
+              {/* Body */}
+              <div className='px-5 py-4 space-y-2'>
+                <p className='text-sm text-zinc-300'>
+                  Are you sure you want to unbind this device from the workspace?
+                </p>
+                <p className='text-xs text-zinc-500'>
+                  The device will be removed from all projects and will need to be re-bound to
+                  appear again.
+                </p>
+              </div>
 
-            {/* Footer */}
-            <div className='flex items-center gap-2 px-5 py-4 border-t border-zinc-800'>
-              <button
-                onClick={() => setPendingUnbind(null)}
-                className='flex-1 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  unbind(pendingUnbind.sn, { onSettled: () => setPendingUnbind(null) });
-                }}
-                disabled={isUnbinding}
-                className='flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              >
-                {isUnbinding ? <Loader2 size={12} className='animate-spin' /> : <Link2Off size={12} />}
-                Unbind
-              </button>
+              {/* Footer */}
+              <div className='flex items-center gap-2 px-5 py-4 border-t border-zinc-800'>
+                <button
+                  onClick={() => setPendingUnbind(null)}
+                  className='flex-1 py-2 text-xs font-bold text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    unbind(pendingUnbind.sn, { onSettled: () => setPendingUnbind(null) });
+                  }}
+                  disabled={isUnbinding}
+                  className='flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                >
+                  {isUnbinding ? (
+                    <Loader2 size={12} className='animate-spin' />
+                  ) : (
+                    <Link2Off size={12} />
+                  )}
+                  Unbind
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Assign-to-project modal — lazily loaded */}
       {assignTarget && (

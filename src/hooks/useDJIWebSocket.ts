@@ -1,6 +1,6 @@
 'use client';
 
-// Single shared native WebSocket connection to the DJI Cloud backend.
+// Single native WebSocket connection per hook instance to the DJI Cloud backend.
 //
 // The DJI server uses plain WebSocket (RFC 6455), NOT socket.io.
 // socket.io appends ?EIO=4&transport=websocket which the DJI server rejects.
@@ -42,20 +42,20 @@ export interface DeviceOSDData {
   host: {
     longitude: number;
     latitude: number;
-    height: string | number;         // AGL height in metres
-    elevation?: string | number;     // ASL elevation in metres
+    height: string | number; // AGL height in metres
+    elevation?: string | number; // ASL elevation in metres
     horizontal_speed: string | number;
     vertical_speed?: string | number;
     wind_speed?: string | number;
     wind_direction?: string | number;
     gear?: number;
     mode_code: number;
-    attitude_head?: number;          // heading 0-360° clockwise from north
+    attitude_head?: number; // heading 0-360° clockwise from north
     attitude_pitch?: number;
     attitude_roll?: number;
     position_state?: {
       gps_number: number;
-      is_fixed: number;              // 1 = GPS fix acquired, 0 = no fix
+      is_fixed: number; // 1 = GPS fix acquired, 0 = no fix
       rtk_number?: number;
     };
     battery?: {
@@ -117,6 +117,7 @@ interface EventHandlerMap {
 
 export function useDJIWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handlersRef = useRef<EventHandlerMap>({
     device_online_update: [],
     device_osd: [],
@@ -125,25 +126,29 @@ export function useDJIWebSocket() {
     flight_area_sync: [],
     device_upgrade_progress: [],
   });
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [deviceStates, setDeviceStates] = useState<Map<string, DeviceOnlineUpdateData>>(new Map());
   const [osdStates, setOsdStates] = useState<Map<string, DeviceOSDData>>(new Map());
-  const [upgradeStates, setUpgradeStates] = useState<Map<string, DeviceUpgradeProgressData>>(new Map());
+  const [upgradeStates, setUpgradeStates] = useState<Map<string, DeviceUpgradeProgressData>>(
+    new Map()
+  );
 
-  // Subscribe to a specific biz_code event; returns an unsubscribe function
   const on = useCallback(
     <T extends BizCode>(
       bizCode: T,
       handler: EventHandler<
         T extends 'device_online_update'
           ? DeviceOnlineUpdateData
-          : T extends 'hms_event'
-            ? HMSEventData
-            : T extends 'task_progress'
-              ? TaskProgressData
-              : FlightAreaSyncData
+          : T extends 'device_osd'
+            ? DeviceOSDData
+            : T extends 'hms_event'
+              ? HMSEventData
+              : T extends 'task_progress'
+                ? TaskProgressData
+                : T extends 'device_upgrade_progress'
+                  ? DeviceUpgradeProgressData
+                  : FlightAreaSyncData
       >
     ) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,13 +193,26 @@ export function useDJIWebSocket() {
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        console.error('[DJI WS] Connection error');
+      };
 
       ws.onmessage = (event) => {
         if (cancelled) return;
         try {
           const msg = JSON.parse(event.data as string) as DJIMessage;
           const { biz_code, data } = msg;
+
+          // Diagnostic: log every incoming message with biz_code and mode_code when present
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sn = (data as any)?.sn ?? '?';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const modeCode = (data as any)?.host?.mode_code ?? (data as any)?.mode_code;
+          if (modeCode !== undefined) {
+            console.log(`[ws] ${biz_code} sn=${sn} mode_code=${modeCode}`, data);
+          } else {
+            console.log(`[ws] ${biz_code} sn=${sn}`, data);
+          }
 
           // Dispatch to registered handlers
           if (biz_code in handlersRef.current) {
@@ -250,11 +268,20 @@ export function useDJIWebSocket() {
 
     return () => {
       cancelled = true;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      // Only close from OPEN state — closing a CONNECTING socket throws a browser error.
-      // If still connecting, onopen will see cancelled=true and close it cleanly.
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.close(1000, 'component unmounted');
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      if (wsRef.current) {
+        const ws = wsRef.current;
+        // Only close an already-open socket. Closing a CONNECTING socket fires a
+        // browser error ("WebSocket is closed before the connection is established")
+        // which is noisy in dev/Strict Mode. The cancelled flag above will make the
+        // onopen handler close it once the handshake completes.
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close(1000, 'component unmounted');
+        }
+        wsRef.current = null;
       }
     };
   }, []);

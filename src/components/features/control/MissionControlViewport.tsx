@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Crosshair, Navigation, VideoOff } from 'lucide-react';
 import FlightControlActions from './FlightControlActions';
-import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
 
@@ -22,13 +21,15 @@ interface MissionControlViewportProps {
   capacityLoading: boolean;
   isFlying: boolean;
   activeStreamUrl: string;
-  dockSn?: string;
-  dockOnline?: boolean;
   onDeviceChange: (sn: string) => void;
   onVideoTypeChange: (type: string) => void;
   onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
+  mediaStream: MediaStream | null;
+  streamConnectState: StreamState | null;
+  dockSn?: string;
+  droneSn?: string;
   className?: string;
   isMini?: boolean;
 }
@@ -59,13 +60,15 @@ const MissionControlViewport = ({
   capacityLoading,
   isFlying,
   activeStreamUrl,
-  dockSn,
-  dockOnline,
   onDeviceChange,
   onVideoTypeChange,
   onQualityChange,
   onStart,
   onStop,
+  mediaStream,
+  streamConnectState,
+  dockSn,
+  droneSn,
   className,
   isMini = false,
 }: MissionControlViewportProps) => {
@@ -74,27 +77,13 @@ const MissionControlViewport = ({
   const canStop = !!selectedVideoId && isStreaming;
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
 
-  // Set srcObject and muted imperatively — React's `muted` JSX prop doesn't reliably
-  // set the DOM property, blocking autoplay. Call play() after srcObject is assigned so
-  // the browser starts rendering frames even when the element was previously display:none.
+  // Re-attach the media stream to the video element whenever it changes or
+  // this component remounts after a panel switch — ensures playback resumes
+  // without restarting the WebRTC connection.
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = true;
-    video.srcObject = mediaStream;
-    if (mediaStream) video.play().catch(() => {});
+    if (videoRef.current) videoRef.current.srcObject = mediaStream;
   }, [mediaStream]);
-
-  // Reset player state when stream URL is cleared
-  useEffect(() => {
-    if (!activeStreamUrl) {
-      setMediaStream(null);
-      setStreamConnectState(null);
-    }
-  }, [activeStreamUrl]);
 
   return (
     <div
@@ -107,6 +96,12 @@ const MissionControlViewport = ({
             : { padding: '0px 0px', height: '700px' }
       }
     >
+      {/* <SensorToolbar
+        selectedVideoType={selectedVideoType}
+        onVideoTypeChange={onVideoTypeChange}
+        isStreaming={isStreaming}
+      /> */}
+
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
       {!isMini && (
         <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
@@ -178,15 +173,6 @@ const MissionControlViewport = ({
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active */}
-        {activeStreamUrl && (
-          <WebRTCPlayer
-            url={activeStreamUrl}
-            onStateChange={(state) => setStreamConnectState(state)}
-            onMediaStream={setMediaStream}
-          />
-        )}
-
         {/* Video element — hidden until track arrives */}
         <video
           ref={videoRef}
@@ -290,7 +276,7 @@ const MissionControlViewport = ({
             <span
               className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
             >
-              {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              {isStreaming ? 'Live' : 'Idle'}
             </span>
           </div>
           {selectedSn && (
@@ -313,7 +299,7 @@ const MissionControlViewport = ({
         </div>
       </div>
 
-      {!isMini && <FlightControlActions isFlying={isFlying} dockOnline={dockOnline} />}
+      {!isMini && <FlightControlActions selectedSn={selectedSn} isFlying={isFlying} />}
     </div>
   );
 };
