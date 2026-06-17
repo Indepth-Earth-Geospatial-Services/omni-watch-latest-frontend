@@ -31,6 +31,7 @@ export interface VideoCapacity {
   id: string;
   index: string;
   type: string;
+  switch_video_types?: string[];
 }
 
 export interface LiveStreamRequest {

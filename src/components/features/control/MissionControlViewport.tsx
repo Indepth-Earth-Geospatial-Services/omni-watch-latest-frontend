@@ -77,8 +77,15 @@ const MissionControlViewport = ({
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
 
+  // Set srcObject and muted imperatively — React's `muted` JSX prop doesn't reliably
+  // set the DOM property, blocking autoplay. Call play() after srcObject is assigned so
+  // the browser starts rendering frames even when the element was previously display:none.
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = mediaStream;
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    video.srcObject = mediaStream;
+    if (mediaStream) video.play().catch(() => {});
   }, [mediaStream]);
 
   // Reset player state when stream URL is cleared

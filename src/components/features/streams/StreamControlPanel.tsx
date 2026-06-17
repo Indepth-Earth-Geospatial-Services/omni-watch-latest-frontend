@@ -10,7 +10,6 @@ import {
   useUpdateStreamQuality,
   useSwitchStreamCamera,
 } from '@/hooks/useLiveStreams';
-import { normalizeLensType } from './stream-utils';
 
 interface StreamControlPanelProps {
   stream: any;
@@ -62,33 +61,45 @@ export function StreamControlPanel({
   const capacity = capacityMap?.get(deviceSn);
   const cameras = capacity?.cameras_list ?? [];
 
-  const selectedCamera = cameras[0];
+  // For multi-camera drones (Matrice4TD), skip cameras whose only video type is 'normal'
+  // (e.g. the IR/Wide Gimbal sub-camera at 176-0-0). Prefer the camera that has at least
+  // one video with a real type (e.g. M4D Camera at 99-0-0 with type:'wide').
+  const selectedCamera =
+    cameras.find((cam) => cam.videos_list.some((v) => v.type !== 'normal')) ?? cameras[0];
+
   const availableVideos = selectedCamera?.videos_list ?? [];
 
-  // Lens options come entirely from what the selected camera reports.
-  // Labels are formatted dynamically from the raw type string — no hardcoded map.
-  const lensOptions = availableVideos.map((v) => ({
-    label: videoTypeLabel(v.type),
-    value: v.type,
-  }));
+  // Lens options — two models:
+  // • M4D Camera style: one stream slot with switch_video_types (Normal/Wide/Zoom/IR).
+  //   Include all entries from switch_video_types so the user can pick any lens.
+  // • Mavic 3T style: separate video entries per lens (wide-0, zoom-0, thermal-0).
+  //   Each entry becomes one option.
+  const lensOptions = availableVideos.flatMap((v) => {
+    if (v.switch_video_types && v.switch_video_types.length > 0) {
+      return v.switch_video_types.map((t) => ({ label: videoTypeLabel(t), value: t }));
+    }
+    return [{ label: videoTypeLabel(v.type), value: v.type }];
+  });
 
-  // Fall back to first available lens when none is selected yet.
-  // normalizeLensType maps 'normal' → 'zoom' because DJI SDK v2 removed that enum value.
-  const effectiveLens = normalizeLensType(selectedLens ?? availableVideos[0]?.type);
+  // Default lens: first entry in switch_video_types when present (e.g. 'normal' for
+  // M4D Camera — this aligns with drone_tracker.html, which omits video_type entirely
+  // and the DJI server defaults the normal-0 slot to 'normal').
+  // For Mavic-style cameras without switch_video_types, use the first video's own type.
+  const primaryVideo = availableVideos[0];
+  const defaultLens = primaryVideo?.switch_video_types?.[0] ?? primaryVideo?.type;
+  const effectiveLens = selectedLens ?? defaultLens ?? '';
 
-  // Build the DJI composite video_id: {device_sn}/{camera_index}/{video_index}
+  // Build the DJI composite video_id: {device_sn}/{camera_index}/{video_index}.
+  // For Mavic: videoForLens.index changes per lens (wide-0, zoom-0 …).
+  // For M4D:   videoForLens.index is always normal-0 regardless of chosen lens.
   const videoForLens = availableVideos.find((v) => v.type === effectiveLens) ?? availableVideos[0];
 
-  // Dock-connected drones (M4TD via Dock 3, etc.) never return cameras_list from the
-  // capacity API, but the integrated camera is always accessible at this fixed index.
-  // This is the same video_id used by drone_tracker.html where dock streaming works.
+  // Fallback for dock-connected drones that temporarily report no cameras_list.
   const DOCK_CAMERA_INDEX = '99-0-0';
   const DOCK_VIDEO_INDEX = 'normal-0';
 
-  // Device known in capacity map but cameras_list absent (dock-connected drone or not yet reporting)
   const deviceKnown = !!capacity;
   const noCameraData = !capacityLoading && deviceKnown && cameras.length === 0;
-  // Device not in the capacity map at all
   const noCapacityEntry = !capacityLoading && !deviceKnown;
 
   const liveVideoId =
@@ -102,7 +113,6 @@ export function StreamControlPanel({
   const currentVideoId = activeVideoId ?? liveVideoId;
 
   const deviceOffline = !(stream.isOnline || stream.status);
-  // noCameraData devices (dock-connected) use the fallback video_id — keep them enabled.
   const disabled = deviceOffline || capacityLoading || noCapacityEntry;
   const isPending =
     startMutation.isPending ||
@@ -115,26 +125,35 @@ export function StreamControlPanel({
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleStart = () => {
-    startMutation.mutate(
-      {
-        url: '',
-        video_id: liveVideoId,
-        url_type: 4,
-        video_quality: quality,
-        video_type: effectiveLens,
+    const payload = {
+      url: '',
+      video_id: liveVideoId,
+      url_type: 4,
+      video_quality: quality,
+      video_type: effectiveLens,
+    };
+    console.log('[LiveFeed:Stream] ▶ start request', { deviceSn, ...payload, noCameraData, noCapacityEntry });
+    startMutation.mutate(payload, {
+      onSuccess: (data) => {
+        console.log('[LiveFeed:Stream] ✅ start success — stream url:', data.url);
+        if (!data.url) {
+          console.error('[LiveFeed:Stream] ❌ No stream URL in response');
+          toast.error('DJI returned no stream URL — check that url_type 4 (WebRTC) is supported');
+          return;
+        }
+        setIsStreaming(true);
+        setActiveVideoId(liveVideoId);
+        onStreamingChange?.(true, data.url);
       },
-      {
-        onSuccess: (data) => {
-          setIsStreaming(true);
-          setActiveVideoId(liveVideoId);
-          onStreamingChange?.(true, data.url);
-        },
-        onError: (err) => toast.error(`Stream start failed: ${err.message}`),
-      }
-    );
+      onError: (err) => {
+        console.error('[LiveFeed:Stream] ❌ start error:', err);
+        toast.error(`Stream start failed: ${err.message}`);
+      },
+    });
   };
 
   const handleStop = () => {
+    console.log('[LiveFeed:Stream] ■ stop request', { deviceSn, video_id: currentVideoId });
     stopMutation.mutate(
       {
         url: '',
@@ -149,7 +168,9 @@ export function StreamControlPanel({
           setActiveVideoId(null);
           onStreamingChange?.(false);
         },
-        onError: (err) => toast.error(`Stream stop failed: ${err.message}`),
+        onError: (err) => {
+          console.warn('[LiveFeed:Stream] stop error (state cleaned up anyway):', err.message);
+        },
       }
     );
   };
@@ -174,6 +195,8 @@ export function StreamControlPanel({
       return;
     }
 
+    // For Mavic-style cameras, each lens has its own video entry so the index changes.
+    // For M4D-style cameras, the index stays the same and only video_type changes.
     const newVideo = availableVideos.find((v) => v.type === newLens) ?? availableVideos[0];
     const newVideoId =
       selectedCamera && newVideo
@@ -211,7 +234,6 @@ export function StreamControlPanel({
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  // Human-readable reason the Start button is disabled
   const startLabel = (() => {
     if (startMutation.isPending) return 'Starting…';
     if (capacityLoading) return 'Loading…';
@@ -222,7 +244,6 @@ export function StreamControlPanel({
 
   return (
     <div className='flex flex-col gap-3'>
-      {/* Informational note for dock-connected drones using fixed payload index */}
       {noCameraData && (
         <p className='text-[10px] text-amber-500/80'>
           Dock-connected camera — using integrated payload index ({DOCK_CAMERA_INDEX}).
@@ -230,7 +251,7 @@ export function StreamControlPanel({
       )}
 
       <div className='flex flex-wrap items-end gap-6'>
-        {/* Lens / video-type selector — built entirely from the selected camera's videos_list */}
+        {/* Lens selector — shows when there are multiple lens options */}
         {lensOptions.length > 1 && (
           <div>
             <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
@@ -244,7 +265,7 @@ export function StreamControlPanel({
                   onClick={() => handleLensChange(value)}
                   className={cn(
                     'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                    normalizeLensType(value) === effectiveLens
+                    value === effectiveLens
                       ? 'bg-[#1C93FF] text-white'
                       : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
                   )}
@@ -280,7 +301,7 @@ export function StreamControlPanel({
           </div>
         </div>
 
-        {/* Start / Stop — full width on very small screens */}
+        {/* Start / Stop */}
         <div className='sm:ml-auto w-full sm:w-auto'>
           <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
             Stream

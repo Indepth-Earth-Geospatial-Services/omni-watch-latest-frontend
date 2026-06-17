@@ -16,7 +16,6 @@ import {
   useUpdateStreamQuality,
   useSwitchStreamCamera,
 } from '@/hooks/useLiveStreams';
-import { normalizeLensType } from '@/components/features/streams/stream-utils';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useAuth } from '@/providers/AuthProvider';
@@ -108,9 +107,23 @@ export default function ControlPage() {
   );
   const selectedDevice = selectedSn ? capacityMap?.get(selectedSn) : undefined;
   const cameras = useMemo(() => selectedDevice?.cameras_list ?? [], [selectedDevice]);
-  const selectedCamera = cameras.find((c) => c.id === selectedCameraId);
+  // CameraCapacity.id is absent from the DJI API response — use index (always present) as the key.
+  const selectedCamera = cameras.find((c) => c.index === selectedCameraId);
   const videos = useMemo(() => selectedCamera?.videos_list ?? [], [selectedCamera]);
-  const videoTypes: string[] = [];
+
+  // Lens selector options — two models:
+  // • M4D Camera style: single stream slot with switch_video_types (Normal/Wide/Zoom/IR).
+  //   Use switch_video_types directly so all options including 'normal' are available.
+  // • Mavic 3T style: separate video entry per lens (wide-0, zoom-0, thermal-0).
+  //   Derive one option per video entry.
+  const videoTypes = useMemo((): string[] => {
+    if (videos.length === 0) return [];
+    const primary = videos[0];
+    if (primary.switch_video_types && primary.switch_video_types.length > 0) {
+      return primary.switch_video_types;
+    }
+    return videos.map((v) => v.type);
+  }, [videos]);
 
   // ─── Dock & telemetry ─────────────────────────────────────────────────────
   const dockDevice = useMemo(
@@ -148,13 +161,17 @@ export default function ControlPage() {
   }, []);
 
   const handleVideoChange = useCallback(
-    (videoId: string) => {
-      setSelectedVideoId(videoId);
+    (videoIndex: string) => {
+      setSelectedVideoId(videoIndex);
       setActiveStreamVideoId('');
       setActiveStreamUrl('');
       setIsStreaming(false);
-      const video = videos.find((v) => v.id === videoId);
-      setSelectedVideoType(normalizeLensType(video?.type));
+      const video = videos.find((v) => v.index === videoIndex);
+      // Default type: first entry in switch_video_types when available ('normal' for M4D
+      // Camera, matching drone_tracker.html which omits video_type and gets 'normal' by
+      // default). For Mavic-style cameras without switch_video_types, use the video's type.
+      const defaultType = video?.switch_video_types?.[0] ?? video?.type ?? '';
+      setSelectedVideoType(defaultType);
     },
     [videos]
   );
@@ -164,22 +181,21 @@ export default function ControlPage() {
       toast.error('[Stream] No video selected — waiting for dock to come online');
       return;
     }
-    const video = videos.find((v) => v.id === selectedVideoId);
+    const video = videos.find((v) => v.index === selectedVideoId);
     const compositeId =
       selectedCamera && video ? `${selectedSn}/${selectedCamera.index}/${video.index}` : null;
     if (!compositeId) {
       toast.error('[Stream] Could not resolve composite video ID — try re-selecting the device');
       return;
     }
-    console.log(`[Control:Stream] starting — videoId: ${compositeId}, quality: ${streamQuality}`);
-    const videoType = normalizeLensType(selectedVideoType);
+    console.log(`[Control:Stream] starting — videoId: ${compositeId}, type: ${selectedVideoType}, quality: ${streamQuality}`);
     startStream(
       {
         url: '',
         video_id: compositeId,
         url_type: 4,
         video_quality: streamQuality,
-        video_type: videoType,
+        video_type: selectedVideoType,
       },
       {
         onSuccess: (data) => {
@@ -264,17 +280,26 @@ export default function ControlPage() {
   const handleVideoTypeChange = useCallback(
     (videoType: string) => {
       setSelectedVideoType(videoType);
+      // For Mavic-style cameras each lens has its own video entry — update selectedVideoId
+      // so handleStart picks the correct index (e.g. zoom-0 when Zoom is selected).
+      // For M4D-style cameras all lenses share one index (normal-0); no change needed.
+      const matchingVideo = videos.find((v) => v.type === videoType);
+      if (matchingVideo) setSelectedVideoId(matchingVideo.index);
       if (isStreaming && activeStreamVideoId) {
+        const newId =
+          matchingVideo && selectedCamera
+            ? `${selectedSn}/${selectedCamera.index}/${matchingVideo.index}`
+            : activeStreamVideoId;
         switchCamera({
           url: '',
-          video_id: activeStreamVideoId,
+          video_id: newId,
           url_type: 4,
           video_quality: streamQuality,
           video_type: videoType,
         });
       }
     },
-    [isStreaming, activeStreamVideoId, streamQuality, switchCamera]
+    [isStreaming, activeStreamVideoId, streamQuality, switchCamera, videos, selectedSn, selectedCamera]
   );
 
   // ─── Auto-select chain ────────────────────────────────────────────────────
@@ -287,15 +312,19 @@ export default function ControlPage() {
 
   useEffect(() => {
     if (cameras.length > 0 && !selectedCameraId) {
-      console.log(`[Control:AutoSelect] camera → ${cameras[0].id}`);
-      handleCameraChange(cameras[0].id);
+      // Prefer cameras with non-'normal' video types (e.g., M4D Camera at 99-0-0 over
+      // IR/Wide Gimbal at 176-0-0 which only supports 'normal', rejected by SDK v2).
+      const preferred =
+        cameras.find((cam) => cam.videos_list.some((v) => v.type !== 'normal')) ?? cameras[0];
+      console.log(`[Control:AutoSelect] camera → ${preferred.index} (${preferred.name})`);
+      handleCameraChange(preferred.index);
     }
   }, [cameras, selectedCameraId, handleCameraChange]);
 
   useEffect(() => {
     if (videos.length > 0 && !selectedVideoId) {
-      console.log(`[Control:AutoSelect] video → ${videos[0].id}`);
-      handleVideoChange(videos[0].id);
+      console.log(`[Control:AutoSelect] video → ${videos[0].index}`);
+      handleVideoChange(videos[0].index);
     }
   }, [videos, selectedVideoId, handleVideoChange]);
 
