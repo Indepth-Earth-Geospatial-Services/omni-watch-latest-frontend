@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +37,7 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   // If the user is already authenticated, redirect immediately
   useEffect(() => {
@@ -171,12 +172,24 @@ function SignInForm() {
                   <FormItem>
                     <FormLabel>PIN</FormLabel>
                     <FormControl>
-                      <Input
-                        type='password'
-                        placeholder='••••••••'
-                        autoComplete='current-password'
-                        {...field}
-                      />
+                      <div className='relative'>
+                        <Input
+                          type={showPin ? 'text' : 'password'}
+                          placeholder='••••••••'
+                          autoComplete='current-password'
+                          className='pr-10'
+                          {...field}
+                        />
+                        <button
+                          type='button'
+                          onClick={() => setShowPin((v) => !v)}
+                          className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors'
+                          tabIndex={-1}
+                          aria-label={showPin ? 'Hide password' : 'Show password'}
+                        >
+                          {showPin ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

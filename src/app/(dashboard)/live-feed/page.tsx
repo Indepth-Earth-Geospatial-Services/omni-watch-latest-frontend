@@ -33,7 +33,7 @@ export default function LiveFeedPage() {
   const [stopSignals, setStopSignals] = useState<Map<string, number>>(new Map());
 
   const projectSnSet = useMemo(
-    () => new Set(activeProject?.devices.map((d) => d.device_sn) ?? []),
+    () => new Set(activeProject?.devices.map((d) => d.device.device_sn) ?? []),
     [activeProject]
   );
 

@@ -54,7 +54,7 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
   const allProjects = projectsPage?.list ?? [];
 
   const assignedProjectFor = (deviceSn: string) =>
-    allProjects.find((p) => p.devices.some((d) => d.device_sn === deviceSn));
+    allProjects.find((p) => p.devices.some((d) => d.device.device_sn === deviceSn));
 
   const filtered = devices.filter((d) => {
     if (activeTab === 'All') return true;

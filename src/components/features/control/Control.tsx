@@ -16,6 +16,7 @@ import {
   useUpdateStreamQuality,
   useSwitchStreamCamera,
 } from '@/hooks/useLiveStreams';
+import { normalizeLensType } from '@/components/features/streams/stream-utils';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useAuth } from '@/providers/AuthProvider';
@@ -48,10 +49,7 @@ export default function ControlPage() {
   const { mutate: switchCamera } = useSwitchStreamCamera();
 
   // ─── Device data ───────────────────────────────────────────────────────────
-  const {
-    data: deviceList = [],
-    error: devicesError,
-  } = useDJIDevices();
+  const { data: deviceList = [], error: devicesError } = useDJIDevices();
 
   // ─── Telemetry ────────────────────────────────────────────────────────────
   const { getProcessedDroneData, getDroneTelemetry } = useTelemetry();
@@ -88,7 +86,10 @@ export default function ControlPage() {
   // ─── Elapsed stream timer ──────────────────────────────────────────────────
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => {
-    if (!isStreaming) { setElapsedSeconds(0); return; }
+    if (!isStreaming) {
+      setElapsedSeconds(0);
+      return;
+    }
     const start = Date.now();
     const id = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
     return () => clearInterval(id);
@@ -153,7 +154,7 @@ export default function ControlPage() {
       setActiveStreamUrl('');
       setIsStreaming(false);
       const video = videos.find((v) => v.id === videoId);
-      setSelectedVideoType(video?.type || 'normal');
+      setSelectedVideoType(normalizeLensType(video?.type));
     },
     [videos]
   );
@@ -171,9 +172,15 @@ export default function ControlPage() {
       return;
     }
     console.log(`[Control:Stream] starting — videoId: ${compositeId}, quality: ${streamQuality}`);
-    const videoType = selectedVideoType || 'normal';
+    const videoType = normalizeLensType(selectedVideoType);
     startStream(
-      { url: '', video_id: compositeId, url_type: 4, video_quality: streamQuality, video_type: videoType },
+      {
+        url: '',
+        video_id: compositeId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: videoType,
+      },
       {
         onSuccess: (data) => {
           const streamUrl = data?.url ?? '';
@@ -204,14 +211,32 @@ export default function ControlPage() {
         },
       }
     );
-  }, [selectedVideoId, selectedVideoType, videos, selectedCamera, selectedSn, streamQuality, startStream]);
+  }, [
+    selectedVideoId,
+    selectedVideoType,
+    videos,
+    selectedCamera,
+    selectedSn,
+    streamQuality,
+    startStream,
+  ]);
 
   const handleStop = useCallback(() => {
     if (!activeStreamVideoId) return;
     stopStream(
-      { url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: selectedVideoType },
       {
-        onSettled: () => { setIsStreaming(false); setActiveStreamVideoId(''); setActiveStreamUrl(''); },
+        url: '',
+        video_id: activeStreamVideoId,
+        url_type: 4,
+        video_quality: streamQuality,
+        video_type: selectedVideoType,
+      },
+      {
+        onSettled: () => {
+          setIsStreaming(false);
+          setActiveStreamVideoId('');
+          setActiveStreamUrl('');
+        },
         onError: (err: Error) => {
           console.error('[Control:Stream] stopStream error:', err);
           toast.error(`[Stream] Stop failed: ${err.message}`);
@@ -224,7 +249,13 @@ export default function ControlPage() {
     (quality: number) => {
       setStreamQuality(quality);
       if (isStreaming && activeStreamVideoId) {
-        updateQuality({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: quality, video_type: selectedVideoType });
+        updateQuality({
+          url: '',
+          video_id: activeStreamVideoId,
+          url_type: 4,
+          video_quality: quality,
+          video_type: selectedVideoType,
+        });
       }
     },
     [isStreaming, activeStreamVideoId, selectedVideoType, updateQuality]
@@ -234,7 +265,13 @@ export default function ControlPage() {
     (videoType: string) => {
       setSelectedVideoType(videoType);
       if (isStreaming && activeStreamVideoId) {
-        switchCamera({ url: '', video_id: activeStreamVideoId, url_type: 4, video_quality: streamQuality, video_type: videoType });
+        switchCamera({
+          url: '',
+          video_id: activeStreamVideoId,
+          url_type: 4,
+          video_quality: streamQuality,
+          video_type: videoType,
+        });
       }
     },
     [isStreaming, activeStreamVideoId, streamQuality, switchCamera]
@@ -267,7 +304,6 @@ export default function ControlPage() {
     <div className='bg-black text-zinc-100 flex flex-col font-sans selection:bg-blue-500/30'>
       <main className='flex-1 flex flex-col items-center py-4 px-6 pb-[80px] overflow-y-auto overflow-x-hidden'>
         <div className='w-full space-y-4'>
-
           {/* ── Header section ── */}
           <section className='space-y-2'>
             <ControlErrorBoundary section='TelemetryHeader'>
@@ -347,12 +383,22 @@ export default function ControlPage() {
                   {mainPanel === 'viewport' && viewportPanel(true)}
                   {mainPanel === 'map' && (
                     <ControlErrorBoundary section='TacticalMiniMap'>
-                      <TacticalMiniMap droneData={droneData} dockData={dockData} className='w-full h-[700px]' />
+                      <TacticalMiniMap
+                        droneData={droneData}
+                        dockData={dockData}
+                        className='w-full h-[700px]'
+                      />
                     </ControlErrorBoundary>
                   )}
                   {mainPanel === 'dock' && (
                     <ControlErrorBoundary section='DockMonitor'>
-                      <DockMonitor dockDevice={dockDevice} droneData={droneData} dockCapacity={dockCapacity} onCoverChange={setCoverOpen} className='w-full h-[700px]' />
+                      <DockMonitor
+                        dockDevice={dockDevice}
+                        droneData={droneData}
+                        dockCapacity={dockCapacity}
+                        onCoverChange={setCoverOpen}
+                        className='w-full h-[700px]'
+                      />
                     </ControlErrorBoundary>
                   )}
                 </div>
@@ -370,7 +416,12 @@ export default function ControlPage() {
                       )}
                       {id === 'dock' && (
                         <ControlErrorBoundary section='DockMonitor'>
-                          <DockMonitor dockDevice={dockDevice} droneData={droneData} dockCapacity={dockCapacity} onCoverChange={setCoverOpen} />
+                          <DockMonitor
+                            dockDevice={dockDevice}
+                            droneData={droneData}
+                            dockCapacity={dockCapacity}
+                            onCoverChange={setCoverOpen}
+                          />
                         </ControlErrorBoundary>
                       )}
                     </div>

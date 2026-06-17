@@ -179,6 +179,51 @@
             box-shadow: 0 0 8px rgba(0, 255, 153, 0.6);
         }
 
+        /* ─── Device online pills (per-device freshness) ─── */
+        #deviceStatus {
+            position: absolute;
+            top: 56px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+        .dev-pill {
+            background: rgba(10, 14, 26, 0.78);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 4px 10px;
+            color: #5a6a88;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .dev-pill-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff4444;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .dev-pill.online {
+            color: #e0e6f0;
+            border-color: rgba(0, 255, 153, 0.3);
+        }
+        .dev-pill.online .dev-pill-dot {
+            background: #00ff99;
+            box-shadow: 0 0 6px rgba(0, 255, 153, 0.5);
+        }
+        .dev-pill-time {
+            color: #5a6a88;
+            font-size: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+        .dev-pill.online .dev-pill-time { color: #94a3b8; }
+
         /* Telemetry panel */
         .telemetry {
             position: absolute;
@@ -518,6 +563,252 @@
         #authStatus.granted {
             color: #00ee8b;
         }
+
+        /* ─── HMS Health Warnings Panel ─────────────────────── */
+        #hmsPanel {
+            position: absolute;
+            top: 70px;
+            right: 90px;
+            width: 320px;
+            max-height: 50vh;
+            overflow-y: auto;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .hms-card {
+            background: rgba(10, 14, 26, 0.88);
+            backdrop-filter: blur(12px);
+            border-left: 3px solid #5a6a88;
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #e0e6f0;
+            font-size: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            animation: hmsSlide 0.3s ease-out;
+            position: relative;
+        }
+
+        .hms-card.level-0 { border-left-color: #00ccff; }
+        .hms-card.level-1 { border-left-color: #ffaa33; }
+        .hms-card.level-2 { border-left-color: #ff4444; box-shadow: 0 4px 16px rgba(255, 68, 68, 0.3); }
+
+        .hms-card .hms-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            color: #5a6a88;
+        }
+        .hms-card.level-0 .hms-head .hms-tag { color: #00ccff; }
+        .hms-card.level-1 .hms-head .hms-tag { color: #ffaa33; }
+        .hms-card.level-2 .hms-head .hms-tag { color: #ff5555; }
+
+        .hms-card .hms-code {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .hms-card .hms-dismiss {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: #5a6a88;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .hms-card .hms-dismiss:hover { color: #fff; }
+
+        @keyframes hmsSlide {
+            from { transform: translateX(30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ─── Maintenance / Debug Drawer ─────────────────────── */
+        #maintenanceDrawer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 340px;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(0, 204, 255, 0.2);
+            color: #e0e6f0;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        #maintenanceDrawer.open { transform: translateX(0); }
+
+        .mnt-head {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .mnt-head h2 {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00ccff;
+        }
+        .mnt-head .close-x {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .mnt-body {
+            padding: 14px 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .mnt-mode {
+            background: rgba(255, 51, 51, 0.08);
+            border: 1px solid rgba(255, 51, 51, 0.25);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .mnt-mode.armed {
+            background: rgba(0, 255, 153, 0.08);
+            border-color: rgba(0, 255, 153, 0.3);
+        }
+        .mnt-mode-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #5a6a88;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+        .mnt-mode-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ff5555;
+            margin-bottom: 8px;
+        }
+        .mnt-mode.armed .mnt-mode-val { color: #00ff99; }
+
+        .mnt-debug-btn {
+            width: 100%;
+            background: #ff5555;
+            border: none;
+            border-radius: 6px;
+            padding: 8px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .mnt-debug-btn:hover { filter: brightness(1.15); }
+        .mnt-debug-btn.armed { background: #00ee8b; color: #064e3b; }
+
+        .mnt-section {
+            margin-top: 16px;
+        }
+        .mnt-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #5a6a88;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+        }
+
+        .mnt-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .mnt-btn {
+            background: rgba(0, 204, 255, 0.08);
+            border: 1px solid rgba(0, 204, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px;
+            color: #ccc;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .mnt-btn:hover:not(:disabled) {
+            background: rgba(0, 204, 255, 0.18);
+            color: #fff;
+        }
+        .mnt-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .mnt-btn.warn {
+            background: rgba(255, 68, 68, 0.08);
+            border-color: rgba(255, 68, 68, 0.25);
+            color: #ff8888;
+        }
+        .mnt-btn.warn:hover:not(:disabled) {
+            background: rgba(255, 68, 68, 0.18);
+            color: #fff;
+        }
+
+        .mnt-select {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 7px 9px;
+            color: #e0e6f0;
+            font-size: 11px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .mnt-select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .mnt-toast {
+            position: absolute;
+            bottom: 14px;
+            left: 14px;
+            right: 14px;
+            background: rgba(0, 204, 255, 0.12);
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #00ccff;
+            display: none;
+        }
+        .mnt-toast.show { display: block; }
+        .mnt-toast.err {
+            background: rgba(255, 68, 68, 0.1);
+            border-color: rgba(255, 68, 68, 0.3);
+            color: #ff8888;
+        }
     </style>
 </head>
 
@@ -533,6 +824,20 @@
         <div class="status-badge">
             <div class="status-dot" id="statusDot"></div>
             <span id="statusText">Connecting...</span>
+        </div>
+    </div>
+
+    <!-- Per-device online status -->
+    <div id="deviceStatus" class="hud">
+        <div class="dev-pill" id="droneStatusPill">
+            <span class="dev-pill-dot"></span>
+            <span>M4TD</span>
+            <span class="dev-pill-time">—</span>
+        </div>
+        <div class="dev-pill" id="dockStatusPill">
+            <span class="dev-pill-dot"></span>
+            <span>Dock 3</span>
+            <span class="dev-pill-time">—</span>
         </div>
     </div>
 
@@ -619,6 +924,9 @@
         </div>
     </div>
 
+    <!-- HMS Health Warnings -->
+    <div id="hmsPanel"></div>
+
     <!-- Floating Video Panel -->
     <div id="videoPanel" class="hud">
         <div class="video-header">
@@ -675,6 +983,7 @@
         <button class="ctrl-btn" id="btnTelemetry" onclick="toggleTelemetry()">📊 Telemetry</button>
         <button class="ctrl-btn" id="btnFollow" onclick="toggleFollow()">📍 Follow Drone</button>
         <button class="ctrl-btn" onclick="clearTrail()">🗑 Clear Trail</button>
+        <button class="ctrl-btn" id="btnMaintenance" onclick="toggleMaintenance()">🔧 Maintenance</button>
         <hr style="border-color: rgba(0,204,255,0.15); margin: 4px 0;">
             <div class="top-actions">
                 <button id="btnLive" class="ctrl-btn" onclick="toggleVideo()">📹 Live View</button>
@@ -683,6 +992,103 @@
                 <button id="btnRthCancel" class="ctrl-btn" onclick="doRthCancel()" disabled title="Cancel RTH">🛑 Cancel</button>
             </div>
         <button class="ctrl-btn" onclick="emergencyStop()">🛑 E-STOP</button>
+    </div>
+
+    <!-- Maintenance / Debug Mode Drawer -->
+    <div id="maintenanceDrawer">
+        <div class="mnt-head">
+            <h2>🔧 Dock Maintenance</h2>
+            <button class="close-x" onclick="toggleMaintenance()">×</button>
+        </div>
+        <div class="mnt-body">
+            <div class="mnt-mode" id="debugModeCard">
+                <div class="mnt-mode-label">Remote Debug Mode</div>
+                <div class="mnt-mode-val" id="debugModeText">DISABLED</div>
+                <button class="mnt-debug-btn" id="btnDebugToggle" onclick="toggleDebugMode()">Enable Debug Mode</button>
+                <div style="font-size: 10px; color: #94a3b8; margin-top: 6px;">
+                    Dock must be IDLE (mode_code = 0). E-stop button must not be pressed.
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Dock Cover</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('cover_open')" disabled>Open Cover</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('cover_close')" disabled>Close Cover</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Aircraft</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('drone_open')" disabled>Drone Power On</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('drone_close')" disabled>Drone Power Off</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Charging</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('charge_open')" disabled>Start Charging</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('charge_close')" disabled>Stop Charging</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Lighting</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('supplement_light_open')" disabled>Light On</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmd('supplement_light_close')" disabled>Light Off</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Sound &amp; Light Alarm</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('alarm_state_switch', 1)" disabled>Enable Alarm</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('alarm_state_switch', 0)" disabled>Disable Alarm</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Air Conditioner</div>
+                <select class="mnt-select dbg-cmd" id="acModeSelect" onchange="dbgCmdAction('air_conditioner_mode_switch', parseInt(this.value))" disabled>
+                    <option value="">— Select mode —</option>
+                    <option value="0">Idle (off)</option>
+                    <option value="1">Cooling</option>
+                    <option value="2">Heating</option>
+                    <option value="3">Dehumidification</option>
+                </select>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Battery Maintenance</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('battery_maintenance_switch', 1)" disabled>Enable</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('battery_maintenance_switch', 0)" disabled>Disable</button>
+                </div>
+                <div class="mnt-row" style="margin-top:6px;">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('battery_store_mode_switch', 1)" disabled>Schedule Store</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('battery_store_mode_switch', 2)" disabled>Standby Store</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Image Transmission</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('sdr_workmode_switch', 0)" disabled>SDR Only</button>
+                    <button class="mnt-btn dbg-cmd" onclick="dbgCmdAction('sdr_workmode_switch', 1)" disabled>4G Enhanced</button>
+                </div>
+            </div>
+
+            <div class="mnt-section">
+                <div class="mnt-section-title">Dock System</div>
+                <div class="mnt-row">
+                    <button class="mnt-btn warn dbg-cmd" onclick="dbgCmdConfirm('device_reboot', 'Reboot the dock?')" disabled>Reboot Dock</button>
+                </div>
+            </div>
+        </div>
+        <div class="mnt-toast" id="mntToast"></div>
     </div>
 
     <script>
@@ -708,6 +1114,36 @@
         const DRC_YAW_SPEED = 30; // deg/s for Q/E
         const DRC_ALT_SPEED = 2; // m for up/down
 
+        // ─── Stick-control channel mapping ────────────────────
+        // stick_control uses 1024±660 channel ranges (per the Live Flight
+        // Controls doc). These are the deflections sent for a single key.
+        // ~30% deflection feels responsive without being twitchy. Tune to
+        // taste; aircraft's own max-speed limit ultimately caps movement.
+        const STICK_HORIZ_OFFSET = 200; // roll & pitch
+        const STICK_YAW_OFFSET   = 200; // yaw
+        const STICK_THROTTLE_OFFSET = 150; // throttle (vertical)
+
+        // ─── Debug-mode + HMS state ───────────────────────────
+        let debugModeActive = false;       // mirrors dock mode_code === 2
+        let dockModeCode = -1;             // last seen dock mode_code
+        let maintenanceOpen = false;
+        const hmsHistory = new Map();      // key=code, value={card,timer}
+        const HMS_AUTO_DISMISS_MS = 30000; // notifications auto-clear; warnings stick
+
+        // ─── Per-device freshness tracking ─────────────────────
+        // Any message (OSD or event) from a device's SN refreshes its
+        // lastSeen timestamp. A device is "online" if we heard from it
+        // within ONLINE_TIMEOUT_MS. This is the only freshness check
+        // in the file — broker connectivity (client.connected) is
+        // separate and lives in the top-bar status badge.
+        const lastSeen = { drone: 0, dock: 0 };
+        const ONLINE_TIMEOUT_MS = 8000;
+
+        function isDeviceOnline(which) {
+            const ts = lastSeen[which] || 0;
+            return ts > 0 && (Date.now() - ts) < ONLINE_TIMEOUT_MS;
+        }
+
         const DRONE_MODES = {
             0: 'IDLE', 1: 'TAKEOFF PREP', 2: 'TAKEOFF DONE', 3: 'MANUAL',
             4: 'AUTO TAKEOFF', 5: 'WAYLINE', 6: 'PANORAMIC', 7: 'TRACKING',
@@ -715,9 +1151,11 @@
             16: 'VSTICK', 17: 'LIVE CTRL', '-1': 'UNKNOWN'
         };
         const DOCK_MODES = {
-            0: 'IDLE', 1: 'DEBUG', 2: 'REMOTE DBG', 3: 'UPGRADING',
+            0: 'IDLE', 1: 'ON-SITE DBG', 2: 'REMOTE DBG', 3: 'UPGRADING',
             4: 'WORKING', 5: 'DORMANT', '-1': 'UNKNOWN'
         };
+        // Per the thing-model spec the canonical states are 0-4. "DORMANT" (5)
+        // is retained as a fallback in case a firmware variant emits it.
 
         // ─── Cesium Setup ───────────────────────────────────────
         // No Ion token needed — using ESRI satellite tiles
@@ -852,7 +1290,7 @@
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
             // Glow
             ctx.shadowColor = '#00ccff';
@@ -1173,7 +1611,19 @@
                 createDock(lat, lon);
             }
 
-            if (mode !== undefined) setText('dockMode', DOCK_MODES[mode] || mode);
+            if (mode !== undefined) {
+                setText('dockMode', DOCK_MODES[mode] || mode);
+                dockModeCode = mode;
+                // Debug mode is "active" only when the dock reports
+                // Remote Debugging (2). On-site debugging (1) is the
+                // Pilot 2 / RC Plus path and we don't control commands
+                // through cloud while it's in that state.
+                const armed = (mode === 2);
+                if (armed !== debugModeActive) {
+                    debugModeActive = armed;
+                    refreshDebugUI();
+                }
+            }
             if (data.drone_in_dock !== undefined) setText('dockDroneIn', data.drone_in_dock ? 'YES' : 'NO');
             if (data.cover_state !== undefined) setText('dockCover', data.cover_state ? 'OPEN' : 'CLOSED');
             if (data.temperature !== undefined) setText('dockTemp', data.temperature.toFixed(1) + '°');
@@ -1194,6 +1644,7 @@
             document.getElementById('statusDot').classList.add('connected');
             setText('statusText', 'Connected');
             client.subscribe('thing/product/+/osd', { qos: 0 });
+            client.subscribe('thing/product/+/events', { qos: 0 });
         });
 
         client.on('reconnect', () => setText('statusText', 'Reconnecting...'));
@@ -1207,8 +1658,25 @@
                 const payload = JSON.parse(message.toString());
                 const data = payload.data;
                 if (!data) return;
-                const sn = topic.split('/')[2];
+                const parts = topic.split('/');
+                const sn = parts[2];
+                const channel = parts[3]; // 'osd' or 'events'
 
+                // Refresh freshness on ANY message from these SNs.
+                // Both /osd (high-rate telemetry) and /events (HMS, task
+                // progress, etc.) count as proof of life.
+                if (sn === DRONE_SN) lastSeen.drone = Date.now();
+                else if (sn === DOCK_SN) lastSeen.dock = Date.now();
+
+                if (channel === 'events') {
+                    // Dispatch events by method (hms is the one we care about here)
+                    if (payload.method === 'hms') {
+                        handleHmsEvent(data, sn);
+                    }
+                    return;
+                }
+
+                // channel === 'osd'
                 if (sn === DRONE_SN) {
                     handleDroneOSD(data);
                     droneOSDCount++;
@@ -1317,10 +1785,19 @@
 
         function sendDrcCommand(x, y, h, w) {
             if (!drcActive || !drcClient || !drcTopicPub) return;
-            drcClient.publish(drcTopicPub, JSON.stringify({
-                method: 'drone_control',
-                data: { x: x || 0, y: y || 0, h: h || 0, w: w || 0, seq: drcSeq++ }
-            }));
+            // One-shot stick_control publish. Same channel math as handlePublish.
+            const clamp = v => Math.max(364, Math.min(1684, v));
+            const body = {
+                seq: seq++,
+                method: 'stick_control',
+                data: {
+                    roll:     clamp(1024 + Math.sign(y || 0) * STICK_HORIZ_OFFSET),
+                    pitch:    clamp(1024 + Math.sign(x || 0) * STICK_HORIZ_OFFSET),
+                    throttle: clamp(1024 + Math.sign(h || 0) * STICK_THROTTLE_OFFSET),
+                    yaw:      clamp(1024 + Math.sign(w || 0) * STICK_YAW_OFFSET)
+                }
+            };
+            drcClient.publish(drcTopicPub, JSON.stringify(body), { qos: 0 });
         }
 
         async function emergencyStop() {
@@ -1439,15 +1916,49 @@
 
         function handlePublish(params) {
             handleClearInterval();
+            // Translate the existing velocity-style call shape ({x, y, h, w})
+            // into stick_control channel values. Existing call sites stay
+            // unchanged. Per the Live Flight Controls doc, drone_control is
+            // deprecated; stick_control is the supported replacement.
+            //
+            // Channel ranges (per spec): 1024±660, where 1024 is neutral.
+            //   roll     — lateral: >1024 = right, <1024 = left
+            //   pitch    — longitudinal: >1024 = forward, <1024 = backward
+            //   throttle — vertical: >1024 = ascent, <1024 = descent
+            //   yaw      — rotation: >1024 = clockwise, <1024 = counter-clockwise
+            //
+            // Mapping mirrors this app's existing semantics:
+            //   x  = forward/backward velocity  → pitch
+            //   y  = right/left velocity        → roll
+            //   h  = ascent/descent velocity    → throttle
+            //   w  = clockwise yaw rate         → yaw
+            const xSign = Math.sign(params.x || 0);
+            const ySign = Math.sign(params.y || 0);
+            const hSign = Math.sign(params.h || 0);
+            const wSign = Math.sign(params.w || 0);
+
+            const pitchVal    = 1024 + xSign * STICK_HORIZ_OFFSET;
+            const rollVal     = 1024 + ySign * STICK_HORIZ_OFFSET;
+            const throttleVal = 1024 + hSign * STICK_THROTTLE_OFFSET;
+            const yawVal      = 1024 + wSign * STICK_YAW_OFFSET;
+
+            const clamp = v => Math.max(364, Math.min(1684, v));
+
+            // 10Hz publish rate — within the 5-10Hz window the doc recommends.
             myInterval = setInterval(() => {
                 if (!drcActive || !drcClient || !drcTopicPub) return;
-                let body = {
-                    method: 'drone_control',
-                    data: { ...params, seq: seq++ }
+                const body = {
+                    seq: seq++,
+                    method: 'stick_control',
+                    data: {
+                        roll: clamp(rollVal),
+                        pitch: clamp(pitchVal),
+                        throttle: clamp(throttleVal),
+                        yaw: clamp(yawVal)
+                    }
                 };
-                seq++; // Mimic TSA double increment
                 drcClient.publish(drcTopicPub, JSON.stringify(body), { qos: 0 });
-            }, 50);
+            }, 100);
         }
 
         function handleClearInterval() {
@@ -1511,6 +2022,209 @@
         document.addEventListener('keyup', (e) => {
             resetControlState();
         });
+
+        // ─── Maintenance Drawer & Debug Mode ───────────────────
+        function toggleMaintenance() {
+            maintenanceOpen = !maintenanceOpen;
+            document.getElementById('maintenanceDrawer').classList.toggle('open', maintenanceOpen);
+            document.getElementById('btnMaintenance').classList.toggle('active', maintenanceOpen);
+            if (maintenanceOpen) refreshDebugUI();
+        }
+
+        function refreshDebugUI() {
+            const card = document.getElementById('debugModeCard');
+            const text = document.getElementById('debugModeText');
+            const btn = document.getElementById('btnDebugToggle');
+
+            if (debugModeActive) {
+                card.classList.add('armed');
+                text.textContent = 'ENABLED · Restricted commands unlocked';
+                btn.textContent = 'Disable Debug Mode';
+                btn.classList.add('armed');
+            } else {
+                card.classList.remove('armed');
+                const stateLabel = DOCK_MODES[dockModeCode] || 'unknown';
+                text.textContent = `DISABLED · dock=${stateLabel}`;
+                btn.textContent = 'Enable Debug Mode';
+                btn.classList.remove('armed');
+            }
+
+            // Enable/disable every restricted command control
+            document.querySelectorAll('.dbg-cmd').forEach(el => {
+                el.disabled = !debugModeActive;
+            });
+        }
+
+        function mntToast(msg, isErr = false) {
+            const t = document.getElementById('mntToast');
+            t.textContent = msg;
+            t.classList.toggle('err', isErr);
+            t.classList.add('show');
+            clearTimeout(mntToast._timer);
+            mntToast._timer = setTimeout(() => t.classList.remove('show'), 3500);
+        }
+
+        async function dockJobPost(serviceIdentifier, body = {}) {
+            if (!authToken) { const ok = await apiLogin(); if (!ok) return null; }
+            // Backend convention: every /jobs/* endpoint requires an `action`
+            // field, even for services the thing-model spec marks as
+            // "Data: null" (debug_mode_open, cover_open, etc.). Matches the
+            // existing return_home / return_home_cancel calls.
+            if (!('action' in body)) body.action = 0;
+            try {
+                const res = await apiPost(`/control/api/v1/devices/${DOCK_SN}/jobs/${serviceIdentifier}`, body);
+                if (res && res.code === 0) {
+                    mntToast(`✓ ${serviceIdentifier} sent`);
+                    console.log(`[debug] ${serviceIdentifier} OK`, res);
+                } else {
+                    mntToast(`✗ ${serviceIdentifier}: ${res?.message || 'failed'} (code ${res?.code})`, true);
+                    console.warn(`[debug] ${serviceIdentifier} failed`, res);
+                }
+                return res;
+            } catch (e) {
+                mntToast(`✗ ${serviceIdentifier}: network error`, true);
+                console.error(e);
+                return null;
+            }
+        }
+
+        async function toggleDebugMode() {
+            const method = debugModeActive ? 'debug_mode_close' : 'debug_mode_open';
+            if (!debugModeActive && dockModeCode !== 0) {
+                const proceed = confirm(
+                    `Dock is in state "${DOCK_MODES[dockModeCode] || dockModeCode}" (mode_code=${dockModeCode}).\n\n` +
+                    `Remote debug mode usually only succeeds from IDLE (0). ` +
+                    `Send debug_mode_open anyway?`
+                );
+                if (!proceed) return;
+            }
+            await dockJobPost(method);
+            // We don't flip debugModeActive here — wait for the dock's OSD
+            // to reflect mode_code=2. That's the only source of truth.
+        }
+
+        // Restricted commands with no payload
+        async function dbgCmd(serviceIdentifier) {
+            if (!debugModeActive) {
+                mntToast('Enable debug mode first', true);
+                return;
+            }
+            await dockJobPost(serviceIdentifier);
+        }
+
+        // Restricted commands that take {action: <int>}
+        async function dbgCmdAction(serviceIdentifier, action) {
+            if (!debugModeActive) {
+                mntToast('Enable debug mode first', true);
+                return;
+            }
+            await dockJobPost(serviceIdentifier, { action });
+        }
+
+        // Confirm-then-send for destructive commands like reboot
+        async function dbgCmdConfirm(serviceIdentifier, prompt) {
+            if (!debugModeActive) {
+                mntToast('Enable debug mode first', true);
+                return;
+            }
+            if (!confirm(prompt)) return;
+            await dockJobPost(serviceIdentifier);
+        }
+
+        // ─── HMS Health Warnings ───────────────────────────────
+        // The dock pushes warnings on thing/product/{sn}/events with
+        // method=hms. data.list is an array of warning objects with
+        // level (0=Notification, 1=Reminder, 2=Warning), code, module,
+        // in_the_sky, device_type, etc.
+        const HMS_LEVEL_LABEL = { 0: 'Info', 1: 'Reminder', 2: 'Warning' };
+        const HMS_MODULE_LABEL = {
+            0: 'Flight', 1: 'Device', 2: 'Media', 3: 'HMS'
+        };
+
+        function handleHmsEvent(data, sn) {
+            if (!data.list || !Array.isArray(data.list)) return;
+            data.list.forEach(item => renderHmsWarning(item, sn));
+        }
+
+        function renderHmsWarning(item, sn) {
+            const code = item.code || 'UNKNOWN';
+            const level = item.level ?? 0;
+            const module = item.module ?? 0;
+            const inSky = item.in_the_sky === 1;
+            const imminent = item.imminent === 1;
+
+            // De-dupe by code: if the same warning comes back, reset its
+            // dismiss timer rather than stacking duplicates.
+            const existing = hmsHistory.get(code);
+            if (existing) {
+                existing.card.classList.remove('hms-card');
+                void existing.card.offsetWidth; // restart animation
+                existing.card.classList.add('hms-card');
+                if (existing.timer) clearTimeout(existing.timer);
+                existing.timer = scheduleHmsDismiss(code, level);
+                return;
+            }
+
+            const panel = document.getElementById('hmsPanel');
+            const card = document.createElement('div');
+            card.className = `hms-card level-${level}`;
+            card.innerHTML = `
+                <button class="hms-dismiss" title="Dismiss">×</button>
+                <div class="hms-head">
+                    <span class="hms-tag">${HMS_LEVEL_LABEL[level] || 'Info'} · ${HMS_MODULE_LABEL[module] || 'Module'}</span>
+                    <span>${inSky ? 'IN-FLIGHT' : 'GROUND'}${imminent ? ' · IMMINENT' : ''}</span>
+                </div>
+                <div style="font-size: 12px; line-height: 1.4;">
+                    Device: <span style="color:#94a3b8;">${item.device_type || '—'}</span>
+                </div>
+                <div class="hms-code" style="margin-top:4px;">code: ${code}</div>
+            `;
+            card.querySelector('.hms-dismiss').onclick = () => dismissHms(code);
+            panel.appendChild(card);
+
+            const timer = scheduleHmsDismiss(code, level);
+            hmsHistory.set(code, { card, timer });
+        }
+
+        function scheduleHmsDismiss(code, level) {
+            // Level 2 (Warning) sticks until user dismisses.
+            // Level 0/1 auto-clear after 30s so the panel doesn't pile up.
+            if (level >= 2) return null;
+            return setTimeout(() => dismissHms(code), HMS_AUTO_DISMISS_MS);
+        }
+
+        function dismissHms(code) {
+            const entry = hmsHistory.get(code);
+            if (!entry) return;
+            if (entry.timer) clearTimeout(entry.timer);
+            entry.card.style.transition = 'opacity 0.2s, transform 0.2s';
+            entry.card.style.opacity = '0';
+            entry.card.style.transform = 'translateX(20px)';
+            setTimeout(() => entry.card.remove(), 220);
+            hmsHistory.delete(code);
+        }
+
+        // ─── Device status pill renderer ─────────────────────
+        // 1Hz tick to keep the "Xs ago" label fresh. The pill colors
+        // come from .online toggled by isDeviceOnline().
+        function renderDeviceStatus() {
+            ['drone', 'dock'].forEach(which => {
+                const pill = document.getElementById(`${which}StatusPill`);
+                if (!pill) return;
+                const online = isDeviceOnline(which);
+                pill.classList.toggle('online', online);
+                const timeEl = pill.querySelector('.dev-pill-time');
+                const ts = lastSeen[which];
+                if (!ts) {
+                    timeEl.textContent = 'no signal';
+                } else {
+                    const ago = Math.floor((Date.now() - ts) / 1000);
+                    timeEl.textContent = online ? `${ago}s ago` : `OFFLINE ${ago}s`;
+                }
+            });
+        }
+        setInterval(renderDeviceStatus, 1000);
+        renderDeviceStatus(); // initial paint
 
         // Auto-login on load
         apiLogin();

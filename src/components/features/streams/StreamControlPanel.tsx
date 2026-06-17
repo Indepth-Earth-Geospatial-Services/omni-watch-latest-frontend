@@ -10,11 +10,13 @@ import {
   useUpdateStreamQuality,
   useSwitchStreamCamera,
 } from '@/hooks/useLiveStreams';
+import { normalizeLensType } from './stream-utils';
 
 interface StreamControlPanelProps {
   stream: any;
   externalStopSignal?: number;
   onStreamingChange?: (isStreaming: boolean, videoId?: string) => void;
+  /** Pass the active stream URL when a stream is already running (e.g. after a view switch). */
   activeStreamUrl?: string | null;
 }
 
@@ -26,6 +28,16 @@ const QUALITY_OPTIONS = [
   { label: '4K', value: 4 },
 ] as const;
 
+// Format any video_type string from the DJI API into a readable label.
+// Splits on underscores and capitalizes each word, so it works for any
+// drone model without a hardcoded lookup: "infrared_thermal" → "Infrared Thermal".
+function videoTypeLabel(type: string): string {
+  return type
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 export function StreamControlPanel({
   stream,
   externalStopSignal,
@@ -34,33 +46,64 @@ export function StreamControlPanel({
 }: StreamControlPanelProps) {
   const deviceSn = stream.id || stream.deviceSerialNumber || stream.deviceSn || stream.device_sn;
 
+  // Initialize isStreaming from activeStreamUrl so the Stop button shows after a view switch.
   const [isStreaming, setIsStreaming] = useState(() => !!activeStreamUrl);
   const [quality, setQuality] = useState(0);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
-  const { data: capacityMap } = useLiveCapacity();
+  const { data: capacityMap, isLoading: capacityLoading } = useLiveCapacity();
   const startMutation = useStartStream();
   const stopMutation = useStopStream();
   const qualityMutation = useUpdateStreamQuality();
   const lensMutation = useSwitchStreamCamera();
 
+  // ─── Derived capacity values ──────────────────────────────────────────────
   const capacity = capacityMap?.get(deviceSn);
-  const firstCamera = capacity?.cameras_list?.[0];
-  const availableVideos = firstCamera?.videos_list ?? [];
+  const cameras = capacity?.cameras_list ?? [];
 
+  const selectedCamera = cameras[0];
+  const availableVideos = selectedCamera?.videos_list ?? [];
+
+  // Lens options come entirely from what the selected camera reports.
+  // Labels are formatted dynamically from the raw type string — no hardcoded map.
   const lensOptions = availableVideos.map((v) => ({
-    label: v.type.charAt(0).toUpperCase() + v.type.slice(1),
+    label: videoTypeLabel(v.type),
     value: v.type,
   }));
 
-  const effectiveLens = selectedLens ?? availableVideos[0]?.type ?? 'normal';
+  // Fall back to first available lens when none is selected yet.
+  // normalizeLensType maps 'normal' → 'zoom' because DJI SDK v2 removed that enum value.
+  const effectiveLens = normalizeLensType(selectedLens ?? availableVideos[0]?.type);
+
+  // Build the DJI composite video_id: {device_sn}/{camera_index}/{video_index}
   const videoForLens = availableVideos.find((v) => v.type === effectiveLens) ?? availableVideos[0];
+
+  // Dock-connected drones (M4TD via Dock 3, etc.) never return cameras_list from the
+  // capacity API, but the integrated camera is always accessible at this fixed index.
+  // This is the same video_id used by drone_tracker.html where dock streaming works.
+  const DOCK_CAMERA_INDEX = '99-0-0';
+  const DOCK_VIDEO_INDEX = 'normal-0';
+
+  // Device known in capacity map but cameras_list absent (dock-connected drone or not yet reporting)
+  const deviceKnown = !!capacity;
+  const noCameraData = !capacityLoading && deviceKnown && cameras.length === 0;
+  // Device not in the capacity map at all
+  const noCapacityEntry = !capacityLoading && !deviceKnown;
+
   const liveVideoId =
-    firstCamera && videoForLens ? `${deviceSn}/${firstCamera.index}/${videoForLens.index}` : '0';
+    selectedCamera && videoForLens
+      ? `${deviceSn}/${selectedCamera.index}/${videoForLens.index}`
+      : noCameraData
+      ? `${deviceSn}/${DOCK_CAMERA_INDEX}/${DOCK_VIDEO_INDEX}`
+      : '0';
+
+  // While a stream is active keep using the video_id it was started with.
   const currentVideoId = activeVideoId ?? liveVideoId;
 
-  const disabled = !(stream.isOnline || stream.status);
+  const deviceOffline = !(stream.isOnline || stream.status);
+  // noCameraData devices (dock-connected) use the fallback video_id — keep them enabled.
+  const disabled = deviceOffline || capacityLoading || noCapacityEntry;
   const isPending =
     startMutation.isPending ||
     stopMutation.isPending ||
@@ -68,6 +111,8 @@ export function StreamControlPanel({
     lensMutation.isPending;
 
   const streamFeedType = stream.feedType || stream.type || stream.device_type;
+
+  // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleStart = () => {
     startMutation.mutate(
@@ -84,6 +129,7 @@ export function StreamControlPanel({
           setActiveVideoId(liveVideoId);
           onStreamingChange?.(true, data.url);
         },
+        onError: (err) => toast.error(`Stream start failed: ${err.message}`),
       }
     );
   };
@@ -103,25 +149,10 @@ export function StreamControlPanel({
           setActiveVideoId(null);
           onStreamingChange?.(false);
         },
+        onError: (err) => toast.error(`Stream stop failed: ${err.message}`),
       }
     );
   };
-
-  const isStreamingRef = useRef(isStreaming);
-  isStreamingRef.current = isStreaming;
-  const handleStopRef = useRef(handleStop);
-  handleStopRef.current = handleStop;
-  const prevSignalRef = useRef(0);
-
-  useEffect(() => {
-    const sig = externalStopSignal ?? 0;
-    if (sig > prevSignalRef.current) {
-      prevSignalRef.current = sig;
-      if (isStreamingRef.current) handleStopRef.current();
-    }
-  }, [externalStopSignal]);
-
-  if (streamFeedType !== 'DRONE') return null;
 
   const handleQualityChange = (newQuality: number) => {
     setQuality(newQuality);
@@ -145,8 +176,8 @@ export function StreamControlPanel({
 
     const newVideo = availableVideos.find((v) => v.type === newLens) ?? availableVideos[0];
     const newVideoId =
-      firstCamera && newVideo
-        ? `${deviceSn}/${firstCamera.index}/${newVideo.index}`
+      selectedCamera && newVideo
+        ? `${deviceSn}/${selectedCamera.index}/${newVideo.index}`
         : currentVideoId;
 
     setSelectedLens(newLens);
@@ -157,29 +188,89 @@ export function StreamControlPanel({
           setSelectedLens(effectiveLens);
           toast.error('Camera switch unavailable — drone MQTT not responding');
         },
-        onSuccess: () => {},
       }
     );
   };
 
+  // ─── External stop signal ──────────────────────────────────────────────────
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
+  const handleStopRef = useRef(handleStop);
+  handleStopRef.current = handleStop;
+  const prevSignalRef = useRef(0);
+
+  useEffect(() => {
+    const sig = externalStopSignal ?? 0;
+    if (sig > prevSignalRef.current) {
+      prevSignalRef.current = sig;
+      if (isStreamingRef.current) handleStopRef.current();
+    }
+  }, [externalStopSignal]);
+
+  if (streamFeedType !== 'DRONE' && streamFeedType !== 'DOCK') return null;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  // Human-readable reason the Start button is disabled
+  const startLabel = (() => {
+    if (startMutation.isPending) return 'Starting…';
+    if (capacityLoading) return 'Loading…';
+    if (deviceOffline) return 'Device Offline';
+    if (noCapacityEntry) return 'Not in Capacity';
+    return 'Start Stream';
+  })();
+
   return (
-    <div className='flex flex-wrap items-end gap-3 sm:gap-6'>
-      {/* Lens selector */}
-      {lensOptions.length > 0 && (
+    <div className='flex flex-col gap-3'>
+      {/* Informational note for dock-connected drones using fixed payload index */}
+      {noCameraData && (
+        <p className='text-[10px] text-amber-500/80'>
+          Dock-connected camera — using integrated payload index ({DOCK_CAMERA_INDEX}).
+        </p>
+      )}
+
+      <div className='flex flex-wrap items-end gap-6'>
+        {/* Lens / video-type selector — built entirely from the selected camera's videos_list */}
+        {lensOptions.length > 1 && (
+          <div>
+            <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
+              Lens
+            </p>
+            <div className='flex gap-1 flex-wrap'>
+              {lensOptions.map(({ label, value }) => (
+                <button
+                  key={value}
+                  disabled={disabled || isPending}
+                  onClick={() => handleLensChange(value)}
+                  className={cn(
+                    'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                    normalizeLensType(value) === effectiveLens
+                      ? 'bg-[#1C93FF] text-white'
+                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quality selector */}
         <div>
           <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
-            Lens
+            Quality
           </p>
           <div className='flex gap-1 flex-wrap'>
-            {lensOptions.map(({ label, value }) => (
+            {QUALITY_OPTIONS.map(({ label, value }) => (
               <button
                 key={value}
                 disabled={disabled || isPending}
-                onClick={() => handleLensChange(value)}
+                onClick={() => handleQualityChange(value)}
                 className={cn(
                   'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                  effectiveLens === value
-                    ? 'bg-[#1C93FF] text-white'
+                  quality === value
+                    ? 'bg-violet-600 text-white'
                     : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
                 )}
               >
@@ -188,54 +279,30 @@ export function StreamControlPanel({
             ))}
           </div>
         </div>
-      )}
 
-      {/* Quality selector */}
-      <div>
-        <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
-          Quality
-        </p>
-        <div className='flex gap-1 flex-wrap'>
-          {QUALITY_OPTIONS.map(({ label, value }) => (
+        {/* Start / Stop — full width on very small screens */}
+        <div className='sm:ml-auto w-full sm:w-auto'>
+          <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
+            Stream
+          </p>
+          {isStreaming ? (
             <button
-              key={value}
               disabled={disabled || isPending}
-              onClick={() => handleQualityChange(value)}
-              className={cn(
-                'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                quality === value
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
-              )}
+              onClick={handleStop}
+              className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
             >
-              {label}
+              {stopMutation.isPending ? 'Stopping…' : 'Stop Stream'}
             </button>
-          ))}
+          ) : (
+            <button
+              disabled={disabled || isPending}
+              onClick={handleStart}
+              className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            >
+              {startLabel}
+            </button>
+          )}
         </div>
-      </div>
-
-      {/* Start / Stop — full width on very small screens */}
-      <div className='sm:ml-auto w-full sm:w-auto'>
-        <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
-          Stream
-        </p>
-        {isStreaming ? (
-          <button
-            disabled={disabled || isPending}
-            onClick={handleStop}
-            className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-          >
-            {stopMutation.isPending ? 'Stopping…' : 'Stop Stream'}
-          </button>
-        ) : (
-          <button
-            disabled={disabled || isPending}
-            onClick={handleStart}
-            className='w-full sm:w-auto px-4 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-          >
-            {startMutation.isPending ? 'Starting…' : 'Start Stream'}
-          </button>
-        )}
       </div>
     </div>
   );

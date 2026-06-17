@@ -24,25 +24,26 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
   useEffect(() => {
     let cancelled = false;
 
-    // No STUN servers — DJI's WHEP server and drone are on the same local network.
-    // Host candidates are sufficient; STUN would only add latency here.
+    // No ICE servers — DJI's WHEP server sits on a public IP; host candidates suffice.
     const pc = new RTCPeerConnection();
 
     onStateChangeRef.current('connecting');
 
+    // Stash the remote stream as soon as the track arrives so the video element
+    // can receive frames the moment ICE connects.
     pc.ontrack = (e) => {
       if (cancelled) return;
-      const [stream] = e.streams;
-      if (stream) {
-        onMediaStreamRef.current(stream);
-        onStateChangeRef.current('playing');
-      }
+      const stream = e.streams[0];
+      if (stream) onMediaStreamRef.current(stream);
     };
 
     pc.onconnectionstatechange = () => {
       if (cancelled) return;
       const s = pc.connectionState;
-      if (s === 'failed' || s === 'disconnected') {
+      if (s === 'connected') {
+        // ICE + DTLS complete — frames are now flowing.
+        onStateChangeRef.current('playing');
+      } else if (s === 'failed' || s === 'disconnected') {
         onStateChangeRef.current('error', 'Stream connection lost');
       }
     };
@@ -53,40 +54,23 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // Wait for ICE gathering, but cap at 5 s. If STUN is unreachable or
-      // slow, we proceed with whatever candidates we have — the WHEP server
-      // can complete ICE via trickle after the SDP exchange.
-      await Promise.race([
-        new Promise<void>((resolve) => {
-          if (pc.iceGatheringState === 'complete') { resolve(); return; }
-          const handler = () => {
-            if (pc.iceGatheringState === 'complete') {
-              pc.removeEventListener('icegatheringstatechange', handler);
-              resolve();
-            }
-          };
-          pc.addEventListener('icegatheringstatechange', handler);
-        }),
-        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
-      ]);
-
-      // DJI's WHEP endpoint expects only Content-Type: application/sdp — no auth headers.
-      // Adding Authorization triggers a CORS preflight that the DJI server rejects.
+      // Send offer.sdp immediately — before ICE gathering runs.
+      // This matches drone_tracker.html's working approach: DJI's WHEP server
+      // expects a bare offer without embedded client candidates; including them
+      // causes the server's answer to not properly negotiate ICE.
+      // Local candidates are still gathered in the background; they pair with
+      // the server's candidates that arrive in the SDP answer.
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/sdp' },
-        body: pc.localDescription!.sdp,
+        body: offer.sdp,
       });
 
-      if (res.status !== 201 && !res.ok) {
+      if (!res.ok) {
         throw new Error(`WHEP ${res.status} ${res.statusText}`);
       }
 
       const answerSdp = await res.text();
-      if (!answerSdp.trim().startsWith('v=')) {
-        throw new Error('Invalid SDP answer from server');
-      }
-
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
     }
 

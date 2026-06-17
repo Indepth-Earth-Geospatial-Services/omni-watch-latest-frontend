@@ -107,7 +107,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
     if (activeTab === 'Active') return p.devices.length > 0;
     if (activeTab === 'Offline') return p.devices.length === 0;
     if (activeTab === 'Online') return p.devices.some((d) =>
-      djiDevices.find((dev) => dev.deviceSn === d.device_sn)?.status === true
+      djiDevices.find((dev) => dev.deviceSn === d.device.device_sn)?.status === true
     );
     return true;
   }), [allProjects, activeTab, djiDevices]);
@@ -783,14 +783,14 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                     key={d.id}
                     onClick={() =>
                       unassign(
-                        { projectId: unassignProject.id, deviceSn: d.device_sn },
+                        { projectId: unassignProject.id, deviceSn: d.device.device_sn },
                         { onSuccess: () => setUnassignProject(null) }
                       )
                     }
                     disabled={isUnassigning}
                     className='flex items-center justify-between px-3.5 py-2.5 bg-zinc-900 border border-zinc-700 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group'
                   >
-                    <span className='text-xs font-mono text-emerald-400'>{d.device_sn}</span>
+                    <span className='text-xs font-mono text-emerald-400'>{d.device.device_sn}</span>
                     {isUnassigning ? (
                       <Loader2 size={11} className='text-amber-400 animate-spin' />
                     ) : (
@@ -810,7 +810,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
       {devicesModalProject &&
         (() => {
           const enriched = devicesModalProject.devices.map((d) => {
-            const dji = djiDevices.find((dev) => dev.deviceSn === d.device_sn);
+            const dji = djiDevices.find((dev) => dev.deviceSn === d.device.device_sn);
             const isDrone = dji ? dji.domain === '0' : null;
             return { ...d, dji, isDrone };
           });
@@ -827,9 +827,9 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
               </div>
               <div className='flex-1 min-w-0'>
                 <p className='text-xs font-bold text-zinc-200 truncate'>
-                  {d.dji?.nickname || d.dji?.deviceName || d.device_sn}
+                  {d.dji?.nickname || d.dji?.deviceName || d.device.device_sn}
                 </p>
-                <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device_sn}</p>
+                <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device.device_sn}</p>
               </div>
               {d.dji ? (
                 <div className='flex items-center gap-1.5'>

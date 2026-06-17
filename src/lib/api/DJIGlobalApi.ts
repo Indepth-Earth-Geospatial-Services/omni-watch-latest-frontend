@@ -154,8 +154,10 @@ export const DJI_URLS = {
   // ── Waylines ────────────────────────────────────────────────────────────────
   waylines: {
     // Lists wayline files in the workspace
-    list: (workspaceId: string, params?: { page?: number; page_size?: number; order_by?: string; favorited?: boolean }) =>
-      `${WAYLINE}/workspaces/${workspaceId}/waylines${qs(params ?? {})}`,
+    list: (
+      workspaceId: string,
+      params?: { page?: number; page_size?: number; order_by?: string; favorited?: boolean }
+    ) => `${WAYLINE}/workspaces/${workspaceId}/waylines${qs(params ?? {})}`,
 
     // Lists executed flight jobs — each job references a wayline file via file_id
     jobs: (workspaceId: string, params?: { page?: number; page_size?: number }) =>
@@ -181,6 +183,27 @@ export const DJI_URLS = {
 
     flightAuthority: (sn: string) => `${CONTROL}/devices/${sn}/authority/flight`,
   },
+
+  // **Base Endpoint:**
+  // **`POST`** `/control/api/v1/devices/{dock_sn}/jobs/{service_identifier}`
+
+  // - **`dock_sn`**: The serial number of the DJI Dock (Gateway SN).
+  // - **`service_identifier`**: The specific command to execute (listed below).
+
+  // > [!IMPORTANT]
+  // > **Remote Debugging Mode Requirement**
+  // > Most physical hardware commands require the DJI Dock to be placed into **Remote Debug Mode** before they can be executed. Attempting to send these commands while debug mode is disabled will fail.
+
+  // ### A. Mode Toggles & Commands (No Debug Mode Required)
+  // These commands can be executed at any time.
+
+  // - **`debug_mode_open`**: Open Debug Mode (调试模式开启) - *Use this first to unlock restricted commands!*
+  // - **`debug_mode_close`**: Close Debug Mode (调试模式关闭)
+  // - **`return_home`**: Return to Home (一键返航)
+  // - **`return_home_cancel`**: Cancel Return to Home (取消返航)
+
+  // ### B. Restricted Hardware Commands (Debug Mode Required)
+  // The following commands **require** `debug_mode_open` to have been successfully executed first.
 
   // ── DRC (Drone Remote Control) ───────────────────────────────────────────
   drc: {

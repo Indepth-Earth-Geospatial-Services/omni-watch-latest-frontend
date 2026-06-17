@@ -7,7 +7,7 @@ import type { DJIDevice } from '@/lib/types';
 
 interface DeviceSidebarProps {
   projectDevices: DJIDevice[];
-  unboundDevices: { id: string; device_sn: string }[];
+  unboundDevices: { id: string; device: { device_sn: string; name: string } }[];
   selectedSn: string | null;
   viewMode: 'single' | 'multi';
   streamingDevices: Map<string, string>;
@@ -77,7 +77,9 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                     <PlaneTakeoff size={12} className='text-zinc-600' />
                   </div>
                   <div className='min-w-0'>
-                    <p className='text-[10px] font-mono text-zinc-500 truncate'>{d.device_sn}</p>
+                    <p className='text-[10px] font-mono text-zinc-500 truncate'>
+                      {d.device.device_sn}
+                    </p>
                     <p className='text-[9px] text-zinc-700'>Not bound</p>
                   </div>
                 </div>
