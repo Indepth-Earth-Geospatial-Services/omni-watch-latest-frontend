@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProject } from '@/providers/ProjectProvider';
+import { Toaster } from 'sonner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -36,5 +37,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Post-hydration, no project: redirect is in flight — block dashboard from rendering
   if (!activeProject) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <Toaster position='top-right' richColors />
+    </>
+  );
 }

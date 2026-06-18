@@ -135,9 +135,12 @@ const DOCK_MODE_LABELS: Record<number, string> = {
 
 const DebugCommandsPanel = ({ dockSn, dockOnline, dockModeCode = -1 }: DebugCommandsPanelProps) => {
   // Optimistic toggle state — synced with MQTT mode_code when available
-  const [debugActive, setDebugActive] = useState(false);
-  const [isToggling, setIsToggling]   = useState(false);
+  const [debugActive, setDebugActive]       = useState(false);
+  const [isToggling, setIsToggling]         = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  // Flight authority — one-shot grab; pilot reclaims naturally via stick input
+  const [flightAuth, setFlightAuth]         = useState(false);
+  const [isGrabbingAuth, setIsGrabbingAuth] = useState(false);
 
   // Keep local toggle in sync with the real dock state from MQTT.
   // Skip while a toggle is in-flight to avoid wiping the optimistic state
@@ -241,39 +244,92 @@ const DebugCommandsPanel = ({ dockSn, dockOnline, dockModeCode = -1 }: DebugComm
     }
   };
 
+  const handleFlightAuthToggle = (on: boolean) => {
+    if (!dockOnline) return;
+    if (!on) {
+      // No DJI API to explicitly release — pilot reclaims by interacting with sticks
+      setFlightAuth(false);
+      toast.info('Flight authority released locally — pilot can reclaim via stick input');
+      return;
+    }
+    setIsGrabbingAuth(true);
+    grabAuthority(undefined, {
+      onSuccess: () => {
+        setFlightAuth(true);
+        setIsGrabbingAuth(false);
+        toast.success('Flight authority granted — cloud controls drone');
+      },
+      onError: (err) => {
+        setIsGrabbingAuth(false);
+        toast.error(`Flight authority failed: ${err.message}`);
+      },
+    });
+  };
+
   const restricted = !debugActive || !dockOnline;
 
   return (
     <div className='flex flex-col gap-3 pb-2'>
-      {/* ── Debug Mode toggle ── */}
-      <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
-        debugActive
-          ? 'bg-amber-500/10 border-amber-500/40'
-          : 'bg-[#13151A] border-zinc-800/50'
-      }`}>
-        <div>
-          <p className='text-[11px] font-black text-zinc-200 uppercase tracking-wide'>Debug Mode</p>
-          <p className='text-[9px] text-zinc-600 mt-0.5'>
-            {!dockOnline
-              ? 'Dock must be online to enable'
-              : debugActive
-              ? '⚠ Hardware commands are live'
-              : 'Required for hardware commands'}
-          </p>
-          {dockModeCode !== -1 && (
-            <p className='text-[9px] font-mono text-zinc-500 mt-0.5'>
-              mode: {DOCK_MODE_LABELS[dockModeCode] ?? `unknown (${dockModeCode})`}
+      {/* ── Debug Mode + Flight Authority toggles ── */}
+      <div className='grid grid-cols-2 gap-2'>
+        {/* Debug Mode */}
+        <div className={`flex flex-col justify-between rounded-lg border px-3 py-2.5 gap-2 transition-colors ${
+          debugActive ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[#13151A] border-zinc-800/50'
+        }`}>
+          <div>
+            <p className='text-[11px] font-black text-zinc-200 uppercase tracking-wide'>Debug Mode</p>
+            <p className='text-[9px] text-zinc-600 mt-0.5'>
+              {!dockOnline ? 'Dock offline' : debugActive ? '⚠ HW commands live' : 'Required for HW cmds'}
             </p>
-          )}
+            {dockModeCode !== -1 && (
+              <p className='text-[9px] font-mono text-zinc-500 mt-0.5'>
+                {DOCK_MODE_LABELS[dockModeCode] ?? `mode ${dockModeCode}`}
+              </p>
+            )}
+          </div>
+          <div className='flex items-center justify-between'>
+            {isToggling
+              ? <Loader2 size={11} className='animate-spin text-zinc-500' />
+              : <span className={`text-[9px] font-bold uppercase ${debugActive ? 'text-amber-400' : 'text-zinc-600'}`}>
+                  {debugActive ? 'Active' : 'Inactive'}
+                </span>
+            }
+            <Switch
+              checked={debugActive}
+              onCheckedChange={(on) => on ? setShowDebugModal(true) : handleDebugToggle(false)}
+              disabled={!dockOnline || isToggling}
+              aria-label='Toggle debug mode'
+            />
+          </div>
         </div>
-        <div className='flex items-center gap-2'>
-          {isToggling && <Loader2 size={13} className='animate-spin text-zinc-500' />}
-          <Switch
-            checked={debugActive}
-            onCheckedChange={(on) => on ? setShowDebugModal(true) : handleDebugToggle(false)}
-            disabled={!dockOnline || isToggling}
-            aria-label='Toggle debug mode'
-          />
+
+        {/* Flight Authority */}
+        <div className={`flex flex-col justify-between rounded-lg border px-3 py-2.5 gap-2 transition-colors ${
+          flightAuth ? 'bg-blue-500/10 border-blue-500/40' : 'bg-[#13151A] border-zinc-800/50'
+        }`}>
+          <div>
+            <p className='text-[11px] font-black text-zinc-200 uppercase tracking-wide'>Flight Authority</p>
+            <p className='text-[9px] text-zinc-600 mt-0.5'>
+              {!dockOnline ? 'Dock offline' : flightAuth ? '✈ Cloud controls drone' : 'Grab to send commands'}
+            </p>
+            <p className='text-[9px] font-mono text-zinc-500 mt-0.5'>
+              {flightAuth ? 'Pilot can reclaim via stick' : 'POST /authority/flight'}
+            </p>
+          </div>
+          <div className='flex items-center justify-between'>
+            {isGrabbingAuth
+              ? <Loader2 size={11} className='animate-spin text-zinc-500' />
+              : <span className={`text-[9px] font-bold uppercase ${flightAuth ? 'text-blue-400' : 'text-zinc-600'}`}>
+                  {flightAuth ? 'Granted' : 'Not held'}
+                </span>
+            }
+            <Switch
+              checked={flightAuth}
+              onCheckedChange={handleFlightAuthToggle}
+              disabled={!dockOnline || isGrabbingAuth}
+              aria-label='Toggle flight authority'
+            />
+          </div>
         </div>
       </div>
 
