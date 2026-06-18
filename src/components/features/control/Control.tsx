@@ -127,7 +127,7 @@ export default function ControlPage() {
   }, [videos]);
 
   // ─── Dock MQTT (mode_code for debug/operation state) ─────────────────────
-  const { getDockModeCode } = useDockMQTT();
+  const { getDockModeCode, getJoystickInvalidState } = useDockMQTT();
 
   // ─── Dock & telemetry ─────────────────────────────────────────────────────
   const dockDevice = useMemo(
@@ -144,6 +144,7 @@ export default function ControlPage() {
   const dockData = dockDevice ? getProcessedDroneData(dockDevice.deviceSn) : null;
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
   const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
+  const joystickInvalidState = dockDevice ? getJoystickInvalidState(dockDevice.deviceSn) : null;
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -473,6 +474,7 @@ export default function ControlPage() {
           dockSn={dockDevice?.deviceSn}
           dockOnline={dockOnline}
           dockModeCode={dockModeCode}
+          joystickInvalidState={joystickInvalidState}
         />
       </ControlErrorBoundary>
     </div>

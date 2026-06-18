@@ -37,9 +37,15 @@ interface DockOSDState {
   temperature?: number;
 }
 
+export interface JoystickInvalidState {
+  reason: number;
+  ts: number;
+}
+
 export function useDockMQTT() {
   const [isConnected, setIsConnected] = useState(false);
   const [dockStates, setDockStates] = useState<Map<string, DockOSDState>>(new Map());
+  const [joystickStates, setJoystickStates] = useState<Map<string, JoystickInvalidState>>(new Map());
   const clientRef = useRef<ReturnType<typeof mqtt.connect> | null>(null);
   const cancelledRef = useRef(false);
 
@@ -66,7 +72,8 @@ export function useDockMQTT() {
         if (cancelledRef.current) return;
         setIsConnected(true);
         client.subscribe('thing/product/+/osd', { qos: 0 });
-        console.log(`[mqtt] connected to ${BROKER_URL}, subscribed to thing/product/+/osd`);
+        client.subscribe('thing/product/+/events', { qos: 0 });
+        console.log(`[mqtt] connected to ${BROKER_URL}`);
       });
 
       client.on('reconnect', () => {
@@ -94,28 +101,37 @@ export function useDockMQTT() {
 
           const parts = topic.split('/');
           const sn = parts[2];
-          if (!sn || parts[3] !== 'osd') return;
+          if (!sn) return;
 
-          // Dock OSD uses flat data.mode_code; drone OSD nests it under data.host.
-          // We only track dock-style messages here.
-          const mode_code = data.mode_code;
-          if (mode_code === undefined) return;
+          if (parts[3] === 'osd') {
+            // Dock OSD uses flat data.mode_code; drone OSD nests it under data.host.
+            const mode_code = data.mode_code;
+            if (mode_code === undefined) return;
 
-          console.log(`[mqtt:dock] sn=${sn} mode_code=${mode_code}`);
-
-          setDockStates((prev) => {
-            const next = new Map(prev);
-            next.set(sn, {
-              mode_code,
-              lastSeen: Date.now(),
-              latitude: data.latitude,
-              longitude: data.longitude,
-              drone_in_dock: data.drone_in_dock,
-              cover_state: data.cover_state,
-              temperature: data.temperature,
+            setDockStates((prev) => {
+              const next = new Map(prev);
+              next.set(sn, {
+                mode_code,
+                lastSeen: Date.now(),
+                latitude: data.latitude,
+                longitude: data.longitude,
+                drone_in_dock: data.drone_in_dock,
+                cover_state: data.cover_state,
+                temperature: data.temperature,
+              });
+              return next;
             });
-            return next;
-          });
+          } else if (parts[3] === 'events' && payload.method === 'joystick_invalid_notify') {
+            // Flight control authority was revoked by the aircraft or pilot
+            const reason = data.reason;
+            if (typeof reason === 'number') {
+              setJoystickStates((prev) => {
+                const next = new Map(prev);
+                next.set(sn, { reason, ts: Date.now() });
+                return next;
+              });
+            }
+          }
         } catch {
           // ignore malformed messages
         }
@@ -146,5 +162,10 @@ export function useDockMQTT() {
     [dockStates]
   );
 
-  return { isConnected, dockStates, getDockModeCode, isDockOnlineMQTT };
+  const getJoystickInvalidState = useCallback(
+    (sn: string): JoystickInvalidState | null => joystickStates.get(sn) ?? null,
+    [joystickStates]
+  );
+
+  return { isConnected, dockStates, getDockModeCode, isDockOnlineMQTT, getJoystickInvalidState };
 }
