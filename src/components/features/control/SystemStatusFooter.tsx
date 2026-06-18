@@ -156,8 +156,11 @@ const DebugCommandsPanel = ({ dockSn, dockOnline, dockModeCode = -1 }: DebugComm
 
   const exec = useCallback(
     (serviceIdentifier: string, body?: object) => {
+      // Backend requires `action` on every /jobs/* call, even commands the
+      // DJI thing-model marks as "Data: null" (cover_open, charge_open, etc.)
+      const payload = { action: 0, ...body };
       runJob(
-        { serviceIdentifier, body },
+        { serviceIdentifier, body: payload },
         {
           onSuccess: () => toast.success(`${serviceIdentifier.replace(/_/g, ' ')} sent`),
           onError:   (err) => toast.error(`Command failed: ${err.message}`),
