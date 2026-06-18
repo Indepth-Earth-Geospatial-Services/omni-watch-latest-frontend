@@ -34,13 +34,24 @@ export const VideoArea = memo(function VideoArea({
   const telemetry = getProcessedDroneData(device.deviceSn);
   const battery = telemetry?.battery ?? null;
 
+  const isPlaying = streamState?.state === 'playing' && !!mediaStream;
+
+  // Set srcObject and muted imperatively. React's `muted` JSX prop doesn't
+  // reliably set the DOM property in all React versions, which blocks autoplay.
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = mediaStream;
-    }
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    video.srcObject = mediaStream;
+    if (mediaStream) video.play().catch(() => {});
   }, [mediaStream]);
 
-  const isPlaying = streamState?.state === 'playing' && !!mediaStream;
+  // When ICE connects and the video transitions from display:none → display:block,
+  // srcObject is already set but play() must be called again in the new layout context.
+  useEffect(() => {
+    if (isPlaying) videoRef.current?.play().catch(() => {});
+  }, [isPlaying]);
+
   const showPlayer = isActive || !!streamState;
   const displayState = streamState?.state ?? (isActive ? 'connecting' : null);
 

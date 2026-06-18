@@ -1,4 +1,5 @@
 'use client';
+import { MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices, useBoundDevices } from '@/hooks/useDJIDevices';
@@ -54,11 +55,18 @@ function GeoMap() {
 
   // Cancel any in-flight map animation so MapLibre tears down its window-level
   // pointer listeners cleanly before the component unmounts (prevents navigation lock).
-  useEffect(() => () => { mapRef.current?.stop(); }, []);
+  useEffect(
+    () => () => {
+      mapRef.current?.stop();
+    },
+    []
+  );
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<MapViewMode>('multi');
   const [selectedDrone, setSelectedDrone] = useState<DronePositionType | null>(null);
+  // Tracks which drone is highlighted in the TelemetryPanel — independent of the map popup.
+  const [panelSelectedSn, setPanelSelectedSn] = useState<string | null>(null);
   const [dronePositions, setDronePositions] = useState<Record<string, DronePositionType>>({});
   const [selectedStyle, setSelectedStyle] = useState('dark');
   const [showElements, setShowElements] = useState(true);
@@ -72,7 +80,10 @@ function GeoMap() {
 
   // ── Element context-menu state (right-click / double-tap to delete) ───────────
   const [contextMenu, setContextMenu] = useState<{
-    x: number; y: number; elementId: string; elementName: string;
+    x: number;
+    y: number;
+    elementId: string;
+    elementName: string;
   } | null>(null);
 
   // ── Active wayline route overlay ──────────────────────────────────────────────
@@ -169,9 +180,9 @@ function GeoMap() {
         const t = getProcessedDroneData(sn);
         if (!t) return;
         // useTelemetry returns sticky last-valid coords — trust lat/lng directly.
-        const hasGPS = (t.latitude !== 0 || t.longitude !== 0) || (prev[sn]?.hasGPS ?? false);
+        const hasGPS = t.latitude !== 0 || t.longitude !== 0 || (prev[sn]?.hasGPS ?? false);
         const nickname =
-          deviceList.find((d) => d.id === sn)?.metadata?.alias ?? (prev[sn]?.nickname ?? sn);
+          deviceList.find((d) => d.id === sn)?.metadata?.alias ?? prev[sn]?.nickname ?? sn;
         next[sn] = {
           sn,
           nickname,
@@ -187,8 +198,8 @@ function GeoMap() {
   }, [droneUpdates, getProcessedDroneData, deviceList, droneSnSet]);
 
   // ── Single-mode: auto-follow tracked drone ────────────────────────────────────
-  const trackedLat = selectedDrone ? dronePositions[selectedDrone.sn]?.latitude : undefined;
-  const trackedLng = selectedDrone ? dronePositions[selectedDrone.sn]?.longitude : undefined;
+  const trackedLat = panelSelectedSn ? dronePositions[panelSelectedSn]?.latitude : undefined;
+  const trackedLng = panelSelectedSn ? dronePositions[panelSelectedSn]?.longitude : undefined;
 
   useEffect(() => {
     if (viewMode !== 'single' || trackedLat === undefined || trackedLng === undefined) return;
@@ -196,16 +207,17 @@ function GeoMap() {
   }, [viewMode, trackedLat, trackedLng]);
 
   // ── Selected drone full telemetry ─────────────────────────────────────────────
+  const panelDrone = panelSelectedSn ? dronePositions[panelSelectedSn] : null;
   const selectedDroneInfo: SelectedDroneInfo | null = useMemo(() => {
-    if (!selectedDrone) return null;
-    const t = getProcessedDroneData(selectedDrone.sn);
+    if (!panelDrone) return null;
+    const t = getProcessedDroneData(panelDrone.sn);
     const nickname =
-      deviceList.find((d) => d.id === selectedDrone.sn)?.metadata?.alias ?? selectedDrone.sn;
+      deviceList.find((d) => d.id === panelDrone.sn)?.metadata?.alias ?? panelDrone.sn;
     return {
       nickname,
-      serialNumber: selectedDrone.sn,
-      latitude: selectedDrone.latitude.toFixed(6),
-      longitude: selectedDrone.longitude.toFixed(6),
+      serialNumber: panelDrone.sn,
+      latitude: panelDrone.latitude.toFixed(6),
+      longitude: panelDrone.longitude.toFixed(6),
       battery: t?.battery ?? 0,
       altitude: t?.altitude ?? 0,
       direction: t?.direction ?? 'N',
@@ -213,7 +225,7 @@ function GeoMap() {
       speed: t?.speed ?? 0,
       modeCode: t?.modeCode ?? 0,
     };
-  }, [selectedDrone, getProcessedDroneData, deviceList]);
+  }, [panelDrone, getProcessedDroneData, deviceList]);
 
   // ── GeoJSON FeatureCollection from element groups ─────────────────────────────
   const mapElementsGeoJSON = useMemo(
@@ -303,10 +315,15 @@ function GeoMap() {
     if (!activeRoute || activeRoute.length === 0) return;
     const lngs = activeRoute.map((p) => p.lng);
     const lats = activeRoute.map((p) => p.lat);
-    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs),
+      maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats),
+      maxLat = Math.max(...lats);
     mapRef.current?.fitBounds(
-      [[minLng, minLat], [maxLng, maxLat]],
+      [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ],
       { padding: 80, duration: 1200, maxZoom: 18 }
     );
   }, [activeRoute]);
@@ -317,7 +334,10 @@ function GeoMap() {
     const lngs = activeRoute.map((p) => p.lng);
     const lats = activeRoute.map((p) => p.lat);
     mapRef.current?.fitBounds(
-      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
       { padding: 80, duration: 1200, maxZoom: 18 }
     );
   }, [activeRoute]);
@@ -329,7 +349,8 @@ function GeoMap() {
       duration: 2000,
       essential: true,
     });
-    setSelectedDrone(drone);
+    setSelectedDrone(drone); // opens the map popup
+    setPanelSelectedSn(drone.sn); // highlights the panel button
   }, []);
 
   const handleMapClick = useCallback(
@@ -392,10 +413,9 @@ function GeoMap() {
   const openContextMenu = useCallback(
     (point: { x: number; y: number }) => {
       if (!showElements || isDrawMode) return;
-      const features = mapRef.current?.queryRenderedFeatures(
-        [point.x, point.y],
-        { layers: ['map-elements-points'] }
-      );
+      const features = mapRef.current?.queryRenderedFeatures([point.x, point.y], {
+        layers: ['map-elements-points'],
+      });
       if (!features?.length) return;
       const f = features[0];
       const elementId = String(f.properties?.elementId ?? '');
@@ -416,10 +436,9 @@ function GeoMap() {
 
   const handleDblClick = useCallback(
     (e: MapLayerMouseEvent) => {
-      const features = mapRef.current?.queryRenderedFeatures(
-        [e.point.x, e.point.y],
-        { layers: ['map-elements-points'] }
-      );
+      const features = mapRef.current?.queryRenderedFeatures([e.point.x, e.point.y], {
+        layers: ['map-elements-points'],
+      });
       if (!features?.length) return;
       // Prevent map zoom-in only when tapping an element
       e.originalEvent.preventDefault();
@@ -459,7 +478,7 @@ function GeoMap() {
             <DroneMarker
               key={drone.sn}
               drone={drone}
-              isSelected={selectedDrone?.sn === drone.sn}
+              isSelected={panelSelectedSn === drone.sn}
               showAltitude={viewMode === 'multi'}
               onClick={flyToDrone}
             />
@@ -495,17 +514,7 @@ function GeoMap() {
               filter={['==', '$type', 'LineString']}
               paint={{ 'line-color': ['get', 'color'], 'line-width': 3 }}
             />
-            <Layer
-              id='map-elements-points'
-              type='circle'
-              filter={['==', '$type', 'Point']}
-              paint={{
-                'circle-radius': 6,
-                'circle-color': ['get', 'color'],
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#ffffff',
-              }}
-            />
+            {/* Points are rendered as interactive React Markers below — no circle layer needed */}
           </Source>
         )}
 
@@ -536,6 +545,71 @@ function GeoMap() {
             );
           })}
 
+        {/* Map element pins — point elements as interactive red location pins */}
+        {showElements &&
+          elementGroups.flatMap((group) =>
+            group.elements
+              .filter((el) => el.resource?.content?.geometry?.type === 'Point')
+              .map((el) => {
+                const [eLng, eLat] = el.resource.content.geometry.coordinates as [number, number];
+                return (
+                  <Marker
+                    key={el.id}
+                    longitude={eLng}
+                    latitude={eLat}
+                    anchor='bottom'
+                    onClick={(e) => {
+                      e.originalEvent.stopPropagation();
+                      mapRef.current?.flyTo({
+                        center: [eLng, eLat],
+                        zoom: 18,
+                        duration: 1200,
+                        essential: true,
+                      });
+                    }}
+                  >
+                    <div
+                      className='group relative flex flex-col items-center cursor-pointer select-none'
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopPropagation();
+                        if (!showElements || isDrawMode) return;
+                        const mapRect = mapRef.current?.getContainer().getBoundingClientRect();
+                        if (!mapRect) return;
+                        setContextMenu({
+                          x: e.clientX - mapRect.left,
+                          y: e.clientY - mapRect.top,
+                          elementId: el.id,
+                          elementName: el.name,
+                        });
+                      }}
+                    >
+                      {/* Hover tooltip */}
+                      <div className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10'>
+                        <div className='bg-neutral-900/95 backdrop-blur-sm border border-gray-700/60 px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap'>
+                          <p className='text-[11px] font-semibold text-gray-100 leading-none'>
+                            {el.name}
+                          </p>
+                          <p className='text-[9px] text-gray-500 mt-0.5'>{group.name}</p>
+                          <p className='text-[9px] text-gray-600 font-mono mt-0.5'>
+                            {eLat.toFixed(5)}, {eLng.toFixed(5)}
+                          </p>
+                        </div>
+                        <div className='w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-neutral-900/95 mx-auto' />
+                      </div>
+                      {/* Pin icon */}
+                      <MapPin
+                        className='w-8 h-8 text-red-500 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] transition-all duration-150 group-hover:scale-110 group-hover:-translate-y-0.5'
+                        strokeWidth={1.5}
+                        fill='rgba(239,68,68,0.15)'
+                      />
+                    </div>
+                  </Marker>
+                );
+              })
+          )}
+
         {/* Wayline route overlay */}
         {waylineGeoJSON && (
           <Source id='wayline-route' type='geojson' data={waylineGeoJSON as never}>
@@ -559,7 +633,12 @@ function GeoMap() {
             <Layer
               id='wayline-waypoint-halo'
               type='circle'
-              filter={['all', ['==', ['get', 'kind'], 'waypoint'], ['!=', ['get', 'index'], 0], ['!=', ['get', 'index'], -1]]}
+              filter={[
+                'all',
+                ['==', ['get', 'kind'], 'waypoint'],
+                ['!=', ['get', 'index'], 0],
+                ['!=', ['get', 'index'], -1],
+              ]}
               paint={{
                 'circle-radius': 13,
                 'circle-color': 'rgba(28, 147, 255, 0.18)',
@@ -696,7 +775,7 @@ function GeoMap() {
         getProcessedDroneData={getProcessedDroneData}
         onFitToAllDrones={fitToAllDrones}
         onFlyToDrone={flyToDrone}
-        selectedSn={selectedDrone?.sn ?? null}
+        selectedSn={panelSelectedSn}
         flightAreas={flightAreas}
         isSyncing={isSyncing}
         onSyncGeofences={syncGeofences}

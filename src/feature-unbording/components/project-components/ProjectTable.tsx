@@ -87,7 +87,15 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
       return;
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMenuPosition({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    const menuHeight = 220; // estimated dropdown menu height
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    let top = rect.bottom + 6;
+    if (spaceBelow < menuHeight && rect.top > menuHeight) {
+      top = rect.top - menuHeight - 6;
+    }
+    
+    setMenuPosition({ top, right: window.innerWidth - rect.right });
     setOpenMenuId(projectId);
   };
 
@@ -99,7 +107,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
     if (activeTab === 'Active') return p.devices.length > 0;
     if (activeTab === 'Offline') return p.devices.length === 0;
     if (activeTab === 'Online') return p.devices.some((d) =>
-      djiDevices.find((dev) => dev.deviceSn === d.device_sn)?.status === true
+      djiDevices.find((dev) => dev.deviceSn === d.device.device_sn)?.status === true
     );
     return true;
   }), [allProjects, activeTab, djiDevices]);
@@ -157,16 +165,15 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
     }
   };
 
-  // ── Table ────────────────────────────────────────────────────────────────────
   return (
     <div className='flex flex-col w-[calc(100%-2rem)] mx-4 font-poppins'>
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className='flex items-center justify-between px-4 py-2.5 mb-2 bg-[#1C93FF]/10 border border-[#1C93FF]/20 rounded-lg'>
+        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-2.5 mb-2 bg-[#1C93FF]/10 border border-[#1C93FF]/20 rounded-lg'>
           <span className='text-sm font-semibold text-zinc-200'>
             {selected.size} project{selected.size > 1 ? 's' : ''} selected
           </span>
-          <div className='flex items-center gap-2'>
+          <div className='flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end'>
             <button className='flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-zinc-300 border border-zinc-700 rounded-md hover:border-zinc-500 transition-colors'>
               <Download size={12} /> Export
             </button>
@@ -180,7 +187,8 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         </div>
       )}
 
-      <div className='flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 overflow-hidden'>
+      {/* Desktop view */}
+      <div className='hidden md:flex flex-col h-[743px] bg-[#1D2026] rounded-lg border border-zinc-800/50 overflow-hidden'>
         <div className='flex-1 overflow-y-auto overflow-x-auto'>
           <table className='w-full text-left border-collapse min-w-[860px]'>
             <thead className='sticky top-0 z-10'>
@@ -267,9 +275,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                   const isActiveProject = activeProject?.id === project.id;
                   const borderColor = isActiveProject
                     ? 'border-l-[#1C93FF]'
-                    : hasDevices
-                      ? 'border-l-emerald-500'
-                      : 'border-l-zinc-700';
+                    : 'border-l-transparent';
                   const isBeingDeleted = isDeleting && pendingDelete?.id === project.id;
 
                   return (
@@ -436,6 +442,211 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         </div>
       </div>
 
+      {/* Mobile Card List (Visible only on mobile/tablet) */}
+      <div className='md:hidden flex flex-col gap-3'>
+        {isLoading ? (
+          Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <div key={i} className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 animate-pulse'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-4 h-4 bg-zinc-800 rounded' />
+                  <div>
+                    <div className='h-4 w-24 bg-zinc-800 rounded' />
+                    <div className='h-2.5 w-12 bg-zinc-800/70 rounded mt-1.5' />
+                  </div>
+                </div>
+                <div className='w-6 h-6 bg-zinc-800 rounded' />
+              </div>
+              <div className='h-8 w-24 bg-zinc-800 rounded' />
+              <div className='h-3 w-48 bg-zinc-800 rounded' />
+              <div className='grid grid-cols-3 gap-2 pt-3 border-t border-zinc-800/30'>
+                <div className='h-5 bg-zinc-800 rounded' />
+                <div className='h-5 bg-zinc-800 rounded' />
+                <div className='h-5 bg-zinc-800 rounded' />
+              </div>
+            </div>
+          ))
+        ) : error ? (
+          <div className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-8 text-center'>
+            <AlertCircle className='w-7 h-7 text-red-400 mx-auto mb-2' />
+            <p className='text-sm text-zinc-400'>Failed to load projects</p>
+            <p className='text-xs text-red-400/80 font-mono mt-1'>{error.message}</p>
+          </div>
+        ) : paginated.length === 0 ? (
+          <div className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-8 text-center'>
+            <FolderOpen className='w-8 h-8 text-zinc-700 mx-auto mb-2' />
+            <p className='text-sm text-zinc-600'>
+              {searchQuery
+                ? 'No projects match your search.'
+                : activeTab === 'Online'
+                  ? 'No projects with online drones.'
+                  : 'No projects yet. Create one to get started.'}
+            </p>
+          </div>
+        ) : (
+          <>
+            {paginated.map((project) => {
+              const isChecked = selected.has(project.id);
+              const hasDevices = project.devices.length > 0;
+              const isActiveProject = activeProject?.id === project.id;
+              const isBeingDeleted = isDeleting && pendingDelete?.id === project.id;
+
+              return (
+                <div
+                  key={project.id}
+                  className={`bg-[#1D2026] rounded-lg border border-zinc-800/50 ${
+                    isActiveProject ? 'border-l-4 border-l-[#1C93FF]' : ''
+                  } p-4 space-y-3 font-poppins relative
+                    ${isActiveProject ? 'bg-[#1C93FF]/[0.04]' : ''}
+                    ${isChecked ? 'bg-[#1C93FF]/5' : ''}
+                    ${isBeingDeleted ? 'opacity-40 pointer-events-none' : ''}`}
+                >
+                  {/* Header */}
+                  <div className='flex items-start justify-between gap-2'>
+                    <div className='flex items-center gap-3 min-w-0'>
+                      <input
+                        type='checkbox'
+                        checked={isChecked}
+                        onChange={() => toggleSelect(project.id)}
+                        className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer flex-shrink-0'
+                      />
+                      <div className='min-w-0'>
+                        <p className='text-sm font-bold text-zinc-100 truncate'>
+                          {project.name}
+                        </p>
+                        <span className='text-[10px] font-mono text-zinc-600 block mt-0.5'>
+                          {project.id.slice(0, 8)}…
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className='flex items-center gap-2 flex-shrink-0'>
+                      <button
+                        onClick={(e) => handleMenuOpen(e, project.id)}
+                        className={`p-1.5 rounded-md border transition-colors ${
+                          openMenuId === project.id
+                            ? 'bg-zinc-700 border-zinc-600 text-zinc-100'
+                            : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 hover:border-zinc-600'
+                        }`}
+                      >
+                        <MoreVertical size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Session and Navigation buttons */}
+                  <div className='flex flex-wrap items-center gap-2 pt-1'>
+                    {isActiveProject && (
+                      <span className='inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black tracking-widest uppercase text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/25 rounded-full'>
+                        <span className='w-1.5 h-1.5 rounded-full bg-[#1C93FF] animate-pulse' />
+                        Active Session
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleOpenProject(project)}
+                      disabled={navigatingId === project.id}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded transition-colors disabled:opacity-70 ${
+                        isActiveProject
+                          ? 'text-[#1C93FF] bg-[#1C93FF]/10 border border-[#1C93FF]/30 hover:bg-[#1C93FF]/20'
+                          : 'text-white bg-[#1C93FF] hover:bg-[#1C93FF]/80'
+                      }`}
+                    >
+                      {navigatingId === project.id ? (
+                        <Loader2 size={10} className='animate-spin' />
+                      ) : (
+                        <FolderOpen size={10} />
+                      )}
+                      {isActiveProject ? 'Resume Session' : 'Open Project'}
+                    </button>
+                  </div>
+
+                  {/* Description */}
+                  <div className='text-xs text-zinc-400 py-1'>
+                    {project.description ? (
+                      <p className='line-clamp-2 leading-relaxed'>{project.description}</p>
+                    ) : (
+                      <p className='text-zinc-600 italic'>No description provided</p>
+                    )}
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className='grid grid-cols-3 gap-2 pt-3 border-t border-zinc-800/30 text-xs'>
+                    <div>
+                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Devices</span>
+                      <div className='flex items-center gap-1.5 mt-0.5'>
+                        <PlaneTakeoff size={12} className='text-zinc-500' />
+                        <span className={`font-semibold tabular-nums ${hasDevices ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                          {project.devices.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Flight Areas</span>
+                      <div className='flex items-center gap-1.5 mt-0.5'>
+                        <Layers size={12} className='text-zinc-500' />
+                        <span className={`font-semibold tabular-nums ${project.flight_areas.length > 0 ? 'text-cyan-400' : 'text-zinc-600'}`}>
+                          {project.flight_areas.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Created</span>
+                      <span className='text-zinc-400 block mt-1'>
+                        {new Date(project.created_at).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Pagination for mobile */}
+            <div className='flex items-center justify-between px-4 py-3 border border-zinc-800/50 bg-[#1D2026] rounded-lg mt-1'>
+              <span className='text-[10px] text-zinc-500'>
+                Showing <span className='text-zinc-300 font-semibold'>{paginated.length}</span> of{' '}
+                <span className='text-zinc-300 font-semibold'>{filtered.length}</span>
+              </span>
+              <div className='flex items-center gap-1'>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className='p-1.5 rounded border border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setPage(n)}
+                    className={`w-7 h-7 rounded text-[11px] font-bold border transition-colors
+                      ${
+                        page === n
+                          ? 'bg-[#1C93FF] border-[#1C93FF] text-white'
+                          : 'border-zinc-800 text-zinc-500 bg-zinc-900/50'
+                      }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className='p-1.5 rounded border border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* ── Fixed-position action dropdown ──────────────────────────────────────── */}
       {activeMenuProject && (
         <div
@@ -572,14 +783,14 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                     key={d.id}
                     onClick={() =>
                       unassign(
-                        { projectId: unassignProject.id, deviceSn: d.device_sn },
+                        { projectId: unassignProject.id, deviceSn: d.device.device_sn },
                         { onSuccess: () => setUnassignProject(null) }
                       )
                     }
                     disabled={isUnassigning}
                     className='flex items-center justify-between px-3.5 py-2.5 bg-zinc-900 border border-zinc-700 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group'
                   >
-                    <span className='text-xs font-mono text-emerald-400'>{d.device_sn}</span>
+                    <span className='text-xs font-mono text-emerald-400'>{d.device.device_sn}</span>
                     {isUnassigning ? (
                       <Loader2 size={11} className='text-amber-400 animate-spin' />
                     ) : (
@@ -599,7 +810,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
       {devicesModalProject &&
         (() => {
           const enriched = devicesModalProject.devices.map((d) => {
-            const dji = djiDevices.find((dev) => dev.deviceSn === d.device_sn);
+            const dji = djiDevices.find((dev) => dev.deviceSn === d.device.device_sn);
             const isDrone = dji ? dji.domain === '0' : null;
             return { ...d, dji, isDrone };
           });
@@ -616,9 +827,9 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
               </div>
               <div className='flex-1 min-w-0'>
                 <p className='text-xs font-bold text-zinc-200 truncate'>
-                  {d.dji?.nickname || d.dji?.deviceName || d.device_sn}
+                  {d.dji?.nickname || d.dji?.deviceName || d.device.device_sn}
                 </p>
-                <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device_sn}</p>
+                <p className='text-[10px] font-mono text-zinc-600 truncate'>{d.device.device_sn}</p>
               </div>
               {d.dji ? (
                 <div className='flex items-center gap-1.5'>

@@ -27,12 +27,10 @@ export function useUnregisteredDevices() {
     });
 
     socketInstance.on('connect', () => {
-      console.log('Connected to telemetry socket');
       setIsConnected(true);
     });
 
     socketInstance.on('disconnect', () => {
-      console.log('Disconnected from telemetry socket');
       setIsConnected(false);
     });
 
@@ -68,16 +66,12 @@ export function useUnregisteredDevices() {
               // console.log('Updated unregistered device:', serialNumber);
               return updated;
             } else {
-              // Add new device
-              console.log('Added new unregistered device:', serialNumber);
               return [...prev, newDevice];
             }
           });
-        } else {
-          console.log('Device already registered:', serialNumber);
         }
-      } catch (error) {
-        console.error('Error processing telemetry:', error);
+      } catch {
+        // ignore telemetry processing errors
       }
     });
 

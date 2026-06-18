@@ -1,6 +1,7 @@
 // OmniWatch Auth API — all requests go through the Next.js proxy at /api/auth
 // which forwards to http://34.35.12.123:8002/api/v1/auth/<path>
 
+import axios, { AxiosError } from 'axios';
 import { setToken, clearToken, getToken } from '@/lib/config/token-store';
 
 // Decode the `exp` claim from a JWT and return seconds until expiry.
@@ -10,7 +11,6 @@ function jwtExpiresIn(token: string): number | undefined {
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
     if (!payload.exp) return undefined;
     const secondsLeft = payload.exp - Math.floor(Date.now() / 1000);
-    console.log(`[auth] JWT expires in ${secondsLeft}s (exp: ${new Date(payload.exp * 1000).toISOString()})`);
     return Math.max(secondsLeft, 0);
   } catch {
     return undefined;
@@ -44,35 +44,62 @@ export interface MeResponse {
   workspace_id: string;
 }
 
-// ─── Internal fetch wrapper ───────────────────────────────────────────────────
+// ─── Internal axios wrapper (aligned with auth-service.ts pattern) ────────────
 
 const PROXY = '/api/auth';
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+/**
+ * Shared axios wrapper for all auth endpoints.
+ *
+ * Previously used native `fetch` — migrated to axios so every HTTP call in the
+ * app uses the same client, same error handling, and same JSON parsing logic.
+ *
+ * @param method - HTTP verb
+ * @param path   - Auth API path (e.g. "/login", "/me", "/token/refresh")
+ * @param data   - Request body (axios serialises to JSON automatically)
+ */
+async function request<T>(
+  method: 'GET' | 'POST',
+  path: string,
+  data?: unknown,
+): Promise<T> {
   const token = getToken();
 
-  const res = await fetch(`${PROXY}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...((options.headers as Record<string, string>) ?? {}),
-    },
-  });
+  try {
+    const res = await axios.request<OmniWatchEnvelope<T>>({
+      method,
+      url: `${PROXY}${path}`,
+      data,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
 
-  // Parse the OmniWatch envelope — server always returns JSON even on errors
-  const envelope: OmniWatchEnvelope<T> = await res.json().catch(() => ({
-    code: res.status,
-    message: res.statusText,
-    data: undefined,
-  }));
+    const envelope = res.data;
 
-  if (envelope.code !== 0) {
-    const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
-    throw new Error(String(detail ?? envelope.message ?? `Auth request failed: ${res.status}`));
+    // OmniWatch signals errors via code !== 0 even on HTTP 200
+    if (envelope.code !== 0) {
+      const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
+      throw new Error(String(detail ?? envelope.message ?? `Auth request failed: ${res.status}`));
+    }
+
+    return envelope.data as T;
+  } catch (err) {
+    // Re-throw our own envelope errors as-is
+    if (err instanceof Error && !(err instanceof AxiosError)) throw err;
+
+    // Surface axios HTTP errors (4xx/5xx) with the server's detail message
+    if (err instanceof AxiosError && err.response) {
+      const envelope = err.response.data as OmniWatchEnvelope<unknown> | undefined;
+      const detail = (envelope?.data as Record<string, unknown> | undefined)?.detail;
+      throw new Error(
+        String(detail ?? envelope?.message ?? `Auth request failed: ${err.response.status}`)
+      );
+    }
+
+    throw err;
   }
-
-  return envelope.data as T;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -81,10 +108,7 @@ export const authApi = {
   // POST /api/v1/auth/login
   login: async (email: string, pin: string): Promise<AuthTokenResponse> => {
     console.log('[auth] login → POST /api/auth/login', { email });
-    const data = await request<AuthTokenResponse>('/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, pin }),
-    });
+    const data = await request<AuthTokenResponse>('POST', '/login', { email, pin });
     console.log('[auth] login ✓ — access_token received, workspace_id:', data.workspace_id);
     const expiresIn = jwtExpiresIn(data.access_token);
     setToken(data.access_token, expiresIn);
@@ -96,7 +120,7 @@ export const authApi = {
   logout: async (): Promise<void> => {
     console.log('[auth] logout → POST /api/auth/logout');
     try {
-      await request<void>('/logout', { method: 'POST' });
+      await request<void>('POST', '/logout');
     } finally {
       clearToken();
       console.log('[auth] logout ✓ — token cleared');
@@ -106,7 +130,7 @@ export const authApi = {
   // GET /api/v1/auth/me
   me: async (): Promise<MeResponse> => {
     console.log('[auth] me → GET /api/auth/me');
-    const data = await request<MeResponse>('/me', { method: 'GET' });
+    const data = await request<MeResponse>('GET', '/me');
     console.log('[auth] me ✓ —', data);
     return data;
   },
@@ -114,7 +138,7 @@ export const authApi = {
   // POST /api/v1/auth/token/refresh
   refreshToken: async (): Promise<AuthTokenResponse> => {
     console.log('[auth] refreshToken → POST /api/auth/token/refresh');
-    const data = await request<AuthTokenResponse>('/token/refresh', { method: 'POST' });
+    const data = await request<AuthTokenResponse>('POST', '/token/refresh');
     const expiresIn = jwtExpiresIn(data.access_token);
     setToken(data.access_token, expiresIn);
     console.log('[auth] refreshToken ✓ — new access_token stored');

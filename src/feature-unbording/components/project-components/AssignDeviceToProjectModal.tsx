@@ -45,11 +45,11 @@ const AssignDeviceToProjectModal = ({ project, onClose }: AssignDeviceToProjectM
 
   if (!project || !mounted) return null;
 
-  const alreadyInThisProject = new Set(project.devices.map((d) => d.device_sn));
+  const alreadyInThisProject = new Set(project.devices.map((d) => d.device.device_sn));
 
   // Find which project (if any) each device belongs to
   const projectOf = (sn: string) =>
-    allProjects.find((p) => p.id !== project.id && p.devices.some((d) => d.device_sn === sn));
+    allProjects.find((p) => p.id !== project.id && p.devices.some((d) => d.device.device_sn === sn));
 
   const handleAssign = (sn: string) => {
     if (alreadyInThisProject.has(sn)) return;

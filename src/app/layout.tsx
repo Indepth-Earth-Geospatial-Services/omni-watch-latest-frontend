@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang='en' suppressHydrationWarning className={poppins.variable} data-scroll-behavior='smooth'>
-      <body style={{ fontFamily: 'Inter, sans-serif' }}>
+      <body style={{ fontFamily: 'Inter, sans-serif' }} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

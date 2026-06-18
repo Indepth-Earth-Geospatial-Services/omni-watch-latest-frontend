@@ -89,3 +89,48 @@ export interface PayloadAuthorityRequest {
   controlType?: number;
   rotation?: GimbalRotation;
 }
+
+// ─── DRC (Drone Remote Control) ───────────────────────────────────────────────
+
+/** POST /control/api/v1/workspaces/{wid}/drc/connect */
+export interface DRCConnectRequest {
+  client_id: string;
+  expire_sec: number;
+}
+
+/** Response from /drc/connect — MQTT broker credentials */
+export interface DRCConnectResponse {
+  address: string;       // e.g. "tcp://35.222.89.171:1883"
+  client_id: string;
+  username: string;
+  password: string;
+  expire_sec: number;
+}
+
+/** POST /control/api/v1/workspaces/{wid}/drc/enter */
+export interface DRCEnterRequest {
+  client_id: string;
+  dock_sn: string;
+}
+
+/** Response from /drc/enter — MQTT pub/sub topics for sending commands */
+export interface DRCEnterResponse {
+  pub: string[];   // topics to publish drone_control / heart_beat messages
+  sub: string[];   // topics to subscribe for DRC responses
+}
+
+/** POST /control/api/v1/workspaces/{wid}/drc/exit */
+export interface DRCExitRequest {
+  client_id: string;
+  dock_sn: string;
+}
+
+/** Velocity command published over DRC MQTT at 50ms intervals */
+export interface DRCVelocityCommand {
+  x?: number;   // forward/backward speed (m/s), positive = forward
+  y?: number;   // left/right speed (m/s), positive = right
+  h?: number;   // altitude delta (m), positive = up
+  w?: number;   // yaw speed (deg/s), positive = clockwise
+  seq: number;  // monotonically increasing sequence number
+}
+

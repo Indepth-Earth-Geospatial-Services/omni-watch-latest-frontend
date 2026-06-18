@@ -12,7 +12,6 @@ import {
 } from '@/services/djiservice-layer/dji-service';
 import type {
   PayloadCommandRequest,
-  JobActionRequest,
   TakeoffToPointRequest,
   DockFlyToPointRequest,
   PayloadAuthorityRequest,
@@ -25,9 +24,10 @@ export function useSendPayloadCommand(sn: string) {
   });
 }
 
-// Pause / resume / stop a running dock job (e.g. wayline mission)
+// Execute any dock job by service identifier.
+// body is optional — omit for no-payload commands, pass { action: N } for action commands.
 export function useExecuteJob(sn: string) {
-  return useMutation<void, Error, { serviceIdentifier: string; body: JobActionRequest }>({
+  return useMutation<void, Error, { serviceIdentifier: string; body?: object }>({
     mutationFn: ({ serviceIdentifier, body }) => executeJob(sn, serviceIdentifier, body),
   });
 }

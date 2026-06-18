@@ -1,19 +1,22 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff, X } from 'lucide-react';
 import { isDrone } from './stream-utils';
 import type { DJIDevice } from '@/lib/types';
 
 interface DeviceSidebarProps {
   projectDevices: DJIDevice[];
-  unboundDevices: { id: string; device_sn: string }[];
+  unboundDevices: { id: string; device: { device_sn: string; name: string } }[];
   selectedSn: string | null;
   viewMode: 'single' | 'multi';
   streamingDevices: Map<string, string>;
   onSelect: (sn: string) => void;
   onStop: (sn: string) => void;
   isLoading?: boolean;
+  // Mobile drawer controls
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export const DeviceSidebar = memo(function DeviceSidebar({
@@ -25,18 +28,27 @@ export const DeviceSidebar = memo(function DeviceSidebar({
   onSelect,
   onStop,
   isLoading = false,
+  isOpen,
+  onClose,
 }: DeviceSidebarProps) {
   const onlineCount = projectDevices.filter((d) => d.status).length;
   const effectiveSn = selectedSn ?? projectDevices[0]?.deviceSn;
 
-  return (
-    <aside className='w-60 flex-shrink-0 bg-[#0C0D10] border border-zinc-800 rounded-xl flex flex-col overflow-hidden'>
+  const sidebarContent = (
+    <aside className='w-60 flex-shrink-0 bg-[#0C0D10] border border-zinc-800 rounded-xl flex flex-col overflow-hidden h-full'>
       <div className='flex items-center justify-between px-4 py-[22px] border-b border-zinc-800 flex-shrink-0'>
         <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>Devices</p>
         <div className='flex items-center gap-1.5'>
           <span className='w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse' />
           <span className='text-[10px] font-semibold text-emerald-400'>{onlineCount}</span>
           <span className='text-[10px] text-zinc-700'>/ {projectDevices.length}</span>
+          {/* Close button — mobile only */}
+          <button
+            onClick={onClose}
+            className='ml-2 p-1 rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors lg:hidden'
+          >
+            <X size={13} />
+          </button>
         </div>
       </div>
 
@@ -65,7 +77,9 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                     <PlaneTakeoff size={12} className='text-zinc-600' />
                   </div>
                   <div className='min-w-0'>
-                    <p className='text-[10px] font-mono text-zinc-500 truncate'>{d.device_sn}</p>
+                    <p className='text-[10px] font-mono text-zinc-500 truncate'>
+                      {d.device.device_sn}
+                    </p>
                     <p className='text-[9px] text-zinc-700'>Not bound</p>
                   </div>
                 </div>
@@ -85,7 +99,10 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                     }`}
                   >
                     <button
-                      onClick={() => onSelect(device.deviceSn)}
+                      onClick={() => {
+                        onSelect(device.deviceSn);
+                        onClose(); // auto-close drawer on mobile after selection
+                      }}
                       className='flex items-center gap-2.5 flex-1 min-w-0 text-left'
                     >
                       <div
@@ -139,5 +156,22 @@ export const DeviceSidebar = memo(function DeviceSidebar({
               })}
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop: always visible inline */}
+      <div className='hidden lg:flex h-full'>{sidebarContent}</div>
+
+      {/* Mobile: slide-in drawer with backdrop */}
+      {isOpen && (
+        <div className='lg:hidden fixed inset-0 z-50 flex'>
+          {/* Backdrop */}
+          <div className='absolute inset-0 bg-black/60 backdrop-blur-sm' onClick={onClose} />
+          {/* Drawer panel */}
+          <div className='relative z-10 flex h-full pt-2 pb-4 pl-2'>{sidebarContent}</div>
+        </div>
+      )}
+    </>
   );
 });

@@ -176,13 +176,11 @@ export function useDJIWebSocket() {
           ws.close();
           return;
         }
-        console.log('[DJI WS] Connected');
         setIsConnected(true);
       };
 
       ws.onclose = (e) => {
         if (cancelled) return;
-        console.log('[DJI WS] Disconnected — code:', e.code);
         setIsConnected(false);
         // Reconnect after 3 seconds unless deliberately closed
         if (e.code !== 1000) {
@@ -190,20 +188,13 @@ export function useDJIWebSocket() {
         }
       };
 
-      ws.onerror = () => {
-        if (!cancelled) {
-          console.error('[DJI WS] Connection error');
-        }
-      };
+      ws.onerror = () => {};
 
       ws.onmessage = (event) => {
         if (cancelled) return;
         try {
           const msg = JSON.parse(event.data as string) as DJIMessage;
           const { biz_code, data } = msg;
-
-          // Debug: log every incoming WS message so we can inspect live telemetry
-          console.log('[DJI WS ←]', biz_code, data);
 
           // Dispatch to registered handlers
           if (biz_code in handlersRef.current) {
@@ -249,8 +240,8 @@ export function useDJIWebSocket() {
               });
             }
           });
-        } catch (err) {
-          console.error('[DJI WS] Failed to parse message:', err);
+        } catch {
+          // ignore malformed messages
         }
       };
     }

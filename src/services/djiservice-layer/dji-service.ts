@@ -317,10 +317,7 @@ export function getWaylineJobs(
 }
 
 /** Downloads a wayline KMZ file as an ArrayBuffer. The endpoint streams binary directly. */
-export function downloadWaylineKmz(
-  workspaceId: string,
-  waylineId: string
-): Promise<ArrayBuffer> {
+export function downloadWaylineKmz(workspaceId: string, waylineId: string): Promise<ArrayBuffer> {
   return djiRequest.getBinary(DJI_URLS.waylines.downloadUrl(workspaceId, waylineId));
 }
 
@@ -331,12 +328,11 @@ export function sendPayloadCommand(sn: string, payload: PayloadCommandRequest): 
   return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(sn), payload);
 }
 
-/** Pause / resume / stop a running dock job (e.g. wayline mission). */
-export function executeJob(
-  sn: string,
-  serviceIdentifier: string,
-  body: JobActionRequest
-): Promise<void> {
+/** Execute a dock job by service identifier.
+ *  body is optional — no-payload commands (cover_open, drone_open, etc.) omit it;
+ *  action commands (alarm_state_switch, sdr_workmode_switch, etc.) pass { action: N }.
+ */
+export function executeJob(sn: string, serviceIdentifier: string, body?: object): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.job(sn, serviceIdentifier), body);
 }
 

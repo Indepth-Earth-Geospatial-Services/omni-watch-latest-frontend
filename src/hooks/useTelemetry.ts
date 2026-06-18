@@ -30,6 +30,9 @@ export interface ProcessedDroneData {
   hasOSD: boolean; // true once a device_osd event has been received
   isGPSFixed: boolean; // position_state.is_fixed === 1
   gpsNumber: number; // satellites visible (position_state.gps_number)
+  windSpeed: number;       // m/s from OSD wind_speed; 0 when unavailable
+  windDirection: number;   // degrees 0-360 from OSD wind_direction; 0 when unavailable
+  remainFlightTime: number; // seconds remaining from OSD battery.remain_flight_time; 0 when unavailable
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
@@ -83,11 +86,14 @@ export function useTelemetry() {
 
       const isFixed = (osd?.host.position_state?.is_fixed ?? 0) === 1;
 
-      const altitude = osd ? Number(osd.host.height)           : (state?.altitude         ?? 0);
-      const speed    = osd ? Number(osd.host.horizontal_speed) : (state?.horizontal_speed ?? 0);
-      const battery  = osd ? (osd.host.battery?.capacity_percent ?? 0) : (state?.battery_percent ?? 0);
-      const modeCode = osd?.host.mode_code   ?? state?.mode_code  ?? 0;
-      const heading  = osd?.host.attitude_head ?? state?.heading  ?? 0;
+      const altitude        = osd ? Number(osd.host.height)           : (state?.altitude         ?? 0);
+      const speed           = osd ? Number(osd.host.horizontal_speed) : (state?.horizontal_speed ?? 0);
+      const battery         = osd ? (osd.host.battery?.capacity_percent ?? 0) : (state?.battery_percent ?? 0);
+      const modeCode        = osd?.host.mode_code    ?? state?.mode_code ?? 0;
+      const heading         = osd?.host.attitude_head ?? state?.heading  ?? 0;
+      const windSpeed       = osd ? Number(osd.host.wind_speed      ?? 0) : 0;
+      const windDirection   = osd ? Number(osd.host.wind_direction  ?? 0) : 0;
+      const remainFlightTime = osd?.host.battery?.remain_flight_time ?? 0;
 
       return {
         battery,
@@ -104,6 +110,9 @@ export function useTelemetry() {
         hasOSD: !!osd,
         isGPSFixed: isFixed,
         gpsNumber: osd?.host.position_state?.gps_number ?? 0,
+        windSpeed,
+        windDirection,
+        remainFlightTime,
       };
     },
     [deviceStates, osdStates]

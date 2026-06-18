@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { getToken } from '@/lib/config/token-store';
-import { Toaster } from 'sonner';
+import Toaster from '@/features/members/components/Toaster';
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
