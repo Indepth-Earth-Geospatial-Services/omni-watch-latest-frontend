@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Activity,
   Cpu,
@@ -19,6 +19,8 @@ import {
   BatteryCharging,
   Radio,
   Loader2,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -31,6 +33,7 @@ export interface SystemStatusFooterProps {
   deviceList?: DJIDevice[];
   dockSn?: string;
   dockOnline?: boolean;
+  dockModeCode?: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,11 +122,32 @@ const SectionHeader = ({ title }: { title: string }) => (
 interface DebugCommandsPanelProps {
   dockSn: string;
   dockOnline: boolean;
+  dockModeCode?: number;
 }
 
-const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => {
+const DOCK_MODE_LABELS: Record<number, string> = {
+  0: 'Idle',
+  1: 'On-site Debug',
+  2: 'Remote Debug',
+  3: 'Upgrading',
+  4: 'In Operation',
+};
+
+const DebugCommandsPanel = ({ dockSn, dockOnline, dockModeCode = -1 }: DebugCommandsPanelProps) => {
+  // Optimistic toggle state — synced with MQTT mode_code when available
   const [debugActive, setDebugActive] = useState(false);
   const [isToggling, setIsToggling]   = useState(false);
+  const [showDebugModal, setShowDebugModal] = useState(false);
+
+  // Keep local toggle in sync with the real dock state from MQTT.
+  // Skip while a toggle is in-flight to avoid wiping the optimistic state
+  // before the dock's mode_code has actually changed.
+  useEffect(() => {
+    if (dockModeCode === -1) return;
+    if (isToggling) return;
+    console.log(`[Debug:MQTT] mode_code=${dockModeCode} (${DOCK_MODE_LABELS[dockModeCode] ?? 'unknown'}) → debugActive=${dockModeCode === 2}`);
+    setDebugActive(dockModeCode === 2);
+  }, [dockModeCode, isToggling]);
   const [confirmPending, setConfirmPending] = useState<string | null>(null);
 
   const { mutate: runJob, isPending } = useExecuteJob(dockSn);
@@ -157,22 +181,29 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
   );
 
   const handleDebugToggle = (on: boolean) => {
-    if (!dockOnline) return;
+    console.log(`[Debug] toggle → on=${on} | dockOnline=${dockOnline} | dockModeCode=${dockModeCode} | dockSn=${dockSn}`);
+    if (!dockOnline) {
+      console.warn('[Debug] aborted — dock is offline');
+      return;
+    }
     setIsToggling(true);
 
     if (on) {
-      // Grab flight authority first — DJI rejects debug_mode_open without it
+      console.log('[Debug] step 1 — grabbing flight authority…');
       grabAuthority(undefined, {
         onSuccess: () => {
+          console.log('[Debug] step 2 — authority granted, sending debug_mode_open…');
           runJob(
-            { serviceIdentifier: 'debug_mode_open' },
+            { serviceIdentifier: 'debug_mode_open', body: { action: 1 } },
             {
               onSuccess: () => {
+                console.log('[Debug] step 3 — debug_mode_open accepted ✓');
                 setDebugActive(true);
                 setIsToggling(false);
                 toast.success('Debug mode enabled');
               },
               onError: (err) => {
+                console.error('[Debug] debug_mode_open failed:', err.message);
                 setIsToggling(false);
                 toast.error(`Debug mode failed: ${err.message}`);
               },
@@ -180,21 +211,25 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
           );
         },
         onError: (err) => {
+          console.error('[Debug] grabAuthority failed:', err.message);
           setIsToggling(false);
           toast.error(`Authority grab failed: ${err.message}`);
         },
       });
     } else {
+      console.log('[Debug] sending debug_mode_close…');
       runJob(
-        { serviceIdentifier: 'debug_mode_close' },
+        { serviceIdentifier: 'debug_mode_close', body: { action: 0 } },
         {
           onSuccess: () => {
+            console.log('[Debug] debug_mode_close accepted ✓');
             setDebugActive(false);
             setIsToggling(false);
             setConfirmPending(null);
             toast.success('Debug mode disabled');
           },
           onError: (err) => {
+            console.error('[Debug] debug_mode_close failed:', err.message);
             setIsToggling(false);
             toast.error(`Debug mode failed: ${err.message}`);
           },
@@ -222,12 +257,17 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
               ? '⚠ Hardware commands are live'
               : 'Required for hardware commands'}
           </p>
+          {dockModeCode !== -1 && (
+            <p className='text-[9px] font-mono text-zinc-500 mt-0.5'>
+              mode: {DOCK_MODE_LABELS[dockModeCode] ?? `unknown (${dockModeCode})`}
+            </p>
+          )}
         </div>
         <div className='flex items-center gap-2'>
           {isToggling && <Loader2 size={13} className='animate-spin text-zinc-500' />}
           <Switch
             checked={debugActive}
-            onCheckedChange={handleDebugToggle}
+            onCheckedChange={(on) => on ? setShowDebugModal(true) : handleDebugToggle(false)}
             disabled={!dockOnline || isToggling}
             aria-label='Toggle debug mode'
           />
@@ -300,6 +340,102 @@ const DebugCommandsPanel = ({ dockSn, dockOnline }: DebugCommandsPanelProps) => 
           <CmdButton label='4G Fusion'       icon={Radio}           onClick={() => exec('sdr_workmode_switch',         { action: 1 })} disabled={restricted || isPending} />
         </div>
       </div>
+
+      {/* ── Debug Mode Activation Modal ── */}
+      {showDebugModal && (
+        <div className='fixed inset-0 z-[9999] flex items-center justify-center'>
+          {/* Backdrop */}
+          <div
+            className='absolute inset-0 bg-black/70 backdrop-blur-sm'
+            onClick={() => setShowDebugModal(false)}
+          />
+
+          {/* Card */}
+          <div className='relative z-10 w-full max-w-md mx-4 bg-[#0F1117] border border-amber-500/30 rounded-2xl shadow-[0_0_60px_rgba(245,158,11,0.15)] overflow-hidden'>
+
+            {/* Amber top bar */}
+            <div className='h-1 w-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600' />
+
+            {/* Header */}
+            <div className='flex items-start justify-between px-6 pt-5 pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center'>
+                  <AlertTriangle size={18} className='text-amber-400' />
+                </div>
+                <div>
+                  <h2 className='text-sm font-black uppercase tracking-widest text-zinc-100'>
+                    Activate Debug Mode
+                  </h2>
+                  <p className='text-[10px] text-amber-500/80 font-mono tracking-wide mt-0.5'>
+                    REMOTE HARDWARE ACCESS
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDebugModal(false)}
+                className='text-zinc-600 hover:text-zinc-300 transition-colors mt-0.5'
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className='h-px bg-zinc-800/80 mx-6' />
+
+            {/* Body */}
+            <div className='px-6 py-4 space-y-4'>
+              <p className='text-[11px] text-zinc-400 leading-relaxed'>
+                Enabling debug mode grants direct hardware access to the dock and drone. Commands
+                execute immediately with no additional confirmation.
+              </p>
+
+              {/* Warning checklist */}
+              <div className='rounded-lg bg-amber-500/5 border border-amber-500/20 px-4 py-3 space-y-2'>
+                <p className='text-[9px] font-black uppercase tracking-[0.18em] text-amber-500/70 mb-2'>
+                  The following will become active
+                </p>
+                {[
+                  'Dock cover open / close',
+                  'Charging control',
+                  'Supplemental lighting',
+                  'Drone power on / off',
+                  'Device reboot & format',
+                  'Battery maintenance',
+                ].map((item) => (
+                  <div key={item} className='flex items-center gap-2'>
+                    <div className='w-1 h-1 rounded-full bg-amber-400 flex-shrink-0' />
+                    <span className='text-[10px] text-zinc-300'>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className='text-[10px] text-zinc-600'>
+                Debug mode will be reported via MQTT and visible to all operators. Deactivate when
+                finished.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className='flex gap-3 px-6 pb-6'>
+              <button
+                onClick={() => setShowDebugModal(false)}
+                className='flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 text-[11px] font-bold uppercase tracking-widest hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDebugModal(false);
+                  handleDebugToggle(true);
+                }}
+                className='flex-1 py-2.5 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[11px] font-black uppercase tracking-widest hover:bg-amber-500/30 hover:border-amber-400 transition-colors shadow-[0_0_20px_rgba(245,158,11,0.1)]'
+              >
+                Activate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -310,6 +446,7 @@ const SystemStatusFooter = ({
   deviceList = [],
   dockSn,
   dockOnline = false,
+  dockModeCode = -1,
 }: SystemStatusFooterProps) => {
   const [expanded, setExpanded] = useState(false);
   const toggle = () => setExpanded((p) => !p);
@@ -371,7 +508,7 @@ const SystemStatusFooter = ({
           <div className='flex items-stretch justify-between px-6 py-4 gap-0 h-[360px]'>
             {/* Left: debug controls — scrollable */}
             <div className='flex-1 min-w-0 overflow-y-auto pr-4 custom-scrollbar'>
-              <DebugCommandsPanel dockSn={dockSn ?? ''} dockOnline={dockOnline} />
+              <DebugCommandsPanel dockSn={dockSn ?? ''} dockOnline={dockOnline} dockModeCode={dockModeCode} />
             </div>
 
             {/* Vertical divider */}

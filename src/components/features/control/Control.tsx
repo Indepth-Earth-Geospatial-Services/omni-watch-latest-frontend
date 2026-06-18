@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useLiveStreams';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { useDockMQTT } from '@/hooks/useDockMQTT';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJIApiError } from '@/lib/config/client';
 import { getToken } from '@/lib/config/token-store';
@@ -125,6 +126,9 @@ export default function ControlPage() {
     return videos.map((v) => v.type);
   }, [videos]);
 
+  // ─── Dock MQTT (mode_code for debug/operation state) ─────────────────────
+  const { getDockModeCode } = useDockMQTT();
+
   // ─── Dock & telemetry ─────────────────────────────────────────────────────
   const dockDevice = useMemo(
     () =>
@@ -139,6 +143,7 @@ export default function ControlPage() {
   const droneData = selectedSn ? getProcessedDroneData(selectedSn) : null;
   const dockData = dockDevice ? getProcessedDroneData(dockDevice.deviceSn) : null;
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
+  const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -467,6 +472,7 @@ export default function ControlPage() {
           deviceList={deviceList}
           dockSn={dockDevice?.deviceSn}
           dockOnline={dockOnline}
+          dockModeCode={dockModeCode}
         />
       </ControlErrorBoundary>
     </div>

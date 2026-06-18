@@ -125,12 +125,16 @@ export function StreamControlPanel({
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleStart = () => {
-    const payload = {
+    // Omit video_type when it is 'normal' — the DJI backend SDK enum
+    // (LensChangeVideoTypeEnum) does not include 'normal' even though the
+    // capacity endpoint reports it. Omitting lets the backend default to
+    // normal, which matches how drone_tracker.html starts streams.
+    const payload: Parameters<typeof startMutation.mutate>[0] = {
       url: '',
       video_id: liveVideoId,
       url_type: 4,
       video_quality: quality,
-      video_type: effectiveLens,
+      ...(effectiveLens !== 'normal' && { video_type: effectiveLens }),
     };
     console.log('[LiveFeed:Stream] ▶ start request', { deviceSn, ...payload, noCameraData, noCapacityEntry });
     startMutation.mutate(payload, {
@@ -160,7 +164,6 @@ export function StreamControlPanel({
         video_id: currentVideoId,
         url_type: 4,
         video_quality: quality,
-        video_type: effectiveLens,
       },
       {
         onSettled: () => {
@@ -183,7 +186,7 @@ export function StreamControlPanel({
         video_id: currentVideoId,
         url_type: 4,
         video_quality: newQuality,
-        video_type: effectiveLens,
+        ...(effectiveLens !== 'normal' && { video_type: effectiveLens }),
       });
     }
   };
