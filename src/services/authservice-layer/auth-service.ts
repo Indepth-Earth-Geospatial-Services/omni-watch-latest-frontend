@@ -106,9 +106,7 @@ async function request<T>(
     if (err instanceof AxiosError && err.response) {
       const envelope = err.response.data as OmniWatchEnvelope<unknown> | undefined;
       const detail = (envelope?.data as Record<string, unknown> | undefined)?.detail;
-      const msg = String(
-        detail ?? envelope?.message ?? `Request failed: ${err.response.status}`
-      );
+      const msg = String(detail ?? envelope?.message ?? `Request failed: ${err.response.status}`);
       throw new Error(msg);
     }
     throw err;

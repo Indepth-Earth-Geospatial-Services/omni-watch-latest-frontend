@@ -14,7 +14,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { authApi } from '@/services/authservice-layer/auth-api';
-import { clearToken, getToken, getTokenExpiresInSeconds, hasSession } from '@/lib/config/token-store';
+import {
+  clearToken,
+  getToken,
+  getTokenExpiresInSeconds,
+  hasSession,
+} from '@/lib/config/token-store';
 import type { CurrentUser } from '@/lib/types';
 
 // ─── Context shape ────────────────────────────────────────────────────────────

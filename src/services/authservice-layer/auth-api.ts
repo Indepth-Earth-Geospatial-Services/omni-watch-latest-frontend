@@ -58,11 +58,7 @@ const PROXY = '/api/auth';
  * @param path   - Auth API path (e.g. "/login", "/me", "/token/refresh")
  * @param data   - Request body (axios serialises to JSON automatically)
  */
-async function request<T>(
-  method: 'GET' | 'POST',
-  path: string,
-  data?: unknown,
-): Promise<T> {
+async function request<T>(method: 'GET' | 'POST', path: string, data?: unknown): Promise<T> {
   const token = getToken();
 
   try {
@@ -112,18 +108,15 @@ export const authApi = {
     console.log('[auth] login ✓ — access_token received, workspace_id:', data.workspace_id);
     const expiresIn = jwtExpiresIn(data.access_token);
     setToken(data.access_token, expiresIn);
-    console.log('[auth] access_token stored in localStorage (key: dji_auth_token)');
     return data;
   },
 
   // POST /api/v1/auth/logout
   logout: async (): Promise<void> => {
-    console.log('[auth] logout → POST /api/auth/logout');
     try {
       await request<void>('POST', '/logout');
     } finally {
       clearToken();
-      console.log('[auth] logout ✓ — token cleared');
     }
   },
 
@@ -141,7 +134,6 @@ export const authApi = {
     const data = await request<AuthTokenResponse>('POST', '/token/refresh');
     const expiresIn = jwtExpiresIn(data.access_token);
     setToken(data.access_token, expiresIn);
-    console.log('[auth] refreshToken ✓ — new access_token stored');
     return data;
   },
 };

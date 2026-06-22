@@ -352,8 +352,8 @@ export function cancelFlyToPoint(sn: string): Promise<void> {
 }
 
 /** Requests exclusive control of the drone's payload (camera/gimbal). */
-export function requestPayloadAuthority(sn: string, body: PayloadAuthorityRequest): Promise<void> {
-  return djiRequest.post<void>(DJI_URLS.dock.payloadAuthority(sn), body);
+export function requestPayloadAuthority(sn: string, body?: PayloadAuthorityRequest): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.dock.payloadAuthority(sn), body ?? {});
 }
 
 /** Requests exclusive flight control authority over the drone. */
