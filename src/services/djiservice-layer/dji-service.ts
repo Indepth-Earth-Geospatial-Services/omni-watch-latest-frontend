@@ -10,7 +10,7 @@
  *
  * All requests flow through `djiRequest` (client.ts) which:
  *   1. Attaches the `x-auth-token` header from the in-memory token store
- *   2. Routes every call through the `/api/dji/` Next.js proxy (never directly to the DJI server)
+ *   2. Calls the DJI server directly at NEXT_PUBLIC_DJI_API_URL (CORS is open on that server)
  *   3. Unwraps the DJI `{ code, message, data }` response envelope
  *   4. Auto-retries once on 401 after a silent OmniWatch token refresh
  */
@@ -50,7 +50,6 @@ import type {
 } from '@/lib/types';
 import type {
   PayloadCommandRequest,
-  JobActionRequest,
   TakeoffToPointRequest,
   DockFlyToPointRequest,
   PayloadAuthorityRequest,

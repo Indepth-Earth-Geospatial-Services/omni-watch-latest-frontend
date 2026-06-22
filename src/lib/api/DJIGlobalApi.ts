@@ -1,6 +1,7 @@
 // Central URL registry for all DJI Cloud API endpoints.
-// Paths here are passed to djiRequest (client.ts), which prepends /api/dji/
-// and attaches the auth token automatically.
+// Paths here are passed to djiRequest (client.ts), which prepends NEXT_PUBLIC_DJI_API_URL
+// and attaches the x-auth-token header automatically. Calls go directly to the DJI server
+// (CORS is open on that server — no Next.js proxy needed).
 //
 // Usage:
 //   import { DJI_URLS } from '@/lib/api';
