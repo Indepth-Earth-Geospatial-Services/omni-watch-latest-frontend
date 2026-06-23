@@ -51,7 +51,7 @@ export const DroneMarker = memo(
                   {drone.nickname}
                 </p>
                 <p className='text-[9px] text-gray-500 font-mono mt-0.5'>
-                  {drone.altitude.toFixed(0)} m · hdg {drone.heading.toFixed(0)}°
+                  {drone.altitude != null ? `${drone.altitude.toFixed(0)} m · ` : ''}hdg {drone.heading.toFixed(0)}°
                 </p>
                 <p className='text-[9px] text-gray-600 font-mono mt-0.5'>
                   {drone.latitude.toFixed(5)}, {drone.longitude.toFixed(5)}
@@ -62,7 +62,7 @@ export const DroneMarker = memo(
           )}
 
           {/* Altitude label above marker */}
-          {(showAltitude || isSelected) && (
+          {(showAltitude || isSelected) && drone.altitude != null && (
             <div
               className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow ${
                 isSelected ? 'bg-blue-900/90 text-blue-300' : 'bg-black/75 text-white'

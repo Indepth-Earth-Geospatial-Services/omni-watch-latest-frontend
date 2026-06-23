@@ -146,7 +146,7 @@ function GeoMap() {
               longitude: 0,
               latitude: 0,
               heading: 0,
-              altitude: 0,
+              altitude: null,
               hasGPS: false,
             };
             changed = true;
@@ -219,7 +219,7 @@ function GeoMap() {
       latitude: panelDrone.latitude.toFixed(6),
       longitude: panelDrone.longitude.toFixed(6),
       battery: t?.battery ?? 0,
-      altitude: t?.altitude ?? 0,
+      altitude: t?.altitude ?? null,
       direction: t?.direction ?? 'N',
       heading: t?.heading ?? 0,
       speed: t?.speed ?? 0,

@@ -37,9 +37,7 @@ const STYLE_OPTIONS: { key: MapStyleKey; icon: React.ElementType; label: string 
   { key: 'dark',      icon: Moon,  label: 'Dark'      },
 ];
 
-const DEFAULT_LNG = 3.3792;
-const DEFAULT_LAT = 6.5244;
-const ALT_MAX     = 400;
+const ALT_MAX = 400;
 
 const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProps) => {
   const mapRef = useRef<MapRef>(null);
@@ -47,22 +45,25 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
   const [pickerOpen, setPickerOpen]   = useState(false);
 
   // ─── Drone position ───────────────────────────────────────────────────────
-  const droneLat      = droneData?.latitude  ?? 0;
-  const droneLng      = droneData?.longitude ?? 0;
-  const heading       = droneData?.heading   ?? 0;
-  const altitude      = droneData?.altitude  ?? 0;
-  const hasPosition   = droneLat !== 0 || droneLng !== 0;
-  const altPct        = Math.min((altitude / ALT_MAX) * 100, 100);
+  const droneLat    = droneData?.latitude  ?? 0;
+  const droneLng    = droneData?.longitude ?? 0;
+  const heading     = droneData?.heading   ?? 0;
+  const altitude    = droneData?.altitude  ?? 0;
+  const hasPosition = droneLat !== 0 || droneLng !== 0;
+  const altPct      = Math.min((altitude / ALT_MAX) * 100, 100);
 
   // ─── Dock position ────────────────────────────────────────────────────────
-  const dockLat        = dockData?.latitude  ?? 0;
-  const dockLng        = dockData?.longitude ?? 0;
-  const hasDockPos     = dockLat !== 0 || dockLng !== 0;
-  const dockOnline     = dockData?.online ?? false;
+  const dockLat    = dockData?.latitude  ?? 0;
+  const dockLng    = dockData?.longitude ?? 0;
+  const hasDockPos = dockLat !== 0 || dockLng !== 0;
+  const dockOnline = dockData?.online ?? false;
 
-  // ─── Initial map center — prefer drone GPS, then dock, then default ───────
-  const initLat = hasPosition ? droneLat : hasDockPos ? dockLat : DEFAULT_LAT;
-  const initLng = hasPosition ? droneLng : hasDockPos ? dockLng : DEFAULT_LNG;
+  // ─── Initial view — real GPS if available, otherwise world overview ───────
+  const hasAnyPos = hasPosition || hasDockPos;
+  const initLat   = hasPosition ? droneLat : hasDockPos ? dockLat : 20;
+  const initLng   = hasPosition ? droneLng : hasDockPos ? dockLng : 0;
+  const initZoom  = hasAnyPos ? 15 : 2;
+  const initPitch = hasAnyPos ? 45 : 0;
 
   // ─── Follow drone when airborne; fall back to dock when grounded ──────────
   useEffect(() => {
@@ -84,8 +85,8 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
         initialViewState={{
           longitude: initLng,
           latitude:  initLat,
-          zoom: 15,
-          pitch: 45,
+          zoom:  initZoom,
+          pitch: initPitch,
         }}
         style={{ width: '100%', height: '100%' }}
         mapStyle={MAP_STYLES[activeStyle]}

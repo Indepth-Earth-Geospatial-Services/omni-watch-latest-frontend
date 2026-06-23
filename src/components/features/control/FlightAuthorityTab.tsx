@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useFlyToPoint, useTakeoffToPoint, useExecuteJob } from '@/hooks/useDockController';
+import { useExecuteJob } from '@/hooks/useDockController';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
-import { CmdButton, SectionHeader, FormInput, FormSelect, JOYSTICK_INVALID_REASONS } from './ControlShared';
+import { CmdButton, SectionHeader, JOYSTICK_INVALID_REASONS } from './ControlShared';
+import { TakeoffToPointModal } from './TakeoffToPointModal';
+import { FlyToPointModal } from './FlyToPointModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,90 +76,35 @@ export const FlightAuthorityTab = ({
   const toggle = (section: 'flyto' | 'takeoff' | 'stop') =>
     setExpanded((prev) => (prev === section ? null : section));
 
-  // Fly-to form state
-  const [flyToLat,    setFlyToLat]    = useState('');
-  const [flyToLng,    setFlyToLng]    = useState('');
-  const [flyToHeight, setFlyToHeight] = useState('50');
-  const [flyToSpeed,  setFlyToSpeed]  = useState('8');
+  const [showTakeoffModal, setShowTakeoffModal] = useState(false);
+  const [showFlyToModal,   setShowFlyToModal]   = useState(false);
 
-  // Takeoff form state
-  const [toLat,              setToLat]              = useState('');
-  const [toLng,              setToLng]              = useState('');
-  const [toHeight,           setToHeight]           = useState('100');
-  const [toSecurityHeight,   setToSecurityHeight]   = useState('50');
-  const [toCommanderHeight,  setToCommanderHeight]  = useState('100');
-  const [toCommanderMode,    setToCommanderMode]    = useState('1');
-  const [toRthAltitude,      setToRthAltitude]      = useState('100');
-  const [toRcLostAction,     setToRcLostAction]     = useState('2');
-  const [toLostAction,       setToLostAction]       = useState('1');
-  const [toMaxSpeed,         setToMaxSpeed]         = useState('8');
-
-  const { mutate: flyTo,   isPending: isFlyingTo }   = useFlyToPoint(dockSn);
-  const { mutate: takeoff, isPending: isTakingOff }  = useTakeoffToPoint(dockSn);
-  const { mutate: runJob,  isPending: isStoppingDrc } = useExecuteJob(dockSn);
+  const { mutate: runJob, isPending: isStoppingDrc } = useExecuteJob(dockSn);
 
   const noAuth = !flightAuth || !dockOnline;
-
-  const handleFlyTo = () => {
-    const lat = Number(flyToLat), lng = Number(flyToLng);
-    if (!flyToLat || !flyToLng || isNaN(lat) || isNaN(lng)) {
-      toast.error('Enter valid latitude and longitude');
-      return;
-    }
-    flyTo(
-      {
-        flyToId: crypto.randomUUID(),
-        maxSpeed: Number(flyToSpeed),
-        points: [{ latitude: lat, longitude: lng, height: Number(flyToHeight) }],
-      },
-      {
-        onSuccess: () => toast.success('Fly-to command sent'),
-        onError:   (err) => toast.error(`Fly-to failed: ${err.message}`),
-      },
-    );
-  };
-
-  const handleTakeoff = () => {
-    const lat = Number(toLat), lng = Number(toLng);
-    if (!toLat || !toLng || isNaN(lat) || isNaN(lng)) {
-      toast.error('Enter valid target latitude and longitude');
-      return;
-    }
-    takeoff(
-      {
-        flightId:              crypto.randomUUID(),
-        targetLatitude:        lat,
-        targetLongitude:       lng,
-        targetHeight:          Number(toHeight),
-        securityTakeoffHeight: Number(toSecurityHeight),
-        commanderFlightHeight: Number(toCommanderHeight),
-        commanderFlightMode:   toCommanderMode,
-        rthAltitude:           Number(toRthAltitude),
-        rthMode:               '1', // dock only supports preset altitude
-        rcLostAction:          toRcLostAction,
-        exitWaylineWhenRcLost: toLostAction,
-        commanderModeLostAction: toLostAction,
-        maxSpeed:              Number(toMaxSpeed),
-      },
-      {
-        onSuccess: () => toast.success('Takeoff command sent'),
-        onError:   (err) => toast.error(`Takeoff failed: ${err.message}`),
-      },
-    );
-  };
 
   const handleEmergencyStop = () => {
     runJob(
       { serviceIdentifier: 'drone_emergency_stop', body: { action: 0 } },
       {
         onSuccess: () => toast.success('Emergency stop sent'),
-        onError:   (err) => toast.error(`Emergency stop failed: ${err.message}`),
+        onError:   (err) => {
+          console.error('[EmergencyStop] ❌', err);
+          toast.error(`Emergency stop failed: ${err.message}`);
+        },
       },
     );
   };
 
   return (
-    <div className='flex flex-col gap-3'>
+    <>
+      {showFlyToModal && (
+        <FlyToPointModal dockSn={dockSn} onClose={() => setShowFlyToModal(false)} />
+      )}
+      {showTakeoffModal && (
+        <TakeoffToPointModal dockSn={dockSn} onClose={() => setShowTakeoffModal(false)} />
+      )}
+      <div className='flex flex-col gap-3'>
 
       {/* ── Authority toggle card ── */}
       <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
@@ -211,24 +158,19 @@ export const FlightAuthorityTab = ({
         />
         {expanded === 'flyto' && (
           <div className='mt-1.5 bg-[#0A0C10] rounded-lg border border-zinc-800/40 p-3 flex flex-col gap-2.5'>
-            <p className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>Target GPS Point</p>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormInput label='Latitude'  value={flyToLat} onChange={setFlyToLat} type='number' min={-90}  max={90}  step={0.000001} placeholder='e.g. 1.3521' />
-              <FormInput label='Longitude' value={flyToLng} onChange={setFlyToLng} type='number' min={-180} max={180} step={0.000001} placeholder='e.g. 103.8198' />
-            </div>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormInput label='Height'    value={flyToHeight} onChange={setFlyToHeight} min={20}  max={10000} step={1} unit='m'   />
-              <FormInput label='Max Speed' value={flyToSpeed}  onChange={setFlyToSpeed}  min={1}   max={15}    step={1} unit='m/s' />
-            </div>
-            <p className='text-[8px] text-zinc-700'>Min height 20 m — DJI safety floor</p>
+            <p className='text-[9px] text-zinc-500 leading-relaxed'>
+              Redirect an airborne drone to one or more GPS waypoints. Supports multi-point routes — the drone visits each point in order.
+            </p>
+            <ul className='text-[8px] text-zinc-600 list-disc list-inside space-y-0.5'>
+              <li>One or more target waypoints (lat, lng, height)</li>
+              <li>Max flight speed</li>
+              <li>Full error details shown on failure</li>
+            </ul>
             <button
-              onClick={handleFlyTo}
-              disabled={isFlyingTo}
-              className='w-full py-2 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/30 transition-colors disabled:opacity-40'
+              onClick={() => setShowFlyToModal(true)}
+              className='w-full py-2 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/30 hover:border-blue-400 transition-colors'
             >
-              {isFlyingTo
-                ? <span className='flex items-center justify-center gap-1.5'><Loader2 size={11} className='animate-spin' /> Sending…</span>
-                : 'Send Fly-To'}
+              Open Fly-To Form
             </button>
           </div>
         )}
@@ -248,74 +190,19 @@ export const FlightAuthorityTab = ({
         />
         {expanded === 'takeoff' && (
           <div className='mt-1.5 bg-[#0A0C10] rounded-lg border border-zinc-800/40 p-3 flex flex-col gap-2.5'>
-
-            {/* Target point */}
-            <p className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>Target Point</p>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormInput label='Latitude'  value={toLat} onChange={setToLat} type='number' min={-90}  max={90}  step={0.000001} placeholder='e.g. 1.3521' />
-              <FormInput label='Longitude' value={toLng} onChange={setToLng} type='number' min={-180} max={180} step={0.000001} placeholder='e.g. 103.8198' />
-            </div>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormInput label='Target Height' value={toHeight} onChange={setToHeight} min={2} max={1500} step={1} unit='m' />
-              <FormInput label='Max Speed'     value={toMaxSpeed} onChange={setToMaxSpeed} min={1} max={15} step={1} unit='m/s' />
-            </div>
-
-            <div className='h-px bg-zinc-800/60' />
-
-            {/* Flight params */}
-            <p className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>Flight Params</p>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormInput label='Commander Height' value={toCommanderHeight} onChange={setToCommanderHeight} min={2} max={3000} step={1} unit='m' />
-              <FormInput label='Safe Takeoff Ht'  value={toSecurityHeight}  onChange={setToSecurityHeight}  min={20} max={1500} step={1} unit='m' />
-            </div>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormSelect
-                label='Commander Mode'
-                value={toCommanderMode}
-                onChange={setToCommanderMode}
-                options={[
-                  { value: '0', label: 'Optimal Height' },
-                  { value: '1', label: 'Preset Height'  },
-                ]}
-              />
-              <FormInput label='RTH Altitude' value={toRthAltitude} onChange={setToRthAltitude} min={2} max={1500} step={1} unit='m' />
-            </div>
-            <p className='text-[8px] text-zinc-700'>RTH mode locked to Preset Altitude (dock requirement)</p>
-
-            <div className='h-px bg-zinc-800/60' />
-
-            {/* Loss of control */}
-            <p className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>Loss of Control</p>
-            <div className='grid grid-cols-2 gap-2'>
-              <FormSelect
-                label='RC Lost Action'
-                value={toRcLostAction}
-                onChange={setToRcLostAction}
-                options={[
-                  { value: '0', label: 'Hover'          },
-                  { value: '1', label: 'Land'           },
-                  { value: '2', label: 'Return Home'    },
-                ]}
-              />
-              <FormSelect
-                label='Mission Loss'
-                value={toLostAction}
-                onChange={setToLostAction}
-                options={[
-                  { value: '0', label: 'Continue Mission' },
-                  { value: '1', label: 'Normal Behavior'  },
-                ]}
-              />
-            </div>
-
+            <p className='text-[9px] text-zinc-500 leading-relaxed'>
+              Configure target GPS, flight parameters, and fail-safe actions. The full form opens in a modal so all settings are visible before launch.
+            </p>
+            <ul className='text-[8px] text-zinc-600 list-disc list-inside space-y-0.5'>
+              <li>Target GPS point + height</li>
+              <li>Commander flight mode &amp; RTH altitude</li>
+              <li>RC-lost and mission-loss fail-safe actions</li>
+            </ul>
             <button
-              onClick={handleTakeoff}
-              disabled={isTakingOff}
-              className='w-full py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/30 transition-colors disabled:opacity-40'
+              onClick={() => setShowTakeoffModal(true)}
+              className='w-full py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/30 hover:border-emerald-400 transition-colors'
             >
-              {isTakingOff
-                ? <span className='flex items-center justify-center gap-1.5'><Loader2 size={11} className='animate-spin' /> Launching…</span>
-                : 'Launch Takeoff'}
+              Open Launch Form
             </button>
           </div>
         )}
@@ -373,6 +260,7 @@ export const FlightAuthorityTab = ({
         </div>
       </div>
 
-    </div>
+      </div>
+    </>
   );
 };

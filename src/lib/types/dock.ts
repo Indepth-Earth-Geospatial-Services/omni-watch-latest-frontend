@@ -44,7 +44,7 @@ export interface JobActionRequest {
 // ─── Takeoff-to-point ─────────────────────────────────────────────────────────
 
 export interface TakeoffToPointRequest {
-  flightId: string;
+  flightId?: string; // stripped by service layer before sending to DJI
   targetLongitude: number;
   targetLatitude: number;
   targetHeight: number;
@@ -68,7 +68,7 @@ export interface DockFlyToPoint {
 }
 
 export interface DockFlyToPointRequest {
-  flyToId: string;
+  flyToId?: string; // stripped by service layer before sending to DJI
   maxSpeed: number;
   points: DockFlyToPoint[];
 }

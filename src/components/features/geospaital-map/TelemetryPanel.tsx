@@ -233,7 +233,7 @@ export const TelemetryPanel = memo(
               <TelemetryItem
                 icon={<Gauge className='w-2.5 h-2.5 sm:w-3 h-3' />}
                 label='Alt'
-                value={`${selectedDroneInfo.altitude.toFixed(1)} m`}
+                value={selectedDroneInfo.altitude != null ? `${selectedDroneInfo.altitude.toFixed(1)} m` : '—'}
               />
               <TelemetryItem
                 icon={<Wind className='w-2.5 h-2.5 sm:w-3 h-3' />}

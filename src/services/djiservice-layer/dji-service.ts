@@ -335,14 +335,39 @@ export function executeJob(sn: string, serviceIdentifier: string, body?: object)
   return djiRequest.post<void>(DJI_URLS.dock.job(sn, serviceIdentifier), body);
 }
 
-/** Commands the drone to take off and fly to an absolute GPS point. */
+/** Commands the drone to take off and fly to an absolute GPS point.
+ *  Transforms camelCase TypeScript types → snake_case wire format the DJI server expects.
+ *  Matches the field names and integer value types confirmed working in drone_tracker.html.
+ */
 export function takeoffToPoint(sn: string, body: TakeoffToPointRequest): Promise<void> {
-  return djiRequest.post<void>(DJI_URLS.dock.takeoffToPoint(sn), body);
+  const wire = {
+    target_latitude:            body.targetLatitude,
+    target_longitude:           body.targetLongitude,
+    target_height:              body.targetHeight,
+    security_takeoff_height:    body.securityTakeoffHeight,
+    rth_altitude:               body.rthAltitude,
+    rc_lost_action:             Number(body.rcLostAction),
+    exit_wayline_when_rc_lost:  Number(body.exitWaylineWhenRcLost),
+    max_speed:                  body.maxSpeed,
+    rth_mode:                   Number(body.rthMode),
+    commander_mode_lost_action: Number(body.commanderModeLostAction),
+    commander_flight_mode:      Number(body.commanderFlightMode),
+    commander_flight_height:    body.commanderFlightHeight,
+  };
+  console.log('[takeoffToPoint] wire payload →', wire);
+  return djiRequest.post<void>(DJI_URLS.dock.takeoffToPoint(sn), wire);
 }
 
-/** Commands a drone already in flight to fly to one or more GPS waypoints. */
+/** Commands a drone already in flight to fly to one or more GPS waypoints.
+ *  Transforms camelCase TypeScript types → snake_case wire format the DJI server expects.
+ */
 export function flyToPoint(sn: string, body: DockFlyToPointRequest): Promise<void> {
-  return djiRequest.post<void>(DJI_URLS.dock.flyToPoint(sn), body);
+  const wire = {
+    max_speed: body.maxSpeed,
+    points:    body.points,
+  };
+  console.log('[flyToPoint] wire payload →', wire);
+  return djiRequest.post<void>(DJI_URLS.dock.flyToPoint(sn), wire);
 }
 
 /** Cancels an active fly-to-point command; drone will hover in place. */
