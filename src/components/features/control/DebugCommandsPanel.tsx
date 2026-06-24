@@ -14,10 +14,12 @@ export interface DebugCommandsPanelProps {
   dockOnline: boolean;
   dockModeCode?: number;
   joystickInvalidState?: JoystickInvalidState | null;
+  droneAltitude?: number;
+  onTakeoffSucceeded?: (lat: number, lng: number) => void;
 }
 
 export const DebugCommandsPanel = ({
-  dockSn, dockOnline, dockModeCode = -1, joystickInvalidState,
+  dockSn, dockOnline, dockModeCode = -1, joystickInvalidState, droneAltitude = 0, onTakeoffSucceeded,
 }: DebugCommandsPanelProps) => {
   const [activeTab,       setActiveTab]       = useState<'debug' | 'flight'>('debug');
   const [debugActive,     setDebugActive]     = useState(false);
@@ -211,6 +213,8 @@ export const DebugCommandsPanel = ({
           isPending={isPending}
           onToggle={handleFlightAuthToggle}
           exec={exec}
+          droneAltitude={droneAltitude}
+          onTakeoffSucceeded={onTakeoffSucceeded}
         />
       )}
 

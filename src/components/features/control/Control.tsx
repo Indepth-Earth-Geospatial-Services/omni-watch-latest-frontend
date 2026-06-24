@@ -73,6 +73,9 @@ export default function ControlPage() {
   const [mainPanel, setMainPanel] = useState<PanelId>('viewport');
   const [coverOpen, setCoverOpen] = useState(false);
 
+  // ─── Active takeoff target ────────────────────────────────────────────────
+  const [takeoffTarget, setTakeoffTarget] = useState<{ lat: number; lng: number } | null>(null);
+
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
   const [selectedCameraId, setSelectedCameraId] = useState('');
@@ -145,6 +148,11 @@ export default function ControlPage() {
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
   const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
   const joystickInvalidState = dockDevice ? getJoystickInvalidState(dockDevice.deviceSn) : null;
+
+  // Clear takeoff target when drone returns to dock (modeCode=0 = IDLE/in dock)
+  useEffect(() => {
+    if (droneData?.modeCode === 0) setTakeoffTarget(null);
+  }, [droneData?.modeCode]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -421,6 +429,8 @@ export default function ControlPage() {
                       <TacticalMiniMap
                         droneData={droneData}
                         dockData={dockData}
+                        targetLat={takeoffTarget?.lat}
+                        targetLng={takeoffTarget?.lng}
                         className='w-full h-[700px]'
                       />
                     </ControlErrorBoundary>
@@ -446,7 +456,12 @@ export default function ControlPage() {
                       {id === 'viewport' && viewportPanel(false)}
                       {id === 'map' && (
                         <ControlErrorBoundary section='TacticalMiniMap'>
-                          <TacticalMiniMap droneData={droneData} />
+                          <TacticalMiniMap
+                            droneData={droneData}
+                            dockData={dockData}
+                            targetLat={takeoffTarget?.lat}
+                            targetLng={takeoffTarget?.lng}
+                          />
                         </ControlErrorBoundary>
                       )}
                       {id === 'dock' && (
@@ -475,6 +490,8 @@ export default function ControlPage() {
           dockOnline={dockOnline}
           dockModeCode={dockModeCode}
           joystickInvalidState={joystickInvalidState}
+          droneAltitude={droneData?.altitude ?? 0}
+          onTakeoffSucceeded={(lat, lng) => setTakeoffTarget({ lat, lng })}
         />
       </ControlErrorBoundary>
     </div>

@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Map, { Marker, type MapRef } from 'react-map-gl/maplibre';
+import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Globe, HardDrive, Layers, Moon, Plane } from 'lucide-react';
+import { Globe, HardDrive, Layers, Moon, Plane, Target } from 'lucide-react';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
 
 export interface TacticalMiniMapProps {
   droneData?: ProcessedDroneData | null;
   dockData?: ProcessedDroneData | null;
+  /** Target GPS during takeoff-to-point — shows destination marker + route line */
+  targetLat?: number;
+  targetLng?: number;
   className?: string;
 }
 
@@ -38,9 +41,12 @@ const STYLE_OPTIONS: { key: MapStyleKey; icon: React.ElementType; label: string 
 ];
 
 const ALT_MAX = 400;
+// Mirror the HTML reference: altitude threshold for "airborne" state
+const AIRBORNE_ALT_M = 60;
 
-const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProps) => {
-  const mapRef = useRef<MapRef>(null);
+const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className }: TacticalMiniMapProps) => {
+  const mapRef        = useRef<MapRef>(null);
+  const hasAutoZoomed = useRef(false); // fire flyTo only once per mount
   const [activeStyle, setActiveStyle] = useState<MapStyleKey>('dark');
   const [pickerOpen, setPickerOpen]   = useState(false);
 
@@ -50,6 +56,7 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
   const heading     = droneData?.heading   ?? 0;
   const altitude    = droneData?.altitude  ?? 0;
   const hasPosition = droneLat !== 0 || droneLng !== 0;
+  const isAirborne  = altitude > AIRBORNE_ALT_M;
   const altPct      = Math.min((altitude / ALT_MAX) * 100, 100);
 
   // ─── Dock position ────────────────────────────────────────────────────────
@@ -58,19 +65,52 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
   const hasDockPos = dockLat !== 0 || dockLng !== 0;
   const dockOnline = dockData?.online ?? false;
 
+  // ─── Destination target ───────────────────────────────────────────────────
+  const hasTarget = targetLat != null && targetLng != null && targetLat !== 0 && targetLng !== 0;
+
+  // ─── Route line: drone → target (GeoJSON) ─────────────────────────────────
+  const routeGeoJson = hasTarget && hasPosition ? {
+    type: 'FeatureCollection' as const,
+    features: [{
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: [
+          [droneLng, droneLat],
+          [targetLng!, targetLat!],
+        ],
+      },
+      properties: {},
+    }],
+  } : null;
+
   // ─── Initial view — real GPS if available, otherwise world overview ───────
   const hasAnyPos = hasPosition || hasDockPos;
   const initLat   = hasPosition ? droneLat : hasDockPos ? dockLat : 20;
   const initLng   = hasPosition ? droneLng : hasDockPos ? dockLng : 0;
-  const initZoom  = hasAnyPos ? 15 : 2;
+  const initZoom  = hasAnyPos ? 16 : 2;
   const initPitch = hasAnyPos ? 45 : 0;
 
-  // ─── Follow drone when airborne; fall back to dock when grounded ──────────
+  // ─── Auto-zoom: fly to drone/dock position on first GPS arrival ───────────
+  // The component often mounts before telemetry arrives (initZoom=2 world view).
+  // When position first appears we do a one-time flyTo with a tight zoom so
+  // the drone is actually visible. Subsequent moves use easeTo (no zoom change).
   useEffect(() => {
+    if (!mapRef.current) return;
+
     if (hasPosition) {
-      mapRef.current?.easeTo({ center: [droneLng, droneLat], duration: 1000 });
-    } else if (hasDockPos) {
-      mapRef.current?.easeTo({ center: [dockLng, dockLat], duration: 1000 });
+      if (!hasAutoZoomed.current) {
+        // First GPS fix — zoom straight to drone
+        hasAutoZoomed.current = true;
+        mapRef.current.flyTo({ center: [droneLng, droneLat], zoom: 16, pitch: 45, duration: 1500 });
+      } else {
+        // Already zoomed — just track drone position
+        mapRef.current.easeTo({ center: [droneLng, droneLat], duration: 800 });
+      }
+    } else if (hasDockPos && !hasAutoZoomed.current) {
+      // No drone yet — zoom to dock so the user can see the dock marker
+      hasAutoZoomed.current = true;
+      mapRef.current.flyTo({ center: [dockLng, dockLat], zoom: 16, pitch: 45, duration: 1500 });
     }
   }, [droneLat, droneLng, hasPosition, dockLat, dockLng, hasDockPos]);
 
@@ -92,6 +132,22 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
         mapStyle={MAP_STYLES[activeStyle]}
         attributionControl={false}
       >
+        {/* Route line — drone to target during active mission */}
+        {routeGeoJson && (
+          <Source id='route' type='geojson' data={routeGeoJson}>
+            <Layer
+              id='route-line'
+              type='line'
+              paint={{
+                'line-color': '#f59e0b',
+                'line-width': 1.5,
+                'line-dasharray': [4, 3],
+                'line-opacity': 0.7,
+              }}
+            />
+          </Source>
+        )}
+
         {/* Dock marker — fixed ground station with pulsing ring when online */}
         {hasDockPos && (
           <Marker longitude={dockLng} latitude={dockLat} anchor='center'>
@@ -101,6 +157,18 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
               )}
               <div className='w-7 h-7 rounded-full border border-emerald-500/60 bg-emerald-950/90 flex items-center justify-center drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]'>
                 <HardDrive size={14} className='text-emerald-400' />
+              </div>
+            </div>
+          </Marker>
+        )}
+
+        {/* Destination marker — shown during takeoff-to-point */}
+        {hasTarget && (
+          <Marker longitude={targetLng!} latitude={targetLat!} anchor='center'>
+            <div className='relative flex items-center justify-center'>
+              <div className='absolute w-8 h-8 rounded-full border border-amber-400/40 animate-ping' />
+              <div className='w-6 h-6 rounded-full border border-amber-400/80 bg-amber-950/90 flex items-center justify-center drop-shadow-[0_0_10px_rgba(251,191,36,0.7)]'>
+                <Target size={12} className='text-amber-400' />
               </div>
             </div>
           </Marker>
@@ -127,7 +195,7 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
         {/* Altitude bar — right (drone altitude only) */}
         <div className='absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2'>
           <span className='text-[8px] font-black text-white/30 uppercase tracking-[0.2em]'>Alt</span>
-          <span className={`text-[10px] font-mono font-bold ${hasPosition ? 'text-blue-400' : 'text-zinc-600'}`}>
+          <span className={`text-[10px] font-mono font-bold ${isAirborne ? 'text-blue-400' : hasPosition ? 'text-zinc-400' : 'text-zinc-600'}`}>
             {hasPosition ? `${altitude.toFixed(0)}m` : '—'}
           </span>
           <div className='relative h-36 w-[3px] bg-white/5 rounded-full overflow-hidden'>
@@ -143,8 +211,8 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
           </div>
         </div>
 
-        {/* Legend — shown when both markers are active */}
-        {(hasPosition || hasDockPos) && (
+        {/* Legend */}
+        {(hasPosition || hasDockPos || hasTarget) && (
           <div className='absolute bottom-10 right-4 flex flex-col gap-1.5'>
             {hasPosition && (
               <div className='flex items-center gap-1.5'>
@@ -158,6 +226,12 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
                 <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Dock</span>
               </div>
             )}
+            {hasTarget && (
+              <div className='flex items-center gap-1.5'>
+                <Target size={10} className='text-amber-400' />
+                <span className='text-[8px] font-mono text-amber-400/70 uppercase tracking-wide'>Target</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -165,7 +239,7 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
         <div className='absolute top-3 left-3 flex flex-col gap-1'>
           <div className='w-2.5 h-2.5 border-t-2 border-l-2 border-white/30 rounded-tl' />
           <span className='text-[8px] font-mono text-white/25 uppercase tracking-wider'>
-            {hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
+            {isAirborne ? 'Airborne' : hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
           </span>
         </div>
 
@@ -173,7 +247,7 @@ const TacticalMiniMap = ({ droneData, dockData, className }: TacticalMiniMapProp
         <div className='absolute bottom-3 right-3 w-2.5 h-2.5 border-b-2 border-r-2 border-white/30 rounded-br' />
       </div>
 
-      {/* ── Style switcher — pointer-events-auto, sits above HUD ──────── */}
+      {/* ── Style switcher ─────────────────────────────────────────────── */}
       <div className='absolute bottom-3 left-3 z-20 flex flex-col items-start gap-1.5'>
         {pickerOpen && (
           <div className='flex flex-col gap-1.5 mb-0.5'>

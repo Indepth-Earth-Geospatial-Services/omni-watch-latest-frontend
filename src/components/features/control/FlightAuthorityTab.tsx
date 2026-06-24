@@ -30,6 +30,8 @@ export interface FlightAuthorityTabProps {
   isPending: boolean;
   onToggle: (on: boolean) => void;
   exec: (serviceIdentifier: string, body?: object) => void;
+  droneAltitude?: number;
+  onTakeoffSucceeded?: (lat: number, lng: number) => void;
 }
 
 // ─── Accordion header ─────────────────────────────────────────────────────────
@@ -70,7 +72,7 @@ const AccordionHeader = ({
 
 export const FlightAuthorityTab = ({
   dockSn, flightAuth, isGrabbingAuth, dockOnline, joystickInvalidState,
-  isPending, onToggle, exec,
+  isPending, onToggle, exec, droneAltitude = 0, onTakeoffSucceeded,
 }: FlightAuthorityTabProps) => {
   const [expanded, setExpanded] = useState<'flyto' | 'takeoff' | 'stop' | null>(null);
   const toggle = (section: 'flyto' | 'takeoff' | 'stop') =>
@@ -82,6 +84,10 @@ export const FlightAuthorityTab = ({
   const { mutate: runJob, isPending: isStoppingDrc } = useExecuteJob(dockSn);
 
   const noAuth = !flightAuth || !dockOnline;
+  // Mirror the HTML reference: drone is "airborne" when altitude > 60m.
+  // takeoff_to_point requires the drone to be in the dock (not airborne).
+  // fly_to_point requires the drone to already be flying (airborne).
+  const isAirborne = droneAltitude > 60;
 
   const handleEmergencyStop = () => {
     runJob(
@@ -102,7 +108,11 @@ export const FlightAuthorityTab = ({
         <FlyToPointModal dockSn={dockSn} onClose={() => setShowFlyToModal(false)} />
       )}
       {showTakeoffModal && (
-        <TakeoffToPointModal dockSn={dockSn} onClose={() => setShowTakeoffModal(false)} />
+        <TakeoffToPointModal
+          dockSn={dockSn}
+          onClose={() => setShowTakeoffModal(false)}
+          onTakeoffSucceeded={onTakeoffSucceeded}
+        />
       )}
       <div className='flex flex-col gap-3'>
 
@@ -149,10 +159,10 @@ export const FlightAuthorityTab = ({
         <AccordionHeader
           id='flyto'
           title='Fly-To Point'
-          subtitle='Redirect airborne drone to GPS coords'
+          subtitle={isAirborne ? 'Redirect airborne drone to GPS coords' : 'Drone must be airborne (alt > 60 m)'}
           icon={Send}
           expanded={expanded === 'flyto'}
-          disabled={noAuth}
+          disabled={noAuth || !isAirborne}
           colorClass='bg-blue-500/10 border-blue-500/40 text-blue-300'
           onToggle={() => toggle('flyto')}
         />
@@ -181,10 +191,10 @@ export const FlightAuthorityTab = ({
         <AccordionHeader
           id='takeoff'
           title='One-Key Takeoff'
-          subtitle='Autonomous launch from dock to waypoint'
+          subtitle={isAirborne ? 'Drone is airborne — use Fly-To instead' : 'Autonomous launch from dock to waypoint'}
           icon={ArrowUp}
           expanded={expanded === 'takeoff'}
-          disabled={noAuth}
+          disabled={noAuth || isAirborne}
           colorClass='bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
           onToggle={() => toggle('takeoff')}
         />
