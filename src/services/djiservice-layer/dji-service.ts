@@ -53,6 +53,8 @@ import type {
   TakeoffToPointRequest,
   DockFlyToPointRequest,
   PayloadAuthorityRequest,
+  DRCConnectResponse,
+  DRCEnterResponse,
 } from '@/lib/types/dock';
 
 // ─── Devices ──────────────────────────────────────────────────────────────────
@@ -383,4 +385,31 @@ export function requestPayloadAuthority(sn: string, body?: PayloadAuthorityReque
 /** Requests exclusive flight control authority over the drone. */
 export function requestFlightAuthority(sn: string): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.flightAuthority(sn));
+}
+
+// ─── DRC (Drone Real-time Control) ───────────────────────────────────────────
+
+/** Step 1 — obtain MQTT broker credentials for a DRC session. */
+export function drcConnect(workspaceId: string): Promise<DRCConnectResponse> {
+  const clientId = 'omniwatch_drc_' + Math.random().toString(16).substring(2, 10);
+  return djiRequest.post<DRCConnectResponse>(DJI_URLS.drc.connect(workspaceId), {
+    client_id: clientId,
+    expire_sec: 3600,
+  });
+}
+
+/** Step 2 — open a DRC channel for the dock; returns MQTT pub/sub topics. */
+export function drcEnter(workspaceId: string, clientId: string, dockSn: string): Promise<DRCEnterResponse> {
+  return djiRequest.post<DRCEnterResponse>(DJI_URLS.drc.enter(workspaceId), {
+    client_id: clientId,
+    dock_sn: dockSn,
+  });
+}
+
+/** Close the DRC channel when done (fire-and-forget is acceptable on unmount). */
+export function drcExit(workspaceId: string, clientId: string, dockSn: string): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.drc.exit(workspaceId), {
+    client_id: clientId,
+    dock_sn: dockSn,
+  });
 }

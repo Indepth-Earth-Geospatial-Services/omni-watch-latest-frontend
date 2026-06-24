@@ -92,7 +92,7 @@ export interface PayloadAuthorityRequest {
 
 // ─── DRC (Drone Remote Control) ───────────────────────────────────────────────
 
-/** POST /control/api/v1/workspaces/{wid}/drc/connect */
+/** POST /control/api/v1/workspaces/{wid}/drc/connect — request body */
 export interface DRCConnectRequest {
   client_id: string;
   expire_sec: number;
@@ -107,7 +107,7 @@ export interface DRCConnectResponse {
   expire_sec: number;
 }
 
-/** POST /control/api/v1/workspaces/{wid}/drc/enter */
+/** POST /control/api/v1/workspaces/{wid}/drc/enter — request body */
 export interface DRCEnterRequest {
   client_id: string;
   dock_sn: string;
@@ -119,7 +119,7 @@ export interface DRCEnterResponse {
   sub: string[];   // topics to subscribe for DRC responses
 }
 
-/** POST /control/api/v1/workspaces/{wid}/drc/exit */
+/** POST /control/api/v1/workspaces/{wid}/drc/exit — request body */
 export interface DRCExitRequest {
   client_id: string;
   dock_sn: string;

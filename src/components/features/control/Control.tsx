@@ -130,7 +130,7 @@ export default function ControlPage() {
   }, [videos]);
 
   // ─── Dock MQTT (mode_code for debug/operation state) ─────────────────────
-  const { getDockModeCode, getJoystickInvalidState } = useDockMQTT();
+  const { getDockModeCode, getJoystickInvalidState, getDockCoverState } = useDockMQTT();
 
   // ─── Dock & telemetry ─────────────────────────────────────────────────────
   const dockDevice = useMemo(
@@ -148,6 +148,7 @@ export default function ControlPage() {
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
   const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
   const joystickInvalidState = dockDevice ? getJoystickInvalidState(dockDevice.deviceSn) : null;
+  const dockCoverState = dockDevice ? getDockCoverState(dockDevice.deviceSn) : null;
 
   // Clear takeoff target when drone returns to dock (modeCode=0 = IDLE/in dock)
   useEffect(() => {
@@ -441,6 +442,8 @@ export default function ControlPage() {
                         dockDevice={dockDevice}
                         droneData={droneData}
                         dockCapacity={dockCapacity}
+                        coverState={dockCoverState}
+                        dockModeCode={dockModeCode}
                         onCoverChange={setCoverOpen}
                         className='w-full h-[700px]'
                       />
@@ -470,6 +473,8 @@ export default function ControlPage() {
                             dockDevice={dockDevice}
                             droneData={droneData}
                             dockCapacity={dockCapacity}
+                            coverState={dockCoverState}
+                            dockModeCode={dockModeCode}
                             onCoverChange={setCoverOpen}
                           />
                         </ControlErrorBoundary>

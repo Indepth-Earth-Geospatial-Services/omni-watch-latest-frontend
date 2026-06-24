@@ -26,11 +26,23 @@ export interface DockMonitorProps {
   droneData?: ProcessedDroneData | null;
   dockCapacity?: LiveCapacity;
   className?: string;
+  /** MQTT cover_state: 0 = closed, 1 = open, null = no data yet */
+  coverState?: number | null;
+  /** MQTT dock mode_code — cover control requires Debug Mode (mode_code=2) */
+  dockModeCode?: number;
   /** Called whenever the physical cover is opened or closed */
   onCoverChange?: (open: boolean) => void;
 }
 
-const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverChange }: DockMonitorProps) => {
+const DockMonitor = ({
+  dockDevice,
+  droneData,
+  dockCapacity,
+  className,
+  coverState,
+  dockModeCode = -1,
+  onCoverChange,
+}: DockMonitorProps) => {
   const [isDoorOpen, setIsDoorOpen] = useState(false);
   const [streamUrl, setStreamUrl] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -39,11 +51,19 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
   const activeIdRef = useRef('');
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Sync cover state from MQTT whenever it changes (authoritative source of truth)
+  useEffect(() => {
+    if (coverState !== null && coverState !== undefined) {
+      setIsDoorOpen(coverState === 1);
+    }
+  }, [coverState]);
+
+  // DJI backend requires `action` on every /jobs/* endpoint, even for null-data services.
   const { mutate: openCover, isPending: isOpening } = useMutation<void, Error, string>({
-    mutationFn: (sn) => executeJob(sn, 'cover_open'),
+    mutationFn: (sn) => executeJob(sn, 'cover_open', { action: 0 }),
   });
   const { mutate: closeCover, isPending: isClosing } = useMutation<void, Error, string>({
-    mutationFn: (sn) => executeJob(sn, 'cover_close'),
+    mutationFn: (sn) => executeJob(sn, 'cover_close', { action: 0 }),
   });
   const { mutate: startDockStream, isPending: isStarting } = useStartStream();
   const { mutate: stopDockStream } = useStopStream();
@@ -93,7 +113,13 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
   // Stop stream when dock goes offline
   useEffect(() => {
     if (dockOnline || !activeIdRef.current) return;
-    stopDockStream({ url: '', video_id: activeIdRef.current, url_type: 4, video_quality: 0, video_type: 'wide' });
+    stopDockStream({
+      url: '',
+      video_id: activeIdRef.current,
+      url_type: 4,
+      video_quality: 0,
+      video_type: 'wide',
+    });
     activeIdRef.current = '';
     setStreamUrl('');
     setIsStreaming(false);
@@ -118,18 +144,40 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
     setStreamState(null);
   }, [stopDockStream]);
 
+  const isDebugMode = dockModeCode === 2;
+
   const handleOpen = () => {
     if (!dockDevice || isPending) return;
+    if (!isDebugMode) {
+      toast.warning(
+        'Debug Mode required — go to Command & Control → Debug Mode tab and enable it first.',
+        { duration: 5000 }
+      );
+      return;
+    }
     openCover(dockDevice.deviceSn, {
-      onSuccess: () => { setIsDoorOpen(true); onCoverChange?.(true); },
+      onSuccess: () => {
+        setIsDoorOpen(true);
+        onCoverChange?.(true);
+      },
       onError: (err) => toast.error(`Cover open failed: ${err.message}`),
     });
   };
 
   const handleClose = () => {
     if (!dockDevice || isPending) return;
+    if (!isDebugMode) {
+      toast.warning(
+        'Debug Mode required — go to Command & Control → Debug Mode tab and enable it first.',
+        { duration: 5000 }
+      );
+      return;
+    }
     closeCover(dockDevice.deviceSn, {
-      onSuccess: () => { setIsDoorOpen(false); onCoverChange?.(false); },
+      onSuccess: () => {
+        setIsDoorOpen(false);
+        onCoverChange?.(false);
+      },
       onError: (err) => toast.error(`Cover close failed: ${err.message}`),
     });
   };
@@ -271,29 +319,36 @@ const DockMonitor = ({ dockDevice, droneData, dockCapacity, className, onCoverCh
       </div>
 
       {/* ── Hardware controls ─────────────────────────────────────────── */}
-      <div className='flex gap-2 p-4 bg-[#333539E5] border-t border-zinc-800/50'>
-        <button
-          onClick={handleOpen}
-          disabled={!dockOnline || isPending || isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-          }`}
-        >
-          {isPending && isDoorOpen ? '…' : 'Open'}
-        </button>
-        <button
-          onClick={handleClose}
-          disabled={!dockOnline || isPending || !isDoorOpen}
-          className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            !isDoorOpen
-              ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-              : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
-          }`}
-        >
-          {isPending && !isDoorOpen ? '…' : 'Close'}
-        </button>
+      <div className='flex flex-col gap-2 p-2 bg-[#333539E5] border-t border-zinc-800/50'>
+        {!isDebugMode && (
+          <p className='text-[9px] text-amber-400/70 font-mono text-center'>
+            ⚠ Debug Mode required to control the cover
+          </p>
+        )}
+        <div className='flex gap-2'>
+          <button
+            onClick={handleOpen}
+            disabled={!dockOnline || isPending || isDoorOpen}
+            className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+              isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            }`}
+          >
+            {isPending && isDoorOpen ? '…' : 'Open'}
+          </button>
+          <button
+            onClick={handleClose}
+            disabled={!dockOnline || isPending || !isDoorOpen}
+            className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+              !isDoorOpen
+                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+            }`}
+          >
+            {isPending && !isDoorOpen ? '…' : 'Close'}
+          </button>
+        </div>
       </div>
 
       {/* Headless WebRTC player — only mounts when we have a WHEP URL */}

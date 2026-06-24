@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   RotateCcw,
@@ -10,11 +10,13 @@ import {
   ArrowUp,
   StopCircle,
   Loader2,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useExecuteJob } from '@/hooks/useDockController';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
+import { useDRC } from '@/hooks/useDRC';
 import { CmdButton, SectionHeader, JOYSTICK_INVALID_REASONS } from './ControlShared';
 import { TakeoffToPointModal } from './TakeoffToPointModal';
 import { FlyToPointModal } from './FlyToPointModal';
@@ -81,7 +83,20 @@ export const FlightAuthorityTab = ({
   const [showTakeoffModal, setShowTakeoffModal] = useState(false);
   const [showFlyToModal,   setShowFlyToModal]   = useState(false);
 
-  const { mutate: runJob, isPending: isStoppingDrc } = useExecuteJob(dockSn);
+  // DRC channel — required for emergency stop (REST jobs API does not support it)
+  const { status: drcStatus, activate: drcActivate, deactivate: drcDeactivate, sendEmergencyStop } = useDRC();
+
+  // Auto-connect DRC when flight authority is granted; disconnect when released
+  useEffect(() => {
+    if (flightAuth && dockSn) {
+      drcActivate(dockSn).catch((err: Error) => {
+        console.warn('[DRC] Auto-activate failed:', err.message);
+        toast.warning('DRC channel unavailable — Emergency Stop may not respond. Check server connectivity.');
+      });
+    } else {
+      drcDeactivate();
+    }
+  }, [flightAuth, dockSn]);
 
   const noAuth = !flightAuth || !dockOnline;
   // Mirror the HTML reference: drone is "airborne" when altitude > 60m.
@@ -90,16 +105,18 @@ export const FlightAuthorityTab = ({
   const isAirborne = droneAltitude > 60;
 
   const handleEmergencyStop = () => {
-    runJob(
-      { serviceIdentifier: 'drone_emergency_stop', body: { action: 0 } },
-      {
-        onSuccess: () => toast.success('Emergency stop sent'),
-        onError:   (err) => {
-          console.error('[EmergencyStop] ❌', err);
-          toast.error(`Emergency stop failed: ${err.message}`);
-        },
-      },
-    );
+    // Emergency stop MUST go via DRC MQTT — the REST /jobs endpoint does not work for this
+    const sent = sendEmergencyStop();
+    if (sent) {
+      toast.success('Emergency stop sent via DRC channel');
+    } else {
+      toast.error(
+        drcStatus === 'connecting'
+          ? 'DRC channel is still connecting — try again in a moment.'
+          : 'DRC channel not connected. Grant flight authority first to establish the DRC link.',
+        { duration: 6000 },
+      );
+    }
   };
 
   return (
@@ -208,6 +225,14 @@ export const FlightAuthorityTab = ({
               <li>Commander flight mode &amp; RTH altitude</li>
               <li>RC-lost and mission-loss fail-safe actions</li>
             </ul>
+            {drcStatus !== 'active' && (
+              <div className='flex items-start gap-1.5 rounded bg-amber-500/10 border border-amber-500/20 px-2 py-1.5'>
+                <span className='text-amber-400 text-[10px] leading-none mt-px'>⚠</span>
+                <p className='text-[8px] text-amber-400/80 leading-relaxed'>
+                  DRC not connected — Emergency Stop will be unavailable in-flight. Open the Emergency Stop accordion and click <strong>Connect</strong> first.
+                </p>
+              </div>
+            )}
             <button
               onClick={() => setShowTakeoffModal(true)}
               className='w-full py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/30 hover:border-emerald-400 transition-colors'
@@ -223,7 +248,7 @@ export const FlightAuthorityTab = ({
         <AccordionHeader
           id='stop'
           title='Emergency Stop'
-          subtitle='Immediately halt drone mid-flight'
+          subtitle='Immediately halt drone mid-flight via DRC channel'
           icon={StopCircle}
           expanded={expanded === 'stop'}
           disabled={!dockOnline}
@@ -232,17 +257,55 @@ export const FlightAuthorityTab = ({
         />
         {expanded === 'stop' && (
           <div className='mt-1.5 bg-[#0A0C10] rounded-lg border border-zinc-800/40 p-3 flex flex-col gap-2.5'>
+            {/* DRC channel status row */}
+            <div className='flex items-center gap-2'>
+              {drcStatus === 'active' ? (
+                <Wifi size={10} className='text-emerald-400 flex-shrink-0' />
+              ) : drcStatus === 'connecting' ? (
+                <Loader2 size={10} className='animate-spin text-amber-400 flex-shrink-0' />
+              ) : (
+                <WifiOff size={10} className='text-zinc-600 flex-shrink-0' />
+              )}
+              <span className={`text-[9px] font-mono uppercase tracking-wide ${
+                drcStatus === 'active'     ? 'text-emerald-400' :
+                drcStatus === 'connecting' ? 'text-amber-400'   :
+                drcStatus === 'error'      ? 'text-red-400'     :
+                'text-zinc-600'
+              }`}>
+                DRC {drcStatus === 'active' ? 'Connected' : drcStatus === 'connecting' ? 'Connecting…' : drcStatus === 'error' ? 'Error' : 'Not Connected'}
+              </span>
+
+              {/* Manual connect — recovery path when drone is already airborne */}
+              {drcStatus !== 'active' && drcStatus !== 'connecting' && dockSn && (
+                <button
+                  onClick={() => {
+                    drcActivate(dockSn).catch((err: Error) => {
+                      const msg = err.message ?? '';
+                      if (msg.includes('514304') || msg.toLowerCase().includes('drc link is refused') || msg.toLowerCase().includes('command flight control')) {
+                        toast.error(
+                          'DRC cannot be established while the drone is in active mission mode. You must connect DRC before takeoff — land the drone first, then reconnect.',
+                          { duration: 8000 },
+                        );
+                      } else {
+                        toast.error(`DRC connect failed: ${msg}`, { duration: 6000 });
+                      }
+                    });
+                  }}
+                  className='ml-auto text-[8px] font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-400/50 rounded px-1.5 py-0.5 transition-colors'
+                >
+                  Connect
+                </button>
+              )}
+            </div>
+
             <p className='text-[9px] text-zinc-500 leading-relaxed'>
-              Sends an emergency stop signal via the DRC channel. Use only when the drone must halt immediately — it will drop to a safe hover or land depending on firmware behavior.
+              Publishes a stop command directly to the drone via the DRC MQTT channel. Use only when the drone must halt immediately.
             </p>
             <button
               onClick={handleEmergencyStop}
-              disabled={isStoppingDrc}
-              className='w-full py-2 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/30 transition-colors disabled:opacity-40'
+              className='w-full py-2 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/30 transition-colors'
             >
-              {isStoppingDrc
-                ? <span className='flex items-center justify-center gap-1.5'><Loader2 size={11} className='animate-spin' /> Sending…</span>
-                : '⚠  Emergency Stop'}
+              ⚠ Emergency Stop
             </button>
           </div>
         )}
