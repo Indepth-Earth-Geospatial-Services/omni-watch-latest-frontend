@@ -329,6 +329,59 @@ export function sendPayloadCommand(sn: string, payload: PayloadCommandRequest): 
   return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(sn), payload);
 }
 
+/**
+ * Grabs payload authority (fire-and-forget; never throws).
+ * Call once before a burst of gimbal commands so the server accepts them.
+ */
+export function grabPayloadAuthority(dockSn: string, payloadIndex: string): Promise<void> {
+  return djiRequest
+    .post<void>(DJI_URLS.dock.payloadAuthority(dockSn), { payload_index: payloadIndex })
+    .catch(() => {});
+}
+
+/**
+ * Points the gimbal at a GPS coordinate via `camera_look_at`.
+ * `locked: false` → only the gimbal turns; drone heading/body stays fixed.
+ * Call every ~150 ms while a button is held, updating the target each tick
+ * to achieve continuous pitch / yaw motion.
+ */
+export function gimbalLookAt(
+  dockSn: string,
+  payloadIndex: string,
+  latitude: number,
+  longitude: number,
+  height: number,
+): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(dockSn), {
+    cmd: 'camera_look_at',
+    data: {
+      payload_index: payloadIndex,
+      latitude,
+      longitude,
+      height: Math.max(2.0, height),
+      locked: false,
+    },
+  });
+}
+
+/**
+ * Snaps the gimbal to a preset: 0 = recenter (level), 1 = straight down (nadir).
+ * Grabs payload authority first, matching the drone_tracker.html reference pattern.
+ */
+export async function gimbalReset(
+  dockSn: string,
+  payloadIndex: string,
+  resetMode: number,
+): Promise<void> {
+  await djiRequest
+    .post<void>(DJI_URLS.dock.payloadAuthority(dockSn), { payload_index: payloadIndex })
+    .catch(() => {});
+  await djiRequest.post<void>(DJI_URLS.dock.payloadCommand(dockSn), {
+    cmd: 'gimbal_reset',
+    data: { payload_index: payloadIndex, reset_mode: resetMode },
+  });
+}
+
 /** Execute a dock job by service identifier.
  *  body is optional — no-payload commands (cover_open, drone_open, etc.) omit it;
  *  action commands (alarm_state_switch, sdr_workmode_switch, etc.) pass { action: N }.
@@ -377,6 +430,21 @@ export function cancelFlyToPoint(sn: string): Promise<void> {
   return djiRequest.delete<void>(DJI_URLS.dock.flyToPoint(sn));
 }
 
+/** Cancels an active takeoff-to-point mission. */
+export function cancelTakeoffToPoint(sn: string): Promise<void> {
+  return djiRequest.delete<void>(DJI_URLS.dock.takeoffToPoint(sn));
+}
+
+/** Best-effort cancel of any active dock job (fly-to-point, takeoff-to-point, wayline).
+ *  Individual failures are swallowed — useful for clearing stuck job state. */
+export async function cancelAllJobs(sn: string): Promise<void> {
+  await Promise.allSettled([
+    cancelFlyToPoint(sn),
+    cancelTakeoffToPoint(sn),
+    executeJob(sn, 'wayline', { action: 2 }),
+  ]);
+}
+
 /** Requests exclusive control of the drone's payload (camera/gimbal). */
 export function requestPayloadAuthority(sn: string, body?: PayloadAuthorityRequest): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.payloadAuthority(sn), body ?? {});
@@ -389,11 +457,15 @@ export function requestFlightAuthority(sn: string): Promise<void> {
 
 // ─── DRC (Drone Real-time Control) ───────────────────────────────────────────
 
+// Fixed client_id — matches the pattern in the HTML reference (cesium_drc).
+// A stable ID avoids stale-session 514304 errors that occur when a random ID
+// from a previous session was never properly exited.
+export const DRC_CLIENT_ID = 'omniwatch_drc';
+
 /** Step 1 — obtain MQTT broker credentials for a DRC session. */
 export function drcConnect(workspaceId: string): Promise<DRCConnectResponse> {
-  const clientId = 'omniwatch_drc_' + Math.random().toString(16).substring(2, 10);
   return djiRequest.post<DRCConnectResponse>(DJI_URLS.drc.connect(workspaceId), {
-    client_id: clientId,
+    client_id: DRC_CLIENT_ID,
     expire_sec: 3600,
   });
 }

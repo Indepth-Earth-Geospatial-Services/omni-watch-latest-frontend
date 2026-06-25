@@ -12,11 +12,14 @@ import {
   Loader2,
   Wifi,
   WifiOff,
+  XCircle,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
 import { useDRC } from '@/hooks/useDRC';
+import { cancelAllJobs } from '@/services/djiservice-layer/dji-service';
 import { CmdButton, SectionHeader, JOYSTICK_INVALID_REASONS } from './ControlShared';
 import { TakeoffToPointModal } from './TakeoffToPointModal';
 import { FlyToPointModal } from './FlyToPointModal';
@@ -85,6 +88,13 @@ export const FlightAuthorityTab = ({
 
   // DRC channel — required for emergency stop (REST jobs API does not support it)
   const { status: drcStatus, activate: drcActivate, deactivate: drcDeactivate, sendEmergencyStop } = useDRC();
+
+  // Cancel all active dock jobs — clears stuck job state that blocks DRC connection
+  const { mutate: cancelJobs, isPending: isCancellingJobs } = useMutation({
+    mutationFn: () => cancelAllJobs(dockSn),
+    onSuccess: () => toast.success('Job cancel commands sent — dock should return to idle shortly.'),
+    onError: (err: Error) => toast.error(`Cancel failed: ${err.message}`),
+  });
 
   // Auto-connect DRC when flight authority is granted; disconnect when released
   useEffect(() => {
@@ -280,15 +290,7 @@ export const FlightAuthorityTab = ({
                 <button
                   onClick={() => {
                     drcActivate(dockSn).catch((err: Error) => {
-                      const msg = err.message ?? '';
-                      if (msg.includes('514304') || msg.toLowerCase().includes('drc link is refused') || msg.toLowerCase().includes('command flight control')) {
-                        toast.error(
-                          'DRC cannot be established while the drone is in active mission mode. You must connect DRC before takeoff — land the drone first, then reconnect.',
-                          { duration: 8000 },
-                        );
-                      } else {
-                        toast.error(`DRC connect failed: ${msg}`, { duration: 6000 });
-                      }
+                      toast.error(`DRC connect failed: ${err.message}`, { duration: 6000 });
                     });
                   }}
                   className='ml-auto text-[8px] font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-400/50 rounded px-1.5 py-0.5 transition-colors'
@@ -317,7 +319,16 @@ export const FlightAuthorityTab = ({
         <div className='flex flex-wrap gap-1.5'>
           <CmdButton label='Return Home' icon={Home}      onClick={() => exec('return_home')}        disabled={!dockOnline || isPending} />
           <CmdButton label='Cancel RTH'  icon={RotateCcw} onClick={() => exec('return_home_cancel')} disabled={!dockOnline || isPending} />
+          <CmdButton
+            label={isCancellingJobs ? 'Cancelling…' : 'Cancel Active Job'}
+            icon={isCancellingJobs ? Loader2 : XCircle}
+            onClick={() => cancelJobs()}
+            disabled={!dockOnline || isCancellingJobs}
+          />
         </div>
+        <p className='text-[8px] text-zinc-700 mt-1.5 leading-relaxed'>
+          Cancel Active Job clears stuck fly-to-point, takeoff, and wayline missions. Use this if DRC refuses to connect or the dock appears stalled.
+        </p>
       </div>
 
       {/* ── Auto-revocation reference ── */}

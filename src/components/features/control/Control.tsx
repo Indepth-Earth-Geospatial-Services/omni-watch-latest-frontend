@@ -318,12 +318,16 @@ export default function ControlPage() {
   );
 
   // ─── Auto-select chain ────────────────────────────────────────────────────
+  // Select drone SN as soon as the dock reports its childDeviceSn — do NOT
+  // gate on capacityMap. Capacity is a one-shot fetch that won't re-fire when
+  // a sleeping drone wakes up, so gating on it leaves selectedSn='' and the
+  // FlightStatsBar blank until the user refreshes the page.
   useEffect(() => {
-    if (dockDevice?.childDeviceSn && !selectedSn && capacityMap?.has(dockDevice.childDeviceSn)) {
+    if (dockDevice?.childDeviceSn && !selectedSn) {
       console.log(`[Control:AutoSelect] drone → ${dockDevice.childDeviceSn}`);
       setSelectedSn(dockDevice.childDeviceSn);
     }
-  }, [dockDevice, capacityMap, selectedSn]);
+  }, [dockDevice, selectedSn]);
 
   useEffect(() => {
     if (cameras.length > 0 && !selectedCameraId) {
@@ -404,6 +408,7 @@ export default function ControlPage() {
                   activeStreamUrl={activeStreamUrl}
                   dockSn={dockDevice?.deviceSn}
                   dockOnline={dockOnline}
+                  payloadIndex={selectedCameraId}
                   onDeviceChange={handleDeviceChange}
                   onVideoTypeChange={handleVideoTypeChange}
                   onQualityChange={handleQualityChange}

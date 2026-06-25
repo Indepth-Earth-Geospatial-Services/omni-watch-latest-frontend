@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import mqtt from 'mqtt';
 import { DJI_CONFIG } from '@/lib/config/config';
 import { useAuth } from '@/providers/AuthProvider';
-import { drcConnect, drcEnter, drcExit } from '@/services/djiservice-layer/dji-service';
+import { drcConnect, drcEnter, drcExit, DRC_CLIENT_ID } from '@/services/djiservice-layer/dji-service';
 
 // tcp://host:1883 → ws://host:8083/mqtt  (browser cannot use raw TCP MQTT)
 function toWsUrl(raw: string): string {
@@ -75,14 +75,19 @@ export function useDRC() {
 
     if (mountedRef.current) setStatus('connecting');
     dockSnRef.current = dockSn;
+    clientIdRef.current = DRC_CLIENT_ID;
 
     try {
+      // Best-effort exit of any stale session before opening a new one.
+      // 514304 "DRC link is refused" is commonly caused by a previous session
+      // that was never properly closed (e.g. page refresh, dropped connection).
+      await drcExit(workspaceIdRef.current, DRC_CLIENT_ID, dockSn).catch(() => {});
+
       // 1. Get MQTT broker credentials
       const broker = await drcConnect(workspaceIdRef.current);
-      clientIdRef.current = broker.client_id;
 
       // 2. Get DRC pub/sub MQTT topics
-      const { pub, sub } = await drcEnter(workspaceIdRef.current, broker.client_id, dockSn);
+      const { pub, sub } = await drcEnter(workspaceIdRef.current, DRC_CLIENT_ID, dockSn);
       pubTopicRef.current = pub[0] ?? '';
 
       // 3. Convert TCP address → WebSocket URL (browsers can't use raw TCP MQTT)
@@ -91,7 +96,7 @@ export function useDRC() {
       // 4. Connect MQTT — allow auto-reconnect so a network blip during flight
       //    doesn't silently kill the emergency stop channel
       const client = mqtt.connect(addr, {
-        clientId: broker.client_id,
+        clientId: DRC_CLIENT_ID,
         username: broker.username,
         password: broker.password,
         clean:     true,
