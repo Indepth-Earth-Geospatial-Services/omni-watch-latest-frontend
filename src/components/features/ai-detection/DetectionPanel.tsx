@@ -9,6 +9,7 @@ interface DetectionPanelProps {
   accentColor: 'orange' | 'red';
   detections: ThreatDetection[];
   onSelectDetection?: (detection: ThreatDetection) => void;
+  onViewOnMap?: (detection: ThreatDetection) => void;
   emptyMessage?: string;
 }
 
@@ -30,6 +31,7 @@ export function DetectionPanel({
   accentColor,
   detections,
   onSelectDetection,
+  onViewOnMap,
   emptyMessage = 'Waiting for detections...',
 }: DetectionPanelProps) {
   const accent = accentConfig[accentColor];
@@ -58,7 +60,12 @@ export function DetectionPanel({
           </div>
         ) : (
           detections.map((d) => (
-            <DetectionItem key={d.id} detection={d} onSelect={onSelectDetection} />
+            <DetectionItem
+              key={d.id}
+              detection={d}
+              onSelect={onSelectDetection}
+              onViewOnMap={onViewOnMap}
+            />
           ))
         )}
       </div>

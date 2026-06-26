@@ -1,18 +1,30 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { X, MapPin, Clock, Shield, Video, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTimeAgo } from '@/lib/utils';
 import { getConfidenceColor } from './lib/detection-utils';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { ThreatDetection } from '@/lib/types/threats';
+
+const ThreatMap = dynamic(() => import('./ThreatMap').then((mod) => mod.ThreatMap), {
+  loading: () => <div className='h-48 animate-pulse bg-neutral-800 rounded-lg border border-zinc-800/50' />,
+  ssr: false,
+});
 
 interface DetectionDetailModalProps {
   detection: ThreatDetection | null;
   onClose: () => void;
+  onApprove?: (detection: ThreatDetection) => void;
+  onDismiss?: (detection: ThreatDetection) => void;
 }
 
-export function DetectionDetailModal({ detection, onClose }: DetectionDetailModalProps) {
+export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss }: DetectionDetailModalProps) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'approve' | 'dismiss' | null>(null);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -30,6 +42,27 @@ export function DetectionDetailModal({ detection, onClose }: DetectionDetailModa
       document.body.style.overflow = '';
     };
   }, [detection, handleKeyDown]);
+
+  const handleApproveClick = () => {
+    setConfirmAction('approve');
+    setConfirmOpen(true);
+  };
+
+  const handleDismissClick = () => {
+    setConfirmAction('dismiss');
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmAction = () => {
+    if (!detection) return;
+    if (confirmAction === 'approve' && onApprove) {
+      onApprove(detection);
+    } else if (confirmAction === 'dismiss' && onDismiss) {
+      onDismiss(detection);
+    }
+    setConfirmOpen(false);
+    setConfirmAction(null);
+  };
 
   if (!detection) return null;
 
@@ -159,6 +192,17 @@ export function DetectionDetailModal({ detection, onClose }: DetectionDetailModa
             </div>
           </div>
 
+          {/* Threat Map */}
+          {d.droneLatitude != null && d.droneLongitude != null && (
+            <div className='bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50'>
+              <div className='flex items-center gap-1 text-xs text-[#8C90A0] mb-2'>
+                <MapPin className='w-3 h-3' />
+                Location
+              </div>
+              <ThreatMap detection={d} />
+            </div>
+          )}
+
           {/* LLM Reasoning */}
           {d.isVerified && d.reasoning && (
             <div className='bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50'>
@@ -178,6 +222,43 @@ export function DetectionDetailModal({ detection, onClose }: DetectionDetailModa
             </a>
           )}
         </div>
+
+        {/* Action Buttons */}
+        {d.isVerified && (onApprove || onDismiss) && (
+          <div className='flex gap-3 p-4 border-t border-zinc-800/50'>
+            {onDismiss && (
+              <button
+                onClick={handleDismissClick}
+                className='flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 text-[11px] font-bold uppercase tracking-widest hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+              >
+                Dismiss
+              </button>
+            )}
+            {onApprove && (
+              <button
+                onClick={handleApproveClick}
+                className='flex-1 py-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-[11px] font-black uppercase tracking-widest hover:bg-red-500/30 hover:border-red-400 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.1)]'
+              >
+                Approve Threat
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={confirmAction === 'approve' ? 'Approve Threat?' : 'Dismiss Threat?'}
+          description={
+            confirmAction === 'approve'
+              ? 'Approve this threat? This will mark it as confirmed and may trigger automated responses.'
+              : 'Dismiss this threat? This will mark it as a false positive.'
+          }
+          confirmLabel={confirmAction === 'approve' ? 'Approve' : 'Dismiss'}
+          onConfirm={handleConfirmAction}
+          variant={confirmAction === 'approve' ? 'destructive' : 'default'}
+        />
       </div>
     </div>
   );

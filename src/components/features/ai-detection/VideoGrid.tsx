@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, memo } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
 import { Video } from 'lucide-react';
 import { StreamVideoCard } from './StreamVideoCard';
 import type { ThreatDetection } from '@/lib/types/threats';
@@ -14,11 +14,16 @@ interface VideoGridProps {
   detections: ThreatDetection[];
 }
 
-function getGridClasses(count: number): string {
+function getGridCols(count: number): string {
   if (count <= 1) return 'grid-cols-1';
   if (count === 2) return 'grid-cols-1 lg:grid-cols-2';
-  if (count === 3) return 'grid-cols-1 lg:grid-cols-3';
-  return 'grid-cols-1 lg:grid-cols-2';
+  return 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3';
+}
+
+function getGridRows(count: number): string {
+  if (count <= 2) return 'grid-rows-1';
+  if (count <= 4) return 'grid-rows-2';
+  return 'grid-rows-3';
 }
 
 export const VideoGrid = memo(function VideoGrid({
@@ -27,6 +32,8 @@ export const VideoGrid = memo(function VideoGrid({
   devices,
   detections,
 }: VideoGridProps) {
+  const [expandedStreamKey, setExpandedStreamKey] = useState<string | null>(null);
+
   const activeStreams = useMemo(() => {
     return Array.from(selectedStreamKeys)
       .map((streamKey) => {
@@ -38,6 +45,18 @@ export const VideoGrid = memo(function VideoGrid({
       })
       .filter((s): s is NonNullable<typeof s> => s !== null);
   }, [selectedStreamKeys, streams, devices, detections]);
+
+  const handleExpand = useCallback((streamKey: string) => {
+    setExpandedStreamKey(streamKey);
+  }, []);
+
+  const handleCollapse = useCallback(() => {
+    setExpandedStreamKey(null);
+  }, []);
+
+  const gridCols = getGridCols(activeStreams.length);
+  const gridRows = getGridRows(activeStreams.length);
+  const isExpanded = expandedStreamKey !== null;
 
   if (activeStreams.length === 0) {
     return (
@@ -57,19 +76,34 @@ export const VideoGrid = memo(function VideoGrid({
     );
   }
 
-  const gridClass = getGridClasses(activeStreams.length);
-
   return (
-    <div className={`grid ${gridClass} gap-3 flex-1 min-h-0`}>
-      {activeStreams.map(({ streamKey, deviceSn, device, detections: streamDetections }) => (
-        <StreamVideoCard
-          key={streamKey}
-          streamKey={streamKey}
-          deviceSn={deviceSn}
-          device={device}
-          detections={streamDetections}
-        />
-      ))}
+    <div className={`grid ${gridCols} ${gridRows} gap-3 flex-1 min-h-0`}>
+      {activeStreams.map(({ streamKey, deviceSn, device, detections: streamDetections }) => {
+        const isThisExpanded = expandedStreamKey === streamKey;
+
+        return (
+          <div
+            key={streamKey}
+            className={`min-h-0 aspect-video ${
+              isExpanded
+                ? isThisExpanded
+                  ? 'col-span-full row-span-full'
+                  : 'hidden'
+                : ''
+            }`}
+          >
+            <StreamVideoCard
+              streamKey={streamKey}
+              deviceSn={deviceSn}
+              device={device}
+              detections={streamDetections}
+              isExpanded={isThisExpanded}
+              onExpand={() => handleExpand(streamKey)}
+              onCollapse={handleCollapse}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 });

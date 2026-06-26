@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Clock, ImageOff } from 'lucide-react';
+import { CheckCircle, Clock, ImageOff, MapPin } from 'lucide-react';
 import { formatTimeAgo, cn } from '@/lib/utils';
 import { getConfidenceColor } from './lib/detection-utils';
 import type { ThreatDetection } from '@/lib/types/threats';
@@ -8,6 +8,7 @@ import type { ThreatDetection } from '@/lib/types/threats';
 interface DetectionItemProps {
   detection: ThreatDetection;
   onSelect?: (detection: ThreatDetection) => void;
+  onViewOnMap?: (detection: ThreatDetection) => void;
 }
 
 const typeDotColor: Record<string, string> = {
@@ -20,7 +21,7 @@ const typeDotColor: Record<string, string> = {
   animal: 'bg-yellow-400',
 };
 
-export function DetectionItem({ detection, onSelect }: DetectionItemProps) {
+export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionItemProps) {
   const d = detection;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -72,6 +73,20 @@ export function DetectionItem({ detection, onSelect }: DetectionItemProps) {
       <span className='text-[10px] font-poppins text-zinc-500 truncate hidden md:inline'>
         {d.streamId}
       </span>
+
+      {/* View on Map (hover only) */}
+      {onViewOnMap && d.droneLatitude != null && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewOnMap(d);
+          }}
+          className='opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-700/50 flex-shrink-0'
+          title='View on Map'
+        >
+          <MapPin className='w-3 h-3 text-[#1C93FF]' />
+        </button>
+      )}
 
       {/* Spacer */}
       <div className='flex-1' />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback, memo } from 'react';
-import { VideoOff, Loader2 } from 'lucide-react';
+import { VideoOff, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { WebRTCPlayer, type StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { ThreatDetection } from '@/lib/types/threats';
 import type { DJIDevice } from '@/lib/types';
@@ -11,6 +11,9 @@ interface StreamVideoCardProps {
   deviceSn: string;
   device?: DJIDevice;
   detections: ThreatDetection[];
+  isExpanded?: boolean;
+  onExpand?: () => void;
+  onCollapse?: () => void;
 }
 
 function buildWhepUrl(streamKey: string): string {
@@ -23,6 +26,9 @@ export const StreamVideoCard = memo(function StreamVideoCard({
   deviceSn,
   device,
   detections,
+  isExpanded = false,
+  onExpand,
+  onCollapse,
 }: StreamVideoCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -109,7 +115,7 @@ export const StreamVideoCard = memo(function StreamVideoCard({
   const deviceLabel = device?.nickname || device?.deviceName || deviceSn;
 
   return (
-    <div className='relative flex flex-col bg-[#0C0E12] overflow-hidden rounded-xl border border-zinc-800/50'>
+    <div className={`relative flex flex-col bg-[#0C0E12] overflow-hidden rounded-xl border border-zinc-800/50 ${isExpanded ? 'w-full h-full' : ''}`}>
       {/* Headless WebRTC connection */}
       <WebRTCPlayer
         key={streamKey}
@@ -138,10 +144,28 @@ export const StreamVideoCard = memo(function StreamVideoCard({
             {streamState === 'playing' ? 'Live' : streamState === 'connecting' ? 'Connecting' : 'Error'}
           </span>
         </div>
+        {/* Expand / Collapse button */}
+        {isExpanded ? (
+          <button
+            onClick={onCollapse}
+            className='ml-1 p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors'
+            title='Collapse to grid'
+          >
+            <Minimize2 size={13} />
+          </button>
+        ) : onExpand ? (
+          <button
+            onClick={onExpand}
+            className='ml-1 p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors'
+            title='Expand to fill'
+          >
+            <Maximize2 size={13} />
+          </button>
+        ) : null}
       </div>
 
       {/* Video area with canvas overlay */}
-      <div className='relative flex-1 min-h-0 bg-black aspect-video'>
+      <div className='relative flex-1 min-h-0 bg-black'>
         <video
           ref={videoRef}
           autoPlay

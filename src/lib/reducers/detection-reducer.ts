@@ -7,7 +7,7 @@ import type {
 } from '@/lib/types/threats';
 
 const MAX_DETECTIONS = 200;
-const MAX_ALERTS = 5;
+const MAX_ALERTS = 3;
 const ALERT_CONFIDENCE_THRESHOLD = 0.85;
 
 export interface DetectionState {
@@ -115,7 +115,7 @@ export function detectionReducer(
 
       const newAlerts = [...state.alerts];
       for (const nd of newDetections) {
-        if (nd.confidence >= ALERT_CONFIDENCE_THRESHOLD) {
+        if (nd.confidence) {
           const alert: DetectionAlert = {
             id: nd.id,
             detection: nd,

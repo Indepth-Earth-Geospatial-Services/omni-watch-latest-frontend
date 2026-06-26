@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import { useMemo, useRef, useEffect } from 'react';
+import Map, { Marker, NavigationControl, Popup, type MapRef } from 'react-map-gl/maplibre';
 import { MapPin } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ThreatDetection } from '@/lib/types/threats';
@@ -9,6 +9,8 @@ import type { ThreatDetection } from '@/lib/types/threats';
 interface DetectionMapProps {
   detections: ThreatDetection[];
   onSelectDetection?: (detection: ThreatDetection) => void;
+  focusDetection?: ThreatDetection | null;
+  onCloseFocus?: () => void;
 }
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -18,7 +20,24 @@ function getMarkerColor(d: ThreatDetection): string {
   return '#f97316';
 }
 
-export function DetectionMap({ detections, onSelectDetection }: DetectionMapProps) {
+export function DetectionMap({ detections, onSelectDetection, focusDetection, onCloseFocus }: DetectionMapProps) {
+  const mapRef = useRef<MapRef>(null);
+
+  useEffect(
+    () => () => {
+      mapRef.current?.stop();
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!focusDetection || !mapRef.current) return;
+    const lng = focusDetection.objectLongitude ?? focusDetection.droneLongitude;
+    const lat = focusDetection.objectLatitude ?? focusDetection.droneLatitude;
+    if (lng == null || lat == null) return;
+    mapRef.current.flyTo({ center: [lng, lat], zoom: 17, duration: 1000 });
+  }, [focusDetection]);
+
   const markersWithGPS = useMemo(
     () =>
       detections.filter(
@@ -40,6 +59,7 @@ export function DetectionMap({ detections, onSelectDetection }: DetectionMapProp
   return (
     <div className="h-[400px] w-full rounded-lg border border-gray-800 overflow-hidden">
       <Map
+        ref={mapRef}
         initialViewState={{
           ...defaultCenter,
           zoom: markersWithGPS.length === 1 ? 16 : 12,
@@ -107,8 +127,40 @@ export function DetectionMap({ detections, onSelectDetection }: DetectionMapProp
                   style={{ color: getMarkerColor(d) }}
                 />
               </div>
-            </Marker>
-          ))}
+          </Marker>
+        ))}
+
+        {focusDetection && (focusDetection.objectLongitude != null || focusDetection.droneLongitude != null) && (
+          <Popup
+            longitude={focusDetection.objectLongitude ?? focusDetection.droneLongitude!}
+            latitude={focusDetection.objectLatitude ?? focusDetection.droneLatitude!}
+            anchor='bottom'
+            closeOnClick={false}
+            onClose={() => onCloseFocus?.()}
+            className='z-20'
+          >
+            <div className='p-2 max-w-[220px]'>
+              {focusDetection.imageUrl && (
+                <img
+                  src={focusDetection.imageUrl}
+                  alt=''
+                  className='w-full h-auto rounded mb-2 border border-zinc-700/50'
+                />
+              )}
+              <p className='text-xs font-semibold font-poppins text-gray-100 capitalize'>
+                {focusDetection.type}
+              </p>
+              <p className='text-[10px] font-poppins text-gray-500 mt-0.5'>
+                {(focusDetection.confidence * 100).toFixed(1)}% · {focusDetection.streamId}
+              </p>
+              {focusDetection.isVerified && focusDetection.reasoning && (
+                <p className='text-[10px] font-poppins text-green-500/70 mt-1 line-clamp-2'>
+                  {focusDetection.reasoning.slice(0, 80)}...
+                </p>
+              )}
+            </div>
+          </Popup>
+        )}
       </Map>
     </div>
   );

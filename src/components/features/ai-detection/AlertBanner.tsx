@@ -19,10 +19,11 @@ export function AlertBanner({
   onToggleSound,
   onViewDetection,
 }: AlertBannerProps) {
-  const prevCountRef = useRef(0);
+  const prevAlertIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (alerts.length > prevCountRef.current && soundEnabled) {
+    const latestId = alerts.length > 0 ? alerts[0].id : null;
+    if (latestId && latestId !== prevAlertIdRef.current && soundEnabled) {
       try {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
@@ -38,8 +39,8 @@ export function AlertBanner({
         // AudioContext not available
       }
     }
-    prevCountRef.current = alerts.length;
-  }, [alerts.length, soundEnabled]);
+    prevAlertIdRef.current = latestId;
+  }, [alerts, soundEnabled]);
 
   const handleView = useCallback(
     (detectionId: string) => {
@@ -51,7 +52,8 @@ export function AlertBanner({
   if (alerts.length === 0) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 space-y-2 p-4 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-40 p-4 pointer-events-none flex justify-center">
+      <div className="w-full max-w-lg space-y-2 pointer-events-none">
       {alerts.map((alert) => {
         const d = alert.detection;
         return (
@@ -90,8 +92,7 @@ export function AlertBanner({
           </div>
         );
       })}
-
-
+      </div>
     </div>
   );
 }

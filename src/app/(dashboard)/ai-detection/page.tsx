@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import React from 'react';
 import { Brain, AlertTriangle, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react';
+import { toast } from 'sonner';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
@@ -85,6 +86,7 @@ export default function AIDetectionPage() {
   const [timeRange, setTimeRange] = useState('all');
   const [selectedDetection, setSelectedDetection] = useState<ThreatDetection | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [mapFocusDetection, setMapFocusDetection] = useState<ThreatDetection | null>(null);
   const [viewMode, setViewMode] = useState<'panel' | 'grid'>('panel');
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
@@ -111,14 +113,6 @@ export default function AIDetectionPage() {
     [selectedStreamIds]
   );
 
-  const selectedDeviceSns = useMemo(() => {
-    return new Set(
-      streams
-        .filter((s) => selectedStreamIds.has(s.streamKey))
-        .map((s) => s.deviceSn)
-    );
-  }, [streams, selectedStreamIds]);
-
   useEffect(() => {
     try {
       if (selectedStreamIds.size > 0) {
@@ -138,7 +132,7 @@ export default function AIDetectionPage() {
 
     return detections.filter((d) => {
       const matchesStream =
-        selectedDeviceSns.size === 0 || selectedDeviceSns.has(d.streamId);
+        selectedStreamIds.size === 0 || selectedStreamIds.has(d.streamId);
 
       const matchesStatus =
         statusFilter === 'all' ||
@@ -162,14 +156,14 @@ export default function AIDetectionPage() {
 
       return matchesStream && matchesStatus && matchesType && matchesSearch && matchesTimeRange;
     });
-  }, [detections, selectedDeviceSns, statusFilter, typeFilter, searchTerm, timeRange]);
+  }, [detections, selectedStreamIds, statusFilter, typeFilter, searchTerm, timeRange]);
 
   // Video overlays use only stream filter (no search/time filtering)
   const videoDetections = useMemo(() => {
     return detections.filter((d) => {
-      return selectedDeviceSns.size === 0 || selectedDeviceSns.has(d.streamId);
+      return selectedStreamIds.size === 0 || selectedStreamIds.has(d.streamId);
     });
-  }, [detections, selectedDeviceSns]);
+  }, [detections, selectedStreamIds]);
 
   const filteredStats = useMemo(() => {
     const now = new Date();
@@ -200,6 +194,23 @@ export default function AIDetectionPage() {
     },
     [detections]
   );
+
+  const handleApproveThreat = useCallback((detection: ThreatDetection) => {
+    console.log('[AID-15] Approve threat:', detection.id);
+    toast.success(`Threat approved: ${detection.type} (#${detection.trackId})`);
+    setSelectedDetection(null);
+  }, []);
+
+  const handleDismissThreat = useCallback((detection: ThreatDetection) => {
+    console.log('[AID-15] Dismiss threat:', detection.id);
+    toast.success(`Threat dismissed: ${detection.type} (#${detection.trackId})`);
+    setSelectedDetection(null);
+  }, []);
+
+  const handleViewOnMap = useCallback((detection: ThreatDetection) => {
+    setMapFocusDetection(detection);
+    setShowMap(true);
+  }, []);
 
   if (!activeProject) {
     return (
@@ -245,7 +256,12 @@ export default function AIDetectionPage() {
                 timeRange={timeRange}
                 onTimeRangeChange={setTimeRange}
                 showMap={showMap}
-                onToggleMap={() => setShowMap(!showMap)}
+                onToggleMap={() => {
+                  setShowMap((prev) => {
+                    if (prev) setMapFocusDetection(null);
+                    return !prev;
+                  });
+                }}
                 soundEnabled={soundEnabled}
                 onToggleSound={toggleSound}
               />
@@ -295,18 +311,6 @@ export default function AIDetectionPage() {
             />
           </div>
 
-          {/* Map overlay (slide-over) */}
-          {showMap && (
-            <div className='px-4 pt-3 flex-shrink-0'>
-              <MapErrorBoundary>
-                <DetectionMap
-                  detections={filteredDetections}
-                  onSelectDetection={setSelectedDetection}
-                />
-              </MapErrorBoundary>
-            </div>
-          )}
-
           {/* Content Area */}
           {viewMode === 'grid' ? (
             <div className='flex-1 min-h-0 overflow-y-auto p-4 pt-3'>
@@ -340,6 +344,7 @@ export default function AIDetectionPage() {
                 accentColor='orange'
                 detections={yoloDetections}
                 onSelectDetection={setSelectedDetection}
+                onViewOnMap={handleViewOnMap}
                 emptyMessage={
                   status === 'connecting'
                     ? 'Connecting to AI server...'
@@ -347,13 +352,25 @@ export default function AIDetectionPage() {
                 }
               />
 
-              {/* Center: Video Grid */}
-              <VideoGrid
-                selectedStreamKeys={selectedStreamIds}
-                streams={streams}
-                devices={djiDevices}
-                detections={videoDetections}
-              />
+              {/* Center: Map + Video Grid */}
+              <div className='flex flex-col flex-1 min-h-0 gap-3'>
+                {showMap && (
+                  <MapErrorBoundary>
+                    <DetectionMap
+                      detections={filteredDetections}
+                      onSelectDetection={setSelectedDetection}
+                      focusDetection={mapFocusDetection}
+                      onCloseFocus={() => setMapFocusDetection(null)}
+                    />
+                  </MapErrorBoundary>
+                )}
+                <VideoGrid
+                  selectedStreamKeys={selectedStreamIds}
+                  streams={streams}
+                  devices={djiDevices}
+                  detections={videoDetections}
+                />
+              </div>
 
               {/* Right: Verified Threats */}
               <DetectionPanel
@@ -361,6 +378,7 @@ export default function AIDetectionPage() {
                 accentColor='red'
                 detections={verifiedDetections}
                 onSelectDetection={setSelectedDetection}
+                onViewOnMap={handleViewOnMap}
                 emptyMessage={
                   status === 'connecting'
                     ? 'Connecting to AI server...'
@@ -376,6 +394,8 @@ export default function AIDetectionPage() {
       <DetectionDetailModal
         detection={selectedDetection}
         onClose={() => setSelectedDetection(null)}
+        onApprove={handleApproveThreat}
+        onDismiss={handleDismissThreat}
       />
     </MainLayout>
   );
