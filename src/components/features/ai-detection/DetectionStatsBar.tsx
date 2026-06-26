@@ -50,7 +50,7 @@ export function DetectionStatsBar({
   ];
 
   return (
-    <div className='relative flex items-center w-full h-14 bg-[#12151C] border border-[#1E2330] rounded-lg overflow-hidden'>
+    <div className='relative flex items-center w-full h-16 bg-[#12151C] border border-[#1E2330] rounded-lg overflow-hidden'>
       {/* Live status dot */}
       <div className='absolute top-2 left-3 flex items-center gap-1.5'>
         <div

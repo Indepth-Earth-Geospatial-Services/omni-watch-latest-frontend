@@ -17,6 +17,7 @@ import {
   Settings,
   Loader2,
   Brain,
+  Bell,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Geospatial Map', href: '/geospatial', icon: Globe },
   { name: 'Control', href: '/control', icon: Settings },
   { name: 'AI Detection', href: '/ai-detection', icon: Brain },
+  { name: 'Alerts', href: '/alerts', icon: Bell },
   // {
   //   name: 'Reports',
   //   href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',

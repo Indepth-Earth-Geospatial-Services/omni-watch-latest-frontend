@@ -20,6 +20,7 @@ import type { PageParams } from '@/lib/types';
 
 const AUTH_PROXY = '/api/auth';
 const OMNI_PROXY = '/api/omniwatch';
+const AI_DETECTION_PROXY = '/api/ai-detection';
 
 export const API_URLS = {
   /**
@@ -142,5 +143,30 @@ export const API_URLS = {
      * @param userId - UUID of the staff member to update.
      */
     user: (userId: string) => `${OMNI_PROXY}/organization/users/${userId}/`,
+  },
+
+  /**
+   * AI Detection alerts — paginated history and action endpoints.
+   */
+  alerts: {
+    /** GET — paginated list of alerts with optional filters */
+    list: (params?: Record<string, string>) => {
+      const q = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== null && value !== '') {
+            q.set(key, value);
+          }
+        }
+      }
+      const s = q.toString();
+      return s ? `${AI_DETECTION_PROXY}/alerts?${s}` : `${AI_DETECTION_PROXY}/alerts`;
+    },
+    /** POST — create a new alert (used for YOLO detections not yet in DB) */
+    create: `${AI_DETECTION_PROXY}/alerts`,
+    /** PATCH — update alert type (e.g. set to "APPROVED") */
+    update: (id: string) => `${AI_DETECTION_PROXY}/alerts/${id}/update`,
+    /** DELETE — delete/dismiss an alert */
+    delete: (id: string) => `${AI_DETECTION_PROXY}/alerts/${id}/delete`,
   },
 };

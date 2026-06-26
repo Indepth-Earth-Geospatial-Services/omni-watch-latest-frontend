@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+import Image from 'next/image';
 import { MapPin, ImageOff, CheckCircle, Clock, Crosshair } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn, formatTimeAgo } from '@/lib/utils';
@@ -10,6 +12,8 @@ interface DetectionCardProps {
   detection: ThreatDetection;
   onSelect?: (detection: ThreatDetection) => void;
   className?: string;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 const typeDotColor: Record<string, string> = {
@@ -22,7 +26,7 @@ const typeDotColor: Record<string, string> = {
   animal: 'bg-yellow-400',
 };
 
-export function DetectionCard({ detection, onSelect, className }: DetectionCardProps) {
+export const DetectionCard = memo(function DetectionCard({ detection, onSelect, className, selected, onToggleSelect }: DetectionCardProps) {
   const d = detection;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -47,17 +51,40 @@ export function DetectionCard({ detection, onSelect, className }: DetectionCardP
     >
       {/* Thumbnail */}
       {d.imageUrl ? (
-        <div className='aspect-video w-full border-b border-zinc-800/50 bg-zinc-900'>
-          <img
+        <div className='relative aspect-video w-full border-b border-zinc-800/50 bg-zinc-900'>
+          <Image
             src={d.imageUrl}
             alt={`${d.type} detection`}
-            className='w-full h-full object-cover'
-            loading='lazy'
+            fill
+            className='object-cover'
+            unoptimized
           />
+          {onToggleSelect && (
+            <div className='absolute top-2 right-2 z-10'>
+              <input
+                type='checkbox'
+                checked={selected ?? false}
+                onChange={() => onToggleSelect(d.id)}
+                className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       ) : (
-        <div className='aspect-video w-full border-b border-zinc-800/50 bg-zinc-900 flex items-center justify-center'>
+        <div className='relative aspect-video w-full border-b border-zinc-800/50 bg-zinc-900 flex items-center justify-center'>
           <ImageOff className='w-6 h-6 text-zinc-700' />
+          {onToggleSelect && (
+            <div className='absolute top-2 right-2 z-10'>
+              <input
+                type='checkbox'
+                checked={selected ?? false}
+                onChange={() => onToggleSelect(d.id)}
+                className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -118,4 +145,4 @@ export function DetectionCard({ detection, onSelect, className }: DetectionCardP
       </CardContent>
     </Card>
   );
-}
+});

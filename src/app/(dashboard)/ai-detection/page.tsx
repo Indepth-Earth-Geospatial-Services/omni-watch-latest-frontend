@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useTransition } from 'react';
 import React from 'react';
-import { Brain, AlertTriangle, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react';
-import { toast } from 'sonner';
+import { Brain, AlertTriangle, RefreshCw, LayoutGrid, LayoutList, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
@@ -11,6 +10,7 @@ import { useStreamKeys } from '@/hooks/useStreamKeys';
 import { EmptyPage } from '@/components/features/streams/EmptyPage';
 import { useRouter } from 'next/navigation';
 import { useAIDetections } from '@/hooks/useAIDetections';
+import { useApproveDetection, useDismissDetection } from '@/hooks/useDetectionActions';
 import { DetectionStatsBar } from '@/components/features/ai-detection/DetectionStatsBar';
 import { DetectionToolbar } from '@/components/features/ai-detection/DetectionToolbar';
 import { StreamSelector } from '@/components/features/ai-detection/StreamSelector';
@@ -74,11 +74,14 @@ const STREAM_SELECTION_KEY = 'ai-detection-selected-streams';
 export default function AIDetectionPage() {
   const { activeProject } = useProject();
   const router = useRouter();
-  const { detections, status, alerts, soundEnabled, toggleSound, clearAlert } =
+  const { detections, status, alerts, soundEnabled, dispatch, toggleSound, clearAlert } =
     useAIDetections();
   const { data: djiDevices = [] } = useDJIDevices({ refetchInterval: 5_000 });
   const { data: streams = [], refetch: refetchStreamKeys, isFetching: isRefreshingStreams } =
     useStreamKeys();
+
+  const { approveDetection, isPending: isApproving } = useApproveDetection({ detections, dispatch });
+  const { dismissDetection, isPending: isDismissing } = useDismissDetection({ detections, dispatch });
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -88,6 +91,8 @@ export default function AIDetectionPage() {
   const [showMap, setShowMap] = useState(false);
   const [mapFocusDetection, setMapFocusDetection] = useState<ThreatDetection | null>(null);
   const [viewMode, setViewMode] = useState<'panel' | 'grid'>('panel');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [, startTransition] = useTransition();
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
     try {
@@ -195,17 +200,37 @@ export default function AIDetectionPage() {
     [detections]
   );
 
-  const handleApproveThreat = useCallback((detection: ThreatDetection) => {
-    console.log('[AID-15] Approve threat:', detection.id);
-    toast.success(`Threat approved: ${detection.type} (#${detection.trackId})`);
-    setSelectedDetection(null);
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }, []);
 
-  const handleDismissThreat = useCallback((detection: ThreatDetection) => {
-    console.log('[AID-15] Dismiss threat:', detection.id);
-    toast.success(`Threat dismissed: ${detection.type} (#${detection.trackId})`);
+  const toggleAllYOLO = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === yoloDetections.length) return new Set();
+      return new Set(yoloDetections.map((d) => d.id));
+    });
+  }, [yoloDetections]);
+
+  const toggleAllVerified = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === verifiedDetections.length) return new Set();
+      return new Set(verifiedDetections.map((d) => d.id));
+    });
+  }, [verifiedDetections]);
+
+  const handleApproveThreat = useCallback((detection: ThreatDetection) => {
+    approveDetection(detection);
     setSelectedDetection(null);
-  }, []);
+  }, [approveDetection]);
+
+  const handleDismissThreat = useCallback((detection: ThreatDetection) => {
+    dismissDetection(detection);
+    setSelectedDetection(null);
+  }, [dismissDetection]);
 
   const handleViewOnMap = useCallback((detection: ThreatDetection) => {
     setMapFocusDetection(detection);
@@ -248,13 +273,13 @@ export default function AIDetectionPage() {
               <DetectionToolbar
                 connectionStatus={status}
                 statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
+                onStatusChange={(value) => startTransition(() => { setStatusFilter(value); setSelectedIds(new Set()); })}
                 typeFilter={typeFilter}
-                onTypeChange={setTypeFilter}
+                onTypeChange={(value) => startTransition(() => { setTypeFilter(value); setSelectedIds(new Set()); })}
                 searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                onSearchChange={(value) => startTransition(() => { setSearchTerm(value); setSelectedIds(new Set()); })}
                 timeRange={timeRange}
-                onTimeRangeChange={setTimeRange}
+                onTimeRangeChange={(value) => startTransition(() => { setTimeRange(value); setSelectedIds(new Set()); })}
                 showMap={showMap}
                 onToggleMap={() => {
                   setShowMap((prev) => {
@@ -316,12 +341,30 @@ export default function AIDetectionPage() {
             <div className='flex-1 min-h-0 overflow-y-auto p-4 pt-3'>
               {filteredDetections.length === 0 ? (
                 <div className='flex flex-col items-center justify-center py-12 text-center'>
-                  <AlertTriangle size={16} className='text-zinc-600' />
-                  <p className='text-xs font-poppins text-zinc-600 mt-2'>
-                    {status === 'connecting'
-                      ? 'Connecting to AI server...'
-                      : 'No detections match filters'}
-                  </p>
+                  {status === 'connecting' || status === 'reconnecting' ? (
+                    <>
+                      <Loader2 size={16} className='text-zinc-600 animate-spin' />
+                      <p className='text-xs font-poppins text-zinc-600 mt-2'>
+                        {status === 'connecting' ? 'Connecting to AI server...' : 'Reconnecting to AI server...'}
+                      </p>
+                    </>
+                  ) : status === 'error' ? (
+                    <>
+                      <AlertTriangle size={16} className='text-red-500/60' />
+                      <p className='text-xs font-poppins text-red-400/60 mt-2'>Connection failed</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className='mt-2 flex items-center gap-1 text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+                      >
+                        <RefreshCw size={10} /> Retry
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle size={16} className='text-zinc-600' />
+                      <p className='text-xs font-poppins text-zinc-600 mt-2'>No detections match filters</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'>
@@ -330,6 +373,8 @@ export default function AIDetectionPage() {
                       key={d.id}
                       detection={d}
                       onSelect={setSelectedDetection}
+                      selected={selectedIds.has(d.id)}
+                      onToggleSelect={toggleSelect}
                     />
                   ))}
                 </div>
@@ -348,8 +393,13 @@ export default function AIDetectionPage() {
                 emptyMessage={
                   status === 'connecting'
                     ? 'Connecting to AI server...'
-                    : 'Waiting for YOLO detections...'
+                    : status === 'reconnecting'
+                      ? 'Reconnecting to AI server...'
+                      : 'Waiting for YOLO detections...'
                 }
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleAll={toggleAllYOLO}
               />
 
               {/* Center: Map + Video Grid */}
@@ -361,6 +411,9 @@ export default function AIDetectionPage() {
                       onSelectDetection={setSelectedDetection}
                       focusDetection={mapFocusDetection}
                       onCloseFocus={() => setMapFocusDetection(null)}
+                      onApprove={handleApproveThreat}
+                      onDismiss={handleDismissThreat}
+                      isPending={isApproving || isDismissing}
                     />
                   </MapErrorBoundary>
                 )}
@@ -369,6 +422,7 @@ export default function AIDetectionPage() {
                   streams={streams}
                   devices={djiDevices}
                   detections={videoDetections}
+                  connectionStatus={status}
                 />
               </div>
 
@@ -382,8 +436,13 @@ export default function AIDetectionPage() {
                 emptyMessage={
                   status === 'connecting'
                     ? 'Connecting to AI server...'
-                    : 'Waiting for LLM verification...'
+                    : status === 'reconnecting'
+                      ? 'Reconnecting to AI server...'
+                      : 'Waiting for LLM verification...'
                 }
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleAll={toggleAllVerified}
               />
             </div>
           )}
@@ -396,6 +455,7 @@ export default function AIDetectionPage() {
         onClose={() => setSelectedDetection(null)}
         onApprove={handleApproveThreat}
         onDismiss={handleDismissThreat}
+        isPending={isApproving || isDismissing}
       />
     </MainLayout>
   );

@@ -6,16 +6,22 @@ import Image from 'next/image';
 import { X, MapPin, Clock, Shield, Video, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTimeAgo } from '@/lib/utils';
-import { getConfidenceColor } from './lib/detection-utils';
-import { ConfirmDialog } from './ConfirmDialog';
+import { getConfidenceColor } from '@/components/features/ai-detection/lib/detection-utils';
+import { ConfirmDialog } from '@/components/features/ai-detection/ConfirmDialog';
 import type { ThreatDetection } from '@/lib/types/threats';
 
-const ThreatMap = dynamic(() => import('./ThreatMap').then((mod) => mod.ThreatMap), {
-  loading: () => <div className='h-48 animate-pulse bg-neutral-800 rounded-lg border border-zinc-800/50' />,
-  ssr: false,
-});
+const ThreatMap = dynamic(
+  () =>
+    import('@/components/features/ai-detection/ThreatMap').then((mod) => mod.ThreatMap),
+  {
+    loading: () => (
+      <div className='h-48 animate-pulse bg-neutral-800 rounded-lg border border-zinc-800/50' />
+    ),
+    ssr: false,
+  }
+);
 
-interface DetectionDetailModalProps {
+interface AlertDetailModalProps {
   detection: ThreatDetection | null;
   onClose: () => void;
   onApprove?: (detection: ThreatDetection) => void;
@@ -23,7 +29,13 @@ interface DetectionDetailModalProps {
   isPending?: boolean;
 }
 
-export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss, isPending = false }: DetectionDetailModalProps) {
+export function AlertDetailModal({
+  detection,
+  onClose,
+  onApprove,
+  onDismiss,
+  isPending = false,
+}: AlertDetailModalProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'approve' | 'dismiss' | null>(null);
 
@@ -82,10 +94,7 @@ export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss,
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center'>
       {/* Backdrop */}
-      <div
-        className='absolute inset-0 bg-black/60 backdrop-blur-sm'
-        onClick={onClose}
-      />
+      <div className='absolute inset-0 bg-black/60 backdrop-blur-sm' onClick={onClose} />
 
       {/* Modal */}
       <div className='relative bg-[#0C0D10] border border-zinc-800/50 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4'>
@@ -101,6 +110,16 @@ export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss,
             >
               {d.isVerified ? 'Verified' : 'Pending'}
             </span>
+            {d.status === 'approved' && (
+              <span className='text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-bold uppercase'>
+                Approved
+              </span>
+            )}
+            {d.status === 'dismissed' && (
+              <span className='text-xs px-2 py-0.5 rounded bg-zinc-600/30 text-zinc-500 font-bold uppercase'>
+                Dismissed
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -129,7 +148,8 @@ export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss,
           <div className='bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/50'>
             <h4 className='text-xs font-medium text-[#8C90A0] mb-1'>Bounding Box</h4>
             <p className='text-sm font-mono text-[#E2E2E8]'>
-              x={d.boundingBox.x.toFixed(3)} y={d.boundingBox.y.toFixed(3)} w={d.boundingBox.width.toFixed(3)} h={d.boundingBox.height.toFixed(3)}
+              x={d.boundingBox.x.toFixed(3)} y={d.boundingBox.y.toFixed(3)} w=
+              {d.boundingBox.width.toFixed(3)} h={d.boundingBox.height.toFixed(3)}
             </p>
           </div>
 
@@ -227,8 +247,8 @@ export function DetectionDetailModal({ detection, onClose, onApprove, onDismiss,
           )}
         </div>
 
-        {/* Action Buttons — show for all detections (YOLO + verified) */}
-        {(onApprove || onDismiss) && (
+        {/* Action Buttons */}
+        {d.status !== 'approved' && d.status !== 'dismissed' && (onApprove || onDismiss) && (
           <div className='flex gap-3 p-4 border-t border-zinc-800/50'>
             {onDismiss && (
               <button

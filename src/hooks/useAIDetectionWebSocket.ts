@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 import { getToken } from '@/lib/config/token-store';
 import type { ThreatSocketStatus, YoloDetectionEvent, TrackConfirmedEvent } from '@/lib/types/threats';
 
@@ -10,10 +11,13 @@ export interface AIDetectionWebSocketOptions {
   onTrackConfirmed?: (event: TrackConfirmedEvent) => void;
 }
 
+const ERROR_TOAST_THROTTLE_MS = 10_000;
+
 export function useAIDetectionWebSocket(options: AIDetectionWebSocketOptions = {}) {
   const [status, setStatus] = useState<ThreatSocketStatus>('connecting');
   const socketRef = useRef<Socket | null>(null);
   const cancelledRef = useRef(false);
+  const lastErrorToastRef = useRef(0);
   const onYoloRef = useRef(options.onYoloDetection);
   const onTrackRef = useRef(options.onTrackConfirmed);
 
@@ -42,11 +46,18 @@ export function useAIDetectionWebSocket(options: AIDetectionWebSocketOptions = {
       });
 
       socket.on('disconnect', () => {
-        if (!cancelledRef.current) setStatus('disconnected');
+        if (!cancelledRef.current) setStatus('reconnecting');
       });
 
       socket.on('connect_error', () => {
-        if (!cancelledRef.current) setStatus('error');
+        if (!cancelledRef.current) {
+          setStatus('error');
+          const now = Date.now();
+          if (now - lastErrorToastRef.current > ERROR_TOAST_THROTTLE_MS) {
+            lastErrorToastRef.current = now;
+            toast.error('AI Detection connection lost — reconnecting...');
+          }
+        }
       });
 
       socket.on('YOLO_DETECTION', (event: YoloDetectionEvent) => {

@@ -38,6 +38,9 @@ export const DetectionToolbar = memo(function DetectionToolbar({
   onToggleSound,
 }: DetectionToolbarProps) {
   const isConnected = connectionStatus === 'connected';
+  const isReconnecting = connectionStatus === 'reconnecting';
+  const isConnecting = connectionStatus === 'connecting';
+  const isError = connectionStatus === 'error';
 
   return (
     <div className='flex items-center justify-between px-3 py-2 bg-[#12151C] border border-[#1E2330] rounded-lg flex-shrink-0 gap-3'>
@@ -52,11 +55,23 @@ export const DetectionToolbar = memo(function DetectionToolbar({
             className={`w-1.5 h-1.5 rounded-full ${
               isConnected
                 ? 'bg-[#2CAC73] shadow-[0px_0px_4px_0px_#45F0CF]'
-                : 'bg-zinc-600'
+                : isReconnecting || isConnecting
+                  ? 'bg-amber-400 animate-pulse'
+                  : isError
+                    ? 'bg-red-500'
+                    : 'bg-zinc-600'
             }`}
           />
           <span className='text-[10px] font-semibold font-poppins uppercase tracking-tighter text-zinc-500'>
-            {isConnected ? 'Live' : 'Disconnected'}
+            {isConnected
+              ? 'Live'
+              : isReconnecting
+                ? 'Reconnecting'
+                : isConnecting
+                  ? 'Connecting'
+                  : isError
+                    ? 'Error'
+                    : 'Disconnected'}
           </span>
         </div>
       </div>

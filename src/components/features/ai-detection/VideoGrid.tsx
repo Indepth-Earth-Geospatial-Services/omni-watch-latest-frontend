@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useCallback, memo } from 'react';
-import { Video } from 'lucide-react';
+import { Video, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { StreamVideoCard } from './StreamVideoCard';
-import type { ThreatDetection } from '@/lib/types/threats';
+import type { ThreatDetection, ThreatSocketStatus } from '@/lib/types/threats';
 import type { DJIDevice } from '@/lib/types';
 import type { StreamEntry } from '@/hooks/useStreamKeys';
 
@@ -12,6 +12,7 @@ interface VideoGridProps {
   streams: StreamEntry[];
   devices: DJIDevice[];
   detections: ThreatDetection[];
+  connectionStatus?: ThreatSocketStatus;
 }
 
 function getGridCols(count: number): string {
@@ -31,6 +32,7 @@ export const VideoGrid = memo(function VideoGrid({
   streams,
   devices,
   detections,
+  connectionStatus = 'connected',
 }: VideoGridProps) {
   const [expandedStreamKey, setExpandedStreamKey] = useState<string | null>(null);
 
@@ -59,6 +61,9 @@ export const VideoGrid = memo(function VideoGrid({
   const isExpanded = expandedStreamKey !== null;
 
   if (activeStreams.length === 0) {
+    const isConnecting = connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
+    const isError = connectionStatus === 'error';
+
     return (
       <div className='relative flex flex-col bg-[#0C0E12] overflow-hidden rounded-xl border border-zinc-800/50 flex-1 min-h-0'>
         <div className='absolute inset-0 flex flex-col items-center justify-center'>
@@ -69,8 +74,30 @@ export const VideoGrid = memo(function VideoGrid({
                 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
             }}
           />
-          <Video className='w-8 h-8 text-zinc-700 mb-2' />
-          <p className='text-xs font-poppins text-zinc-600'>Select streams to begin monitoring</p>
+          {isConnecting ? (
+            <>
+              <Loader2 className='w-8 h-8 text-zinc-600 animate-spin mb-2' />
+              <p className='text-xs font-poppins text-zinc-600'>
+                {connectionStatus === 'connecting' ? 'Connecting to AI server...' : 'Reconnecting...'}
+              </p>
+            </>
+          ) : isError ? (
+            <>
+              <AlertTriangle className='w-8 h-8 text-red-500/60 mb-2' />
+              <p className='text-xs font-poppins text-red-400/60'>Connection failed</p>
+              <button
+                onClick={() => window.location.reload()}
+                className='mt-2 flex items-center gap-1 text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+              >
+                <RefreshCw size={10} /> Retry
+              </button>
+            </>
+          ) : (
+            <>
+              <Video className='w-8 h-8 text-zinc-700 mb-2' />
+              <p className='text-xs font-poppins text-zinc-600'>Select streams to begin monitoring</p>
+            </>
+          )}
         </div>
       </div>
     );

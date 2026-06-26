@@ -2,6 +2,7 @@ import type {
   ThreatDetection,
   DetectionAlert,
   ThreatSocketStatus,
+  DetectionStatus,
   YoloDetectionEvent,
   TrackConfirmedEvent,
 } from '@/lib/types/threats';
@@ -21,6 +22,8 @@ export type DetectionAction =
   | { type: 'SET_STATUS'; payload: ThreatSocketStatus }
   | { type: 'ADD_YOLO_DETECTIONS'; payload: YoloDetectionEvent }
   | { type: 'ADD_TRACK_CONFIRMED'; payload: TrackConfirmedEvent }
+  | { type: 'UPDATE_DETECTION_STATUS'; payload: { id: string; status: DetectionStatus } }
+  | { type: 'BULK_UPDATE_DETECTION_STATUS'; payload: { ids: string[]; status: DetectionStatus } }
   | { type: 'CLEAR_ALERT'; payload: string }
   | { type: 'TOGGLE_SOUND' }
   | { type: 'DISMISS_ALERT'; payload: string };
@@ -92,6 +95,7 @@ export function detectionReducer(
 
     case 'ADD_YOLO_DETECTIONS': {
       const event = action.payload;
+      console.log('[DetectionReducer] YOLO_DETECTION event:', JSON.stringify(event, null, 2));
       const newDetections = event.detections.map((d) => buildDetectionFromYolo(event, d));
       return {
         ...state,
@@ -101,6 +105,7 @@ export function detectionReducer(
 
     case 'ADD_TRACK_CONFIRMED': {
       const event = action.payload;
+      console.log('[DetectionReducer] TRACK_CONFIRMED event:', JSON.stringify(event, null, 2));
       const newDetections = event.detections.map((d) => buildDetectionFromTrack(event, d));
 
       const updatedDetections = [...state.detections];
@@ -143,6 +148,27 @@ export function detectionReducer(
         ...state,
         alerts: state.alerts.filter((a) => a.id !== action.payload),
       };
+
+    case 'UPDATE_DETECTION_STATUS': {
+      const { id, status } = action.payload;
+      return {
+        ...state,
+        detections: state.detections.map((d) =>
+          d.id === id ? { ...d, status } : d
+        ),
+      };
+    }
+
+    case 'BULK_UPDATE_DETECTION_STATUS': {
+      const { ids, status } = action.payload;
+      const idSet = new Set(ids);
+      return {
+        ...state,
+        detections: state.detections.map((d) =>
+          idSet.has(d.id) ? { ...d, status } : d
+        ),
+      };
+    }
 
     case 'TOGGLE_SOUND':
       return { ...state, soundEnabled: !state.soundEnabled };

@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+import Image from 'next/image';
 import { CheckCircle, Clock, ImageOff, MapPin } from 'lucide-react';
 import { formatTimeAgo, cn } from '@/lib/utils';
 import { getConfidenceColor } from './lib/detection-utils';
@@ -9,6 +11,8 @@ interface DetectionItemProps {
   detection: ThreatDetection;
   onSelect?: (detection: ThreatDetection) => void;
   onViewOnMap?: (detection: ThreatDetection) => void;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 const typeDotColor: Record<string, string> = {
@@ -21,7 +25,7 @@ const typeDotColor: Record<string, string> = {
   animal: 'bg-yellow-400',
 };
 
-export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionItemProps) {
+export const DetectionItem = memo(function DetectionItem({ detection, onSelect, onViewOnMap, selected, onToggleSelect }: DetectionItemProps) {
   const d = detection;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,13 +46,24 @@ export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionIte
       role={onSelect ? 'button' : undefined}
       tabIndex={onSelect ? 0 : undefined}
     >
+      {/* Selection checkbox */}
+      {onToggleSelect && (
+        <input
+          type='checkbox'
+          checked={selected ?? false}
+          onChange={() => onToggleSelect(d.id)}
+          className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer flex-shrink-0'
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
+
       {/* Type dot */}
       <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${typeDotColor[d.type] || 'bg-zinc-500'}`} />
 
       {/* Thumbnail */}
       {d.imageUrl ? (
-        <div className='w-8 h-6 rounded overflow-hidden border border-zinc-700/50 bg-zinc-900 flex-shrink-0'>
-          <img src={d.imageUrl} alt='' className='w-full h-full object-cover' loading='lazy' />
+        <div className='relative w-8 h-6 rounded overflow-hidden border border-zinc-700/50 bg-zinc-900 flex-shrink-0'>
+          <Image src={d.imageUrl} alt='' fill className='object-cover' unoptimized />
         </div>
       ) : (
         <div className='w-8 h-6 rounded border border-zinc-800 bg-zinc-900 flex items-center justify-center flex-shrink-0'>
@@ -74,8 +89,11 @@ export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionIte
         {d.streamId}
       </span>
 
+      {/* Spacer */}
+      <div className='flex-1' />
+
       {/* View on Map (hover only) */}
-      {onViewOnMap && d.droneLatitude != null && (
+      {onViewOnMap && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -87,9 +105,6 @@ export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionIte
           <MapPin className='w-3 h-3 text-[#1C93FF]' />
         </button>
       )}
-
-      {/* Spacer */}
-      <div className='flex-1' />
 
       {/* Reasoning preview (verified only) */}
       {d.isVerified && d.reasoning && (
@@ -109,4 +124,4 @@ export function DetectionItem({ detection, onSelect, onViewOnMap }: DetectionIte
       </span>
     </div>
   );
-}
+});

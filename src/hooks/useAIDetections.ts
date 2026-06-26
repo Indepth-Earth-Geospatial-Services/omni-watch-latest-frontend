@@ -67,6 +67,7 @@ export function useAIDetections() {
     status: state.status,
     alerts: state.alerts,
     soundEnabled: state.soundEnabled,
+    dispatch,
     toggleSound,
     clearAlert,
   };

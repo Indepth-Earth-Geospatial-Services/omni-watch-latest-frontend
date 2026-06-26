@@ -70,6 +70,11 @@ export interface TrackConfirmedEvent {
 }
 
 /**
+ * Detection status after operator action
+ */
+export type DetectionStatus = 'pending' | 'approved' | 'dismissed';
+
+/**
  * Unified threat detection item for the frontend threats page
  * Combines both YOLO_DETECTION and TRACK_CONFIRMED events
  */
@@ -81,6 +86,7 @@ export interface ThreatDetection {
   confidence: number;            // score
   isVerified: boolean;           // true if TRACK_CONFIRMED
   reasoning?: string;            // LLM reasoning (only for verified threats)
+  status?: DetectionStatus;      // operator action status (pending/approved/dismissed)
 
   // Bounding box (for video overlay)
   boundingBox: {
