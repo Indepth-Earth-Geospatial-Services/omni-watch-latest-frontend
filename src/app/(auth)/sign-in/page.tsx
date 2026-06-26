@@ -126,15 +126,15 @@ function SignInForm() {
               <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse' />
             </div>
             <div>
-              <span className='text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
-                SENTINEL
+              <span className='text-5xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
+                OmniWatch
               </span>
               <div className='text-[10px] text-gray-500 font-mono tracking-wider'>
-                ISR COMMAND & CONTROL
+                OS COMMAND & CONTROL
               </div>
             </div>
           </Link>
-          <h1 className='text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
+          <h1 className='font-bold'>
             Welcome Back
           </h1>
           <p className='text-gray-400'>Sign in to access your command center</p>
