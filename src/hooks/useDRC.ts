@@ -2,12 +2,13 @@
 
 // DRC = Drone Real-time Control — the MQTT channel required for emergency stop.
 //
-// Lifecycle:
-//   call activate(dockSn) → POST /drc/connect → POST /drc/enter → MQTT connect
+// Lifecycle (matches Lawrence's confirmed working approach):
+//   call activate(dockSn) → POST /drc/enter → MQTT connect (credentials from enter response
+//                           or fallback to POST /drc/connect) → heartbeat loop
 //   call deactivate()     → clear heartbeat → end MQTT → POST /drc/exit
 //
 // Emergency stop MUST go through this channel; the REST /jobs API does not
-// support real-time stop commands. Mirror of drone_tracker.html emergencyStop().
+// support real-time stop commands.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mqtt from 'mqtt';
@@ -83,22 +84,36 @@ export function useDRC() {
       // that was never properly closed (e.g. page refresh, dropped connection).
       await drcExit(workspaceIdRef.current, DRC_CLIENT_ID, dockSn).catch(() => {});
 
-      // 1. Get MQTT broker credentials
-      const broker = await drcConnect(workspaceIdRef.current);
+      // 1. Enter DRC mode — returns pub/sub topics and (on most servers) embedded
+      //    MQTT broker credentials so the client can connect to the same broker.
+      const enterResult = await drcEnter(workspaceIdRef.current, DRC_CLIENT_ID, dockSn);
+      pubTopicRef.current = enterResult.pub[0] ?? '';
 
-      // 2. Get DRC pub/sub MQTT topics
-      const { pub, sub } = await drcEnter(workspaceIdRef.current, DRC_CLIENT_ID, dockSn);
-      pubTopicRef.current = pub[0] ?? '';
+      // 2. Resolve MQTT broker credentials.
+      //    Prefer credentials embedded in the /drc/enter response (Lawrence's server
+      //    returns them there). Fall back to a separate /drc/connect call for servers
+      //    that follow the older two-step pattern.
+      let addr: string;
+      let mqttUsername: string | undefined;
+      let mqttPassword: string | undefined;
 
-      // 3. Convert TCP address → WebSocket URL (browsers can't use raw TCP MQTT)
-      const addr = toWsUrl(broker.address);
+      if (enterResult.address) {
+        addr          = toWsUrl(enterResult.address);
+        mqttUsername  = enterResult.username;
+        mqttPassword  = enterResult.password;
+      } else {
+        const broker  = await drcConnect(workspaceIdRef.current);
+        addr          = toWsUrl(broker.address);
+        mqttUsername  = broker.username;
+        mqttPassword  = broker.password;
+      }
 
-      // 4. Connect MQTT — allow auto-reconnect so a network blip during flight
-      //    doesn't silently kill the emergency stop channel
+      // 3. Connect MQTT — allow auto-reconnect so a network blip during flight
+      //    doesn't silently kill the emergency stop channel.
       const client = mqtt.connect(addr, {
         clientId: DRC_CLIENT_ID,
-        username: broker.username,
-        password: broker.password,
+        username: mqttUsername,
+        password: mqttPassword,
         clean:     true,
         reconnectPeriod: 2000, // retry every 2s on drop — keeps E-stop alive mid-flight
         keepalive: 30,
@@ -112,7 +127,7 @@ export function useDRC() {
           clearTimeout(timeout);
 
           // Subscribe to DRC response topics
-          sub.forEach((t) => client.subscribe(t, { qos: 0 }));
+          enterResult.sub.forEach((t: string) => client.subscribe(t, { qos: 0 }));
 
           // Heartbeat — required to keep the DRC session alive.
           // Only set up once; auto-reconnect reuses the same client and existing interval.
@@ -137,12 +152,14 @@ export function useDRC() {
         });
 
         client.on('reconnect', () => {
-          if (mountedRef.current) setStatus('connecting');
+          // Guard: only update status if this client is still the active one.
+          // After deactivate() force-closes a client, its stale events must not
+          // override the status of the new connection being established.
+          if (mountedRef.current && clientRef.current === client) setStatus('connecting');
         });
 
         client.on('close', () => {
-          // Only mark idle if we're not actively reconnecting (reconnectPeriod>0 handles retries)
-          if (mountedRef.current && !client.reconnecting) setStatus('idle');
+          if (mountedRef.current && clientRef.current === client && !client.reconnecting) setStatus('idle');
         });
       });
     } catch (err) {
@@ -160,7 +177,7 @@ export function useDRC() {
     if (!clientRef.current || !pubTopicRef.current) return false;
     clientRef.current.publish(
       pubTopicRef.current,
-      JSON.stringify({ method: 'drone_emergency_stop', data: { seq: seqRef.current++ } }),
+      JSON.stringify({ method: 'drone_emergency_stop', data: {} }),
     );
     return true;
   }, []);

@@ -350,7 +350,7 @@ export function gimbalLookAt(
   payloadIndex: string,
   latitude: number,
   longitude: number,
-  height: number,
+  height: number
 ): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.dock.payloadCommand(dockSn), {
     cmd: 'camera_look_at',
@@ -371,7 +371,7 @@ export function gimbalLookAt(
 export async function gimbalReset(
   dockSn: string,
   payloadIndex: string,
-  resetMode: number,
+  resetMode: number
 ): Promise<void> {
   await djiRequest
     .post<void>(DJI_URLS.dock.payloadAuthority(dockSn), { payload_index: payloadIndex })
@@ -396,18 +396,18 @@ export function executeJob(sn: string, serviceIdentifier: string, body?: object)
  */
 export function takeoffToPoint(sn: string, body: TakeoffToPointRequest): Promise<void> {
   const wire = {
-    target_latitude:            body.targetLatitude,
-    target_longitude:           body.targetLongitude,
-    target_height:              body.targetHeight,
-    security_takeoff_height:    body.securityTakeoffHeight,
-    rth_altitude:               body.rthAltitude,
-    rc_lost_action:             Number(body.rcLostAction),
-    exit_wayline_when_rc_lost:  Number(body.exitWaylineWhenRcLost),
-    max_speed:                  body.maxSpeed,
-    rth_mode:                   Number(body.rthMode),
+    target_latitude: body.targetLatitude,
+    target_longitude: body.targetLongitude,
+    target_height: body.targetHeight,
+    security_takeoff_height: body.securityTakeoffHeight,
+    rth_altitude: body.rthAltitude,
+    rc_lost_action: Number(body.rcLostAction),
+    exit_wayline_when_rc_lost: Number(body.exitWaylineWhenRcLost),
+    max_speed: body.maxSpeed,
+    rth_mode: Number(body.rthMode),
     commander_mode_lost_action: Number(body.commanderModeLostAction),
-    commander_flight_mode:      Number(body.commanderFlightMode),
-    commander_flight_height:    body.commanderFlightHeight,
+    commander_flight_mode: Number(body.commanderFlightMode),
+    commander_flight_height: body.commanderFlightHeight,
   };
   console.log('[takeoffToPoint] wire payload →', wire);
   return djiRequest.post<void>(DJI_URLS.dock.takeoffToPoint(sn), wire);
@@ -419,7 +419,7 @@ export function takeoffToPoint(sn: string, body: TakeoffToPointRequest): Promise
 export function flyToPoint(sn: string, body: DockFlyToPointRequest): Promise<void> {
   const wire = {
     max_speed: body.maxSpeed,
-    points:    body.points,
+    points: body.points,
   };
   console.log('[flyToPoint] wire payload →', wire);
   return djiRequest.post<void>(DJI_URLS.dock.flyToPoint(sn), wire);
@@ -434,6 +434,8 @@ export function cancelFlyToPoint(sn: string): Promise<void> {
 export function cancelTakeoffToPoint(sn: string): Promise<void> {
   return djiRequest.delete<void>(DJI_URLS.dock.takeoffToPoint(sn));
 }
+
+// http://35.222.89.171:6789/control/api/v1/devices/8UUXN3H00A031T/jobs/return_home_cancel
 
 /** Best-effort cancel of any active dock job (fly-to-point, takeoff-to-point, wayline).
  *  Individual failures are swallowed — useful for clearing stuck job state. */
@@ -471,7 +473,11 @@ export function drcConnect(workspaceId: string): Promise<DRCConnectResponse> {
 }
 
 /** Step 2 — open a DRC channel for the dock; returns MQTT pub/sub topics. */
-export function drcEnter(workspaceId: string, clientId: string, dockSn: string): Promise<DRCEnterResponse> {
+export function drcEnter(
+  workspaceId: string,
+  clientId: string,
+  dockSn: string
+): Promise<DRCEnterResponse> {
   return djiRequest.post<DRCEnterResponse>(DJI_URLS.drc.enter(workspaceId), {
     client_id: clientId,
     dock_sn: dockSn,

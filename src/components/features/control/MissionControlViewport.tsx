@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Crosshair, Navigation, VideoOff } from 'lucide-react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { AlertTriangle, Crosshair, Navigation, RefreshCw, VideoOff } from 'lucide-react';
 import FlightControlActions from './FlightControlActions';
 import GimbalControls from './GimbalControls';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
@@ -79,6 +79,14 @@ const MissionControlViewport = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
+  const [reconnectKey, setReconnectKey] = useState(0);
+
+  // Remounts the WebRTCPlayer for a fresh negotiation without stopping the server-side stream.
+  const handleReconnect = useCallback(() => {
+    setMediaStream(null);
+    setStreamConnectState(null);
+    setReconnectKey((k) => k + 1);
+  }, []);
 
   // Set srcObject and muted imperatively — React's `muted` JSX prop doesn't reliably
   // set the DOM property, blocking autoplay. Call play() after srcObject is assigned so
@@ -181,9 +189,11 @@ const MissionControlViewport = ({
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active */}
+        {/* WebRTC player — headless, mounts only while a stream URL is active.
+            key={reconnectKey} forces a fresh WebRTC negotiation on reconnect. */}
         {activeStreamUrl && (
           <WebRTCPlayer
+            key={reconnectKey}
             url={activeStreamUrl}
             onStateChange={(state) => setStreamConnectState(state)}
             onMediaStream={setMediaStream}
@@ -210,8 +220,14 @@ const MissionControlViewport = ({
         {/* Error state */}
         {streamConnectState === 'error' && (
           <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#050709]'>
-            <VideoOff size={26} className='text-red-500/60' />
+            <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
+            <button
+              onClick={handleReconnect}
+              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
+            >
+              <RefreshCw size={9} /> Reconnect
+            </button>
           </div>
         )}
 
