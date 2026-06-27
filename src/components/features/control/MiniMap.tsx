@@ -37,31 +37,37 @@ const MAP_STYLES: Record<MapStyleKey, string | StyleSpecification> = {
 
 const STYLE_OPTIONS: { key: MapStyleKey; icon: React.ElementType; label: string }[] = [
   { key: 'satellite', icon: Globe, label: 'Satellite' },
-  { key: 'dark',      icon: Moon,  label: 'Dark'      },
+  { key: 'dark', icon: Moon, label: 'Dark' },
 ];
 
 const ALT_MAX = 400;
 // Mirror the HTML reference: altitude threshold for "airborne" state
 const AIRBORNE_ALT_M = 60;
 
-const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className }: TacticalMiniMapProps) => {
-  const mapRef        = useRef<MapRef>(null);
+const TacticalMiniMap = ({
+  droneData,
+  dockData,
+  targetLat,
+  targetLng,
+  className,
+}: TacticalMiniMapProps) => {
+  const mapRef = useRef<MapRef>(null);
   const hasAutoZoomed = useRef(false); // fire flyTo only once per mount
   const [activeStyle, setActiveStyle] = useState<MapStyleKey>('dark');
-  const [pickerOpen, setPickerOpen]   = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // ─── Drone position ───────────────────────────────────────────────────────
-  const droneLat    = droneData?.latitude  ?? 0;
-  const droneLng    = droneData?.longitude ?? 0;
-  const heading     = droneData?.heading   ?? 0;
-  const altitude    = droneData?.altitude  ?? 0;
+  const droneLat = droneData?.latitude ?? 0;
+  const droneLng = droneData?.longitude ?? 0;
+  const heading = droneData?.heading ?? 0;
+  const altitude = droneData?.altitude ?? 0;
   const hasPosition = droneLat !== 0 || droneLng !== 0;
-  const isAirborne  = altitude > AIRBORNE_ALT_M;
-  const altPct      = Math.min((altitude / ALT_MAX) * 100, 100);
+  const isAirborne = altitude > AIRBORNE_ALT_M;
+  const altPct = Math.min((altitude / ALT_MAX) * 100, 100);
 
   // ─── Dock position ────────────────────────────────────────────────────────
-  const dockLat    = dockData?.latitude  ?? 0;
-  const dockLng    = dockData?.longitude ?? 0;
+  const dockLat = dockData?.latitude ?? 0;
+  const dockLng = dockData?.longitude ?? 0;
   const hasDockPos = dockLat !== 0 || dockLng !== 0;
   const dockOnline = dockData?.online ?? false;
 
@@ -69,26 +75,31 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
   const hasTarget = targetLat != null && targetLng != null && targetLat !== 0 && targetLng !== 0;
 
   // ─── Route line: drone → target (GeoJSON) ─────────────────────────────────
-  const routeGeoJson = hasTarget && hasPosition ? {
-    type: 'FeatureCollection' as const,
-    features: [{
-      type: 'Feature' as const,
-      geometry: {
-        type: 'LineString' as const,
-        coordinates: [
-          [droneLng, droneLat],
-          [targetLng!, targetLat!],
-        ],
-      },
-      properties: {},
-    }],
-  } : null;
+  const routeGeoJson =
+    hasTarget && hasPosition
+      ? {
+          type: 'FeatureCollection' as const,
+          features: [
+            {
+              type: 'Feature' as const,
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: [
+                  [droneLng, droneLat],
+                  [targetLng!, targetLat!],
+                ],
+              },
+              properties: {},
+            },
+          ],
+        }
+      : null;
 
   // ─── Initial view — real GPS if available, otherwise world overview ───────
   const hasAnyPos = hasPosition || hasDockPos;
-  const initLat   = hasPosition ? droneLat : hasDockPos ? dockLat : 20;
-  const initLng   = hasPosition ? droneLng : hasDockPos ? dockLng : 0;
-  const initZoom  = hasAnyPos ? 16 : 2;
+  const initLat = hasPosition ? droneLat : hasDockPos ? dockLat : 20;
+  const initLng = hasPosition ? droneLng : hasDockPos ? dockLng : 0;
+  const initZoom = hasAnyPos ? 16 : 2;
   const initPitch = hasAnyPos ? 45 : 0;
 
   // ─── Auto-zoom: fly to drone/dock position on first GPS arrival ───────────
@@ -116,16 +127,16 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
 
   return (
     <div
-      className={`relative bg-[#0C0E12] border border-zinc-800/50 rounded-xl overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
-      style={className ? undefined : { width: '304px', height: '350px' }}
+      className={`relative bg-[#0C0E12] border border-zinc-800/50 rounded-t-md overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
+      style={className ? undefined : { width: '301px', height: '342px', borderRadius: '8px' }}
     >
       {/* ── Base map ───────────────────────────────────────────────────── */}
       <Map
         ref={mapRef}
         initialViewState={{
           longitude: initLng,
-          latitude:  initLat,
-          zoom:  initZoom,
+          latitude: initLat,
+          zoom: initZoom,
           pitch: initPitch,
         }}
         style={{ width: '100%', height: '100%' }}
@@ -194,8 +205,12 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
 
         {/* Altitude bar — right (drone altitude only) */}
         <div className='absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2'>
-          <span className='text-[8px] font-black text-white/30 uppercase tracking-[0.2em]'>Alt</span>
-          <span className={`text-[10px] font-mono font-bold ${isAirborne ? 'text-blue-400' : hasPosition ? 'text-zinc-400' : 'text-zinc-600'}`}>
+          <span className='text-[8px] font-black text-white/30 uppercase tracking-[0.2em]'>
+            Alt
+          </span>
+          <span
+            className={`text-[10px] font-mono font-bold ${isAirborne ? 'text-blue-400' : hasPosition ? 'text-zinc-400' : 'text-zinc-600'}`}
+          >
             {hasPosition ? `${altitude.toFixed(0)}m` : '—'}
           </span>
           <div className='relative h-36 w-[3px] bg-white/5 rounded-full overflow-hidden'>
@@ -217,19 +232,25 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
             {hasPosition && (
               <div className='flex items-center gap-1.5'>
                 <Plane size={10} className='text-blue-400 fill-blue-400' />
-                <span className='text-[8px] font-mono text-blue-400/70 uppercase tracking-wide'>Drone</span>
+                <span className='text-[8px] font-mono text-blue-400/70 uppercase tracking-wide'>
+                  Drone
+                </span>
               </div>
             )}
             {hasDockPos && (
               <div className='flex items-center gap-1.5'>
                 <HardDrive size={10} className='text-emerald-400' />
-                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Dock</span>
+                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>
+                  Dock
+                </span>
               </div>
             )}
             {hasTarget && (
               <div className='flex items-center gap-1.5'>
                 <Target size={10} className='text-amber-400' />
-                <span className='text-[8px] font-mono text-amber-400/70 uppercase tracking-wide'>Target</span>
+                <span className='text-[8px] font-mono text-amber-400/70 uppercase tracking-wide'>
+                  Target
+                </span>
               </div>
             )}
           </div>
@@ -239,7 +260,13 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
         <div className='absolute top-3 left-3 flex flex-col gap-1'>
           <div className='w-2.5 h-2.5 border-t-2 border-l-2 border-white/30 rounded-tl' />
           <span className='text-[8px] font-mono text-white/25 uppercase tracking-wider'>
-            {isAirborne ? 'Airborne' : hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
+            {isAirborne
+              ? 'Airborne'
+              : hasPosition
+                ? 'GPS Lock'
+                : hasDockPos
+                  ? 'Dock Only'
+                  : 'No Signal'}
           </span>
         </div>
 
@@ -256,7 +283,10 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
               return (
                 <button
                   key={key}
-                  onClick={() => { setActiveStyle(key); setPickerOpen(false); }}
+                  onClick={() => {
+                    setActiveStyle(key);
+                    setPickerOpen(false);
+                  }}
                   title={label}
                   className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 border backdrop-blur-sm shadow-lg ${
                     isActive

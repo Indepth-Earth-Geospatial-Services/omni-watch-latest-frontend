@@ -19,11 +19,18 @@ export const DebugActivationModal = ({ onClose, onConfirm }: DebugActivationModa
             <AlertTriangle size={18} className='text-amber-400' />
           </div>
           <div>
-            <h2 className='text-sm font-black uppercase tracking-widest text-zinc-100'>Activate Debug Mode</h2>
-            <p className='text-[10px] text-amber-500/80 font-mono tracking-wide mt-0.5'>REMOTE HARDWARE ACCESS</p>
+            <h2 className='text-sm font-black uppercase tracking-widest text-zinc-100'>
+              Activate Debug Mode
+            </h2>
+            <p className='text-[10px] text-amber-500/80 font-mono tracking-wide mt-0.5'>
+              REMOTE HARDWARE ACCESS
+            </p>
           </div>
         </div>
-        <button onClick={onClose} className='text-zinc-600 hover:text-zinc-300 transition-colors mt-0.5'>
+        <button
+          onClick={onClose}
+          className='text-zinc-600 hover:text-zinc-300 transition-colors mt-0.5'
+        >
           <X size={16} />
         </button>
       </div>
@@ -52,7 +59,8 @@ export const DebugActivationModal = ({ onClose, onConfirm }: DebugActivationModa
           ))}
         </div>
         <p className='text-[10px] text-zinc-600'>
-          Debug mode will be reported via MQTT and visible to all operators. Deactivate when finished.
+          Debug mode will be reported via MQTT and visible to all operators. Deactivate when
+          finished.
         </p>
       </div>
       <div className='flex gap-3 px-6 pb-6'>

@@ -202,30 +202,31 @@ export function useDJIWebSocket() {
             (handlersRef.current[biz_code as BizCode] as any[]).forEach((h) => h(data));
           }
 
-          // Wrap all state updates in startTransition so navigation takes priority
-          // over incoming telemetry re-renders.
+          // device_online_update and device_osd are real-time telemetry — apply
+          // immediately so FlightStatsBar and other live panels update without delay.
+          // startTransition would defer these updates and in high-frequency OSD
+          // scenarios React keeps restarting the deferred render, effectively freezing
+          // the UI while events keep streaming in.
+          if (biz_code === 'device_online_update') {
+            const update = data as DeviceOnlineUpdateData;
+            setDeviceStates((prev) => {
+              const next = new Map(prev);
+              next.set(update.sn, update);
+              return next;
+            });
+          }
+
+          if (biz_code === 'device_osd') {
+            const osd = data as DeviceOSDData;
+            setOsdStates((prev) => {
+              const next = new Map(prev);
+              next.set(osd.sn, osd);
+              return next;
+            });
+          }
+
+          // OTA progress is infrequent and non-critical — safe to defer
           startTransition(() => {
-            // Built-in: maintain device state map for device_online_update
-            if (biz_code === 'device_online_update') {
-              const update = data as DeviceOnlineUpdateData;
-              setDeviceStates((prev) => {
-                const next = new Map(prev);
-                next.set(update.sn, update);
-                return next;
-              });
-            }
-
-            // Built-in: maintain OSD map — primary source of GPS + telemetry
-            if (biz_code === 'device_osd') {
-              const osd = data as DeviceOSDData;
-              setOsdStates((prev) => {
-                const next = new Map(prev);
-                next.set(osd.sn, osd);
-                return next;
-              });
-            }
-
-            // Built-in: track OTA progress per device; remove entry once done/failed
             if (biz_code === 'device_upgrade_progress') {
               const upgrade = data as DeviceUpgradeProgressData;
               setUpgradeStates((prev) => {

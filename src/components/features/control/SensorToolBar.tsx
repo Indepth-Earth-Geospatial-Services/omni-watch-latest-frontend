@@ -4,10 +4,10 @@ import React from 'react';
 
 // DJI video_type values → friendly labels shown in the toolbar
 const MODES = [
-  { label: 'RGB',     value: 'normal' },
-  { label: 'Zoom',    value: 'zoom'   },
-  { label: 'Wide',    value: 'wide'   },
-  { label: 'Thermal', value: 'ir'     },
+  // { label: 'RGB',     value: 'normal' },
+  { label: 'Zoom', value: 'zoom' },
+  { label: 'Wide', value: 'wide' },
+  { label: 'Thermal', value: 'ir' },
 ] as const;
 
 export interface SensorToolbarProps {

@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { AlertTriangle, Crosshair, Navigation, RefreshCw, VideoOff } from 'lucide-react';
-import FlightControlActions from './FlightControlActions';
+import React, { useRef, useEffect } from 'react';
+import { AlertTriangle, ChevronDown, Crosshair, Navigation, RefreshCw } from 'lucide-react';
 import GimbalControls from './GimbalControls';
-import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-interface MissionControlViewportProps {
+interface DroneFeedProps {
   devices: LiveCapacity[];
   videoTypes: string[];
   selectedSn: string;
@@ -21,10 +19,12 @@ interface MissionControlViewportProps {
   isStarting: boolean;
   isStopping: boolean;
   capacityLoading: boolean;
-  isFlying: boolean;
   activeStreamUrl: string;
+  // Stream state lifted to Control so it survives panel swaps
+  mediaStream: MediaStream | null;
+  streamConnectState: StreamState | null;
+  onReconnect: () => void;
   dockSn?: string;
-  dockOnline?: boolean;
   payloadIndex?: string;
   onDeviceChange: (sn: string) => void;
   onVideoTypeChange: (type: string) => void;
@@ -44,11 +44,11 @@ const QUALITY_LABELS: Record<string, string> = {
 };
 
 const selectCls =
-  'bg-[#1A1C20] border border-zinc-700 text-zinc-200 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-40';
+  'appearance-none w-full bg-[#16181D] border border-zinc-700/70 text-zinc-200 text-[11px] font-medium rounded-md pl-2.5 pr-7 py-1.5 cursor-pointer transition-colors hover:border-zinc-500 hover:bg-[#1E2127] focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const MissionControlViewport = ({
+const DroneFeed = ({
   devices,
   videoTypes,
   selectedSn,
@@ -59,10 +59,11 @@ const MissionControlViewport = ({
   isStarting,
   isStopping,
   capacityLoading,
-  isFlying,
   activeStreamUrl,
+  mediaStream,
+  streamConnectState,
+  onReconnect,
   dockSn,
-  dockOnline,
   payloadIndex,
   onDeviceChange,
   onVideoTypeChange,
@@ -71,22 +72,12 @@ const MissionControlViewport = ({
   onStop,
   className,
   isMini = false,
-}: MissionControlViewportProps) => {
+}: DroneFeedProps) => {
   const heading = 247;
   const canStart = !!selectedVideoId && !isStreaming;
   const canStop = !!selectedVideoId && isStreaming;
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
-  const [reconnectKey, setReconnectKey] = useState(0);
-
-  // Remounts the WebRTCPlayer for a fresh negotiation without stopping the server-side stream.
-  const handleReconnect = useCallback(() => {
-    setMediaStream(null);
-    setStreamConnectState(null);
-    setReconnectKey((k) => k + 1);
-  }, []);
 
   // Set srcObject and muted imperatively — React's `muted` JSX prop doesn't reliably
   // set the DOM property, blocking autoplay. Call play() after srcObject is assigned so
@@ -99,72 +90,82 @@ const MissionControlViewport = ({
     if (mediaStream) video.play().catch(() => {});
   }, [mediaStream]);
 
-  // Reset player state when stream URL is cleared
-  useEffect(() => {
-    if (!activeStreamUrl) {
-      setMediaStream(null);
-      setStreamConnectState(null);
-    }
-  }, [activeStreamUrl]);
-
   return (
     <div
-      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col mb-2 ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
+      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
       style={
         isMini
-          ? { width: '301px', height: '342px' }
+          ? { width: '301px', height: '342px', borderRadius: '8px' }
           : className
             ? undefined
-            : { padding: '0px 0px', height: '700px' }
+            : { padding: '0px 0px', height: '633px' }
       }
     >
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
       {!isMini && (
-        <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
+        <div className='flex items-center gap-2 py-2 flex-wrap'>
           {/* Device */}
-          <select
-            value={selectedSn}
-            onChange={(e) => onDeviceChange(e.target.value)}
-            disabled={capacityLoading || isStreaming}
-            className={selectCls}
-          >
-            <option value=''>{capacityLoading ? 'Loading devices…' : 'Select device'}</option>
-            {devices.map((d) => (
-              <option key={d.sn} value={d.sn}>
-                {d.name || d.sn}
-              </option>
-            ))}
-          </select>
-
-          {/* Lens / video type */}
-          {videoTypes.length > 0 && (
+          <div className='relative'>
             <select
-              value={selectedVideoType}
-              onChange={(e) => onVideoTypeChange(e.target.value)}
-              disabled={!selectedVideoId}
+              value={selectedSn}
+              onChange={(e) => onDeviceChange(e.target.value)}
+              disabled={capacityLoading || isStreaming}
               className={selectCls}
             >
-              {videoTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+              <option value=''>{capacityLoading ? 'Loading devices…' : 'Select device'}</option>
+              {devices.map((d) => (
+                <option key={d.sn} value={d.sn}>
+                  {d.name || d.sn}
                 </option>
               ))}
             </select>
+            <ChevronDown
+              size={11}
+              className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none'
+            />
+          </div>
+
+          {/* Lens / video type */}
+          {videoTypes.length > 0 && (
+            <div className='relative'>
+              <select
+                value={selectedVideoType}
+                onChange={(e) => onVideoTypeChange(e.target.value)}
+                disabled={!selectedVideoId}
+                className={selectCls}
+              >
+                {videoTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={11}
+                className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none'
+              />
+            </div>
           )}
 
           {/* Quality */}
-          <select
-            value={streamQuality}
-            onChange={(e) => onQualityChange(Number(e.target.value))}
-            disabled={!selectedVideoId}
-            className={selectCls}
-          >
-            {Object.entries(QUALITY_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <div className='relative'>
+            <select
+              value={streamQuality}
+              onChange={(e) => onQualityChange(Number(e.target.value))}
+              disabled={!selectedVideoId}
+              className={selectCls}
+            >
+              {Object.entries(QUALITY_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={11}
+              className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none'
+            />
+          </div>
 
           {/* Start / Stop */}
           <button
@@ -188,19 +189,8 @@ const MissionControlViewport = ({
       )}
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
-      <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active.
-            key={reconnectKey} forces a fresh WebRTC negotiation on reconnect. */}
-        {activeStreamUrl && (
-          <WebRTCPlayer
-            key={reconnectKey}
-            url={activeStreamUrl}
-            onStateChange={(state) => setStreamConnectState(state)}
-            onMediaStream={setMediaStream}
-          />
-        )}
-
-        {/* Video element — hidden until track arrives */}
+      <div className='relative w-full flex-1 overflow-hidden bg-black border rounded-t-md border-zinc-800/90'>
+        {/* Video element — srcObject set imperatively from lifted mediaStream prop */}
         <video
           ref={videoRef}
           autoPlay
@@ -223,7 +213,7 @@ const MissionControlViewport = ({
             <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
             <button
-              onClick={handleReconnect}
+              onClick={onReconnect}
               className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
             >
               <RefreshCw size={9} /> Reconnect
@@ -239,9 +229,7 @@ const MissionControlViewport = ({
         )}
 
         {/* Streaming active overlay */}
-        {isStreaming && (
-          <div className='absolute inset-0 border-2 border-emerald-500/40 pointer-events-none' />
-        )}
+        {isStreaming && <div className='absolute inset-0 border-x-1 pointer-events-none' />}
 
         {/* HUD: Crosshair */}
         <div className='absolute inset-0 flex items-center justify-center pointer-events-none'>
@@ -304,7 +292,11 @@ const MissionControlViewport = ({
         >
           {/* Gimbal controls — full viewport only, requires a dockSn to send commands */}
           {!isMini && dockSn && (
-            <GimbalControls dockSn={dockSn} droneSn={selectedSn} payloadIndex={payloadIndex ?? '99-0-0'} />
+            <GimbalControls
+              dockSn={dockSn}
+              droneSn={selectedSn}
+              payloadIndex={payloadIndex ?? '99-0-0'}
+            />
           )}
 
           {/* Stream status HUD */}
@@ -323,13 +315,6 @@ const MissionControlViewport = ({
                 {isStreaming ? 'Stream Active' : 'Stream Idle'}
               </span>
             </div>
-            {selectedSn && (
-              <span
-                className={`font-mono text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-              >
-                {selectedSn}
-              </span>
-            )}
             <span
               className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
@@ -343,10 +328,8 @@ const MissionControlViewport = ({
           </div>
         </div>
       </div>
-
-      {!isMini && <FlightControlActions isFlying={isFlying} dockOnline={dockOnline} />}
     </div>
   );
 };
 
-export default MissionControlViewport;
+export default DroneFeed;

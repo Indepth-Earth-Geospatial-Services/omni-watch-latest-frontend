@@ -4,9 +4,13 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import TelemetryHeader from '@/components/features/control/TelemetryHeader';
 import FlightStatsBar from '@/components/features/control/FlightStatsBar';
-import MissionControlViewport from '@/components/features/control/MissionControlViewport';
-import TacticalMiniMap from '@/components/features/control/TacticalMiniMap';
-import DockMonitor from '@/components/features/control/DockMonitor';
+import DroneFeed from '@/components/features/control/DroneFeed';
+import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
+import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
+import TacticalMiniMap from '@/components/features/control/MiniMap';
+import DockFeed from '@/components/features/control/DockFeed';
+import FlightControlActions from '@/components/features/control/FlightControlActions';
+// import SensorToolbar from '@/components/features/control/SensorToolBar';
 import SystemStatusFooter from '@/components/features/control/SystemStatusFooter';
 import { ControlErrorBoundary } from '@/components/features/control/ControlErrorBoundary';
 import {
@@ -18,6 +22,7 @@ import {
 } from '@/hooks/useLiveStreams';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+import type { DJIDevice, LiveCapacity } from '@/lib/types';
 import { useDockMQTT } from '@/hooks/useDockMQTT';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJIApiError } from '@/lib/config/client';
@@ -52,7 +57,7 @@ export default function ControlPage() {
   const { data: deviceList = [], error: devicesError } = useDJIDevices();
 
   // ─── Telemetry ────────────────────────────────────────────────────────────
-  const { getProcessedDroneData, getDroneTelemetry } = useTelemetry();
+  const { getProcessedDroneData, getDroneTelemetry, droneUpdates } = useTelemetry();
 
   // ─── Log API errors via toast so they surface in the UI ───────────────────
   useEffect(() => {
@@ -86,6 +91,24 @@ export default function ControlPage() {
   const [activeStreamVideoId, setActiveStreamVideoId] = useState('');
   const [activeStreamUrl, setActiveStreamUrl] = useState('');
 
+  // ─── WebRTC stream state — lifted here so it survives panel swaps ─────────
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
+  const [reconnectKey, setReconnectKey] = useState(0);
+
+  const handleReconnect = useCallback(() => {
+    setMediaStream(null);
+    setStreamConnectState(null);
+    setReconnectKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!activeStreamUrl) {
+      setMediaStream(null);
+      setStreamConnectState(null);
+    }
+  }, [activeStreamUrl]);
+
   // ─── Elapsed stream timer ──────────────────────────────────────────────────
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => {
@@ -104,9 +127,12 @@ export default function ControlPage() {
     () => new Set(deviceList.filter((d) => d.domain === '0').map((d) => d.deviceSn)),
     [deviceList]
   );
-  // Only drone capacity entries go to MissionControlViewport
-  const devices = useMemo(
-    () => (capacityMap ? Array.from(capacityMap.values()).filter((c) => droneSns.has(c.sn)) : []),
+  // Only drone capacity entries go to DroneFeed
+  const devices = useMemo<LiveCapacity[]>(
+    () =>
+      capacityMap
+        ? (Array.from(capacityMap.values()) as LiveCapacity[]).filter((c) => droneSns.has(c.sn))
+        : [],
     [capacityMap, droneSns]
   );
   const selectedDevice = selectedSn ? capacityMap?.get(selectedSn) : undefined;
@@ -203,7 +229,9 @@ export default function ControlPage() {
       toast.error('[Stream] Could not resolve composite video ID — try re-selecting the device');
       return;
     }
-    console.log(`[Control:Stream] starting — videoId: ${compositeId}, type: ${selectedVideoType}, quality: ${streamQuality}`);
+    console.log(
+      `[Control:Stream] starting — videoId: ${compositeId}, type: ${selectedVideoType}, quality: ${streamQuality}`
+    );
     startStream(
       {
         url: '',
@@ -314,20 +342,37 @@ export default function ControlPage() {
         });
       }
     },
-    [isStreaming, activeStreamVideoId, streamQuality, switchCamera, videos, selectedSn, selectedCamera]
+    [
+      isStreaming,
+      activeStreamVideoId,
+      streamQuality,
+      switchCamera,
+      videos,
+      selectedSn,
+      selectedCamera,
+    ]
   );
 
   // ─── Auto-select chain ────────────────────────────────────────────────────
-  // Select drone SN as soon as the dock reports its childDeviceSn — do NOT
-  // gate on capacityMap. Capacity is a one-shot fetch that won't re-fire when
-  // a sleeping drone wakes up, so gating on it leaves selectedSn='' and the
-  // FlightStatsBar blank until the user refreshes the page.
+  // Priority 1: dock's childDeviceSn (available from the REST API binding record)
+  // Priority 2: first drone SN in deviceList that has received any WebSocket event
+  //             — fires the moment the drone comes online, no page refresh needed
+  // Priority 3: first drone SN known from the device list (offline, no WS data yet)
+  // We intentionally do NOT gate on capacityMap — that polls at 30s and would leave
+  // FlightStatsBar blank for up to 30s after a sleeping drone wakes up.
   useEffect(() => {
-    if (dockDevice?.childDeviceSn && !selectedSn) {
-      console.log(`[Control:AutoSelect] drone → ${dockDevice.childDeviceSn}`);
-      setSelectedSn(dockDevice.childDeviceSn);
+    if (selectedSn) return;
+    const droneSNs: string[] = (deviceList as DJIDevice[])
+      .filter((d) => d.domain === '0')
+      .map((d) => d.deviceSn)
+      .filter(Boolean);
+    const autoSn =
+      dockDevice?.childDeviceSn ?? droneSNs.find((sn) => droneUpdates.has(sn)) ?? droneSNs[0];
+    if (autoSn) {
+      console.log(`[Control:AutoSelect] drone → ${autoSn}`);
+      setSelectedSn(autoSn);
     }
-  }, [dockDevice, selectedSn]);
+  }, [dockDevice, selectedSn, deviceList, droneUpdates]);
 
   useEffect(() => {
     if (cameras.length > 0 && !selectedCameraId) {
@@ -392,8 +437,15 @@ export default function ControlPage() {
             };
 
             const viewportPanel = (isMain: boolean) => (
-              <ControlErrorBoundary section='MissionControlViewport'>
-                <MissionControlViewport
+              <ControlErrorBoundary section='DroneFeed'>
+                {/* {isMain && (
+                  <SensorToolbar
+                    selectedVideoType={selectedVideoType}
+                    onVideoTypeChange={handleVideoTypeChange}
+                    isStreaming={isStreaming}
+                  />
+                )} */}
+                <DroneFeed
                   devices={devices}
                   videoTypes={videoTypes}
                   selectedSn={selectedSn}
@@ -404,10 +456,11 @@ export default function ControlPage() {
                   isStarting={isStarting}
                   isStopping={isStopping}
                   capacityLoading={capacityLoading ?? false}
-                  isFlying={isFlying}
                   activeStreamUrl={activeStreamUrl}
+                  mediaStream={mediaStream}
+                  streamConnectState={streamConnectState}
+                  onReconnect={handleReconnect}
                   dockSn={dockDevice?.deviceSn}
-                  dockOnline={dockOnline}
                   payloadIndex={selectedCameraId}
                   onDeviceChange={handleDeviceChange}
                   onVideoTypeChange={handleVideoTypeChange}
@@ -420,16 +473,18 @@ export default function ControlPage() {
               </ControlErrorBoundary>
             );
 
-            const sidePanelIds = (['viewport', 'map', 'dock'] as const).filter(
-              (p) => p !== mainPanel
-            );
-
             return (
               <div className='flex flex-row gap-4 justify-center'>
-                {/* ── Main panel (left, big) ── */}
-                <div className='relative flex-1'>
+                {/* ── Main panel (left, big) + FlightControlActions below it ── */}
+                <div className='relative flex-1 flex flex-col'>
                   {swapBtn(mainPanel)}
-                  {mainPanel === 'viewport' && viewportPanel(true)}
+
+                  {/* Viewport always mounted — CSS-hidden when not main.
+                      Keeps the video element and WebRTC stream alive across swaps. */}
+                  <div className={mainPanel !== 'viewport' ? 'hidden' : ''}>
+                    {viewportPanel(true)}
+                  </div>
+
                   {mainPanel === 'map' && (
                     <ControlErrorBoundary section='TacticalMiniMap'>
                       <TacticalMiniMap
@@ -437,13 +492,13 @@ export default function ControlPage() {
                         dockData={dockData}
                         targetLat={takeoffTarget?.lat}
                         targetLng={takeoffTarget?.lng}
-                        className='w-full h-[700px]'
+                        className='w-full h-[633px]'
                       />
                     </ControlErrorBoundary>
                   )}
                   {mainPanel === 'dock' && (
-                    <ControlErrorBoundary section='DockMonitor'>
-                      <DockMonitor
+                    <ControlErrorBoundary section='DockFeed'>
+                      <DockFeed
                         dockDevice={dockDevice}
                         droneData={droneData}
                         dockCapacity={dockCapacity}
@@ -454,43 +509,70 @@ export default function ControlPage() {
                       />
                     </ControlErrorBoundary>
                   )}
+                  {/* Flight controls — hidden when DockFeed is the main panel */}
+                  {mainPanel !== 'dock' && (
+                    <FlightControlActions
+                      dockSn={dockDevice?.deviceSn}
+                      isFlying={isFlying}
+                      dockOnline={dockOnline}
+                    />
+                  )}
                 </div>
 
                 {/* ── Side panels (right column) ── */}
                 <aside className='flex flex-col gap-4'>
-                  {sidePanelIds.map((id) => (
-                    <div key={id} className='relative'>
-                      {swapBtn(id)}
-                      {id === 'viewport' && viewportPanel(false)}
-                      {id === 'map' && (
-                        <ControlErrorBoundary section='TacticalMiniMap'>
-                          <TacticalMiniMap
-                            droneData={droneData}
-                            dockData={dockData}
-                            targetLat={takeoffTarget?.lat}
-                            targetLng={takeoffTarget?.lng}
-                          />
-                        </ControlErrorBoundary>
-                      )}
-                      {id === 'dock' && (
-                        <ControlErrorBoundary section='DockMonitor'>
-                          <DockMonitor
-                            dockDevice={dockDevice}
-                            droneData={droneData}
-                            dockCapacity={dockCapacity}
-                            coverState={dockCoverState}
-                            dockModeCode={dockModeCode}
-                            onCoverChange={setCoverOpen}
-                          />
-                        </ControlErrorBoundary>
-                      )}
+                  {/* Viewport mini always mounted — CSS-hidden when viewport is main */}
+                  <div className={`relative ${mainPanel === 'viewport' ? 'hidden' : ''}`}>
+                    {swapBtn('viewport')}
+                    {viewportPanel(false)}
+                  </div>
+
+                  {mainPanel !== 'map' && (
+                    <div className='relative'>
+                      {swapBtn('map')}
+                      <ControlErrorBoundary section='TacticalMiniMap'>
+                        <TacticalMiniMap
+                          droneData={droneData}
+                          dockData={dockData}
+                          targetLat={takeoffTarget?.lat}
+                          targetLng={takeoffTarget?.lng}
+                        />
+                      </ControlErrorBoundary>
                     </div>
-                  ))}
+                  )}
+
+                  {mainPanel !== 'dock' && (
+                    <div className='relative'>
+                      {swapBtn('dock')}
+                      <ControlErrorBoundary section='DockFeed'>
+                        <DockFeed
+                          dockDevice={dockDevice}
+                          droneData={droneData}
+                          dockCapacity={dockCapacity}
+                          coverState={dockCoverState}
+                          dockModeCode={dockModeCode}
+                          onCoverChange={setCoverOpen}
+                        />
+                      </ControlErrorBoundary>
+                    </div>
+                  )}
                 </aside>
               </div>
             );
           })()}
         </div>
+
+        {/* WebRTC player — headless, lives here so it survives panel swaps.
+            The resulting mediaStream is passed down to every DroneFeed
+            instance, so both main and mini viewports share the same live feed. */}
+        {activeStreamUrl && (
+          <WebRTCPlayer
+            key={reconnectKey}
+            url={activeStreamUrl}
+            onStateChange={(state) => setStreamConnectState(state)}
+            onMediaStream={setMediaStream}
+          />
+        )}
       </main>
 
       <ControlErrorBoundary section='SystemStatusFooter'>

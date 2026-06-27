@@ -11,7 +11,11 @@ export interface FlightControlActionsProps {
   dockOnline?: boolean;
 }
 
-const FlightControlActions = ({ dockSn = '', isFlying = false, dockOnline = false }: FlightControlActionsProps) => {
+const FlightControlActions = ({
+  dockSn = '',
+  isFlying = false,
+  dockOnline = false,
+}: FlightControlActionsProps) => {
   const [isPaused, setIsPaused] = useState(false);
 
   const canAct = !!dockSn && isFlying && dockOnline;
@@ -31,10 +35,7 @@ const FlightControlActions = ({ dockSn = '', isFlying = false, dockOnline = fals
 
   const handlePauseResume = () => {
     if (!canAct || isAnyPending) return;
-    execJob(
-      { sn: dockSn, action: isPaused ? 1 : 0 },
-      { onSuccess: () => setIsPaused((p) => !p) }
-    );
+    execJob({ sn: dockSn, action: isPaused ? 1 : 0 }, { onSuccess: () => setIsPaused((p) => !p) });
   };
 
   // Hover — pause fly-to-point and hold position
