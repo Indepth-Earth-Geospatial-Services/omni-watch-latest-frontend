@@ -12,3 +12,4 @@ export * from './firmware';
 export * from './logs';
 export * from './dock';
 export * from './omniwatch';
+export * from './threats';

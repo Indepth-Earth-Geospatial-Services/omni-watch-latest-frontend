@@ -417,12 +417,86 @@ The surveillance team currently faces critical operational challenges:
   - Multi-source correlation (video + telemetry)
   - Notification routing based on threat type and severity
 
+- **WebSocket Data Contract** (Backend at `136.116.89.216`)
+
+  The backend emits two event types via Socket.IO:
+
+  **`YOLO_DETECTION`** — Live YOLO alert (Orange Panel)
+
+  ```typescript
+  interface YoloDetectionEvent {
+    streamId: string;
+    detections: Array<{
+      // Bounding box (normalized 0-1)
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+
+      // Detection metadata
+      score: number;           // YOLO confidence [0,1]
+      class: string;           // e.g. 'person', 'vehicle'
+      trackId: number;         // IoU tracking ID
+      objectKey?: string;      // MinIO crop key (relative path)
+
+      // Media
+      imageUrl: string | null; // Presigned MinIO URL (24h expiry), null if failed
+
+      // Dual GPS coordinates
+      latitude: number | null;    // Drone GPS lat (where the drone was when detection occurred)
+      longitude: number | null;   // Drone GPS lon
+      objectLatitude: number | null;  // Detected object's GPS lat (if resolvable)
+      objectLongitude: number | null; // Detected object's GPS lon (if resolvable)
+    }>;
+    timestamp: number;         // Date.now()
+  }
+  ```
+
+  **`TRACK_CONFIRMED`** — LLM verified threat (Red Panel)
+
+  ```typescript
+  interface TrackConfirmedEvent {
+    streamId: string;
+    detections: Array<{
+      // Bounding box
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+
+      // Detection metadata
+      class: string;
+      trackId: number;
+      score: number;
+
+      // LLM verification
+      reasoning: string;       // Gemini LLM explanation
+
+      // Media
+      imageUrl: string | null;
+
+      // Dual GPS coordinates
+      latitude: number | null;      // Drone GPS lat
+      longitude: number | null;     // Drone GPS lon
+      objectLatitude: number | null;   // Object GPS lat
+      objectLongitude: number | null;  // Object GPS lon
+    }>;
+    timestamp: number;
+  }
+  ```
+
+  **Dual GPS Coordinate System**:
+  - `latitude`/`longitude`: The drone's position when the detection was made (always available if drone has GPS fix)
+  - `objectLatitude`/`objectLongitude`: The detected object's geolocation (null if not resolvable from video, e.g., distant objects without depth data)
+
 **Acceptance Criteria**:
 
 - Detection accuracy > 90% with < 5% false positive rate
 - Alerts generated within 1 second of detection
 - Incidents automatically created for verified threats
 - Detection settings can be configured per deployment area
+- Frontend displays both drone position and object position on map when available
+- Orange panel shows live YOLO detections, Red panel shows LLM-verified threats
 
 #### 2.2 Analytics Dashboard
 
