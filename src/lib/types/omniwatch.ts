@@ -186,3 +186,36 @@ export interface UpdateOrgUserRequest {
   pin?: string;
   is_active?: boolean;
 }
+
+// ─── DJI Workspace Users ─────────────────────────────────────────────────────
+
+// DJI workspace user — returned by GET /manage/api/v1/users/{wid}/users
+export interface DJIWorkspaceUser {
+  user_id: string;
+  username: string;
+  email: string;
+  user_type: number;         // 1 = Web, 2 = Pilot
+  workspace_id: string;
+  workspace_name: string;
+  mqtt_username: string;
+  mqtt_password: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Request body for PUT /manage/api/v1/users/{wid}/users/{userId}
+export interface UpdateDJIWorkspaceUserRequest {
+  mqtt_username?: string;
+  mqtt_password?: string;
+}
+
+// Paginated response from DJI manage API
+export interface DJIWorkspaceUserListResponse {
+  list: DJIWorkspaceUser[];
+  pagination: {
+    total: number;
+    page: number;
+    page_size: number;
+  };
+}

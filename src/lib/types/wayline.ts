@@ -90,3 +90,44 @@ export interface WaylineJobListResponse {
   list: WaylineJobItem[];
   pagination: { page: number; total: number; page_size: number };
 }
+
+// Flight task status — numeric union matching the DJI API wire format
+export type FlightTaskStatus = 0 | 1 | 2 | 3 | 4 | 5;
+// 0 = Pending, 1 = InProgress, 2 = Complete, 3 = Failed, 4 = Paused, 5 = Cancelled
+
+// Companion constants for display mapping (not enums — follows codebase convention)
+export const FlightTaskStatusMap: Record<FlightTaskStatus, string> = {
+  0: 'Pending',
+  1: 'In Progress',
+  2: 'Complete',
+  3: 'Failed',
+  4: 'Paused',
+  5: 'Cancelled',
+};
+
+// Request body for POST /wayline/api/v1/workspaces/{wid}/flight-tasks
+export interface CreateFlightTask {
+  name: string;
+  file_id: string;
+  task_type: number;             // 0 = immediate, 1 = timed, 2 = conditional
+  way_point_type: number;        // 0 = global, 1 = relative altitude
+  out_of_control_action: number; // 0 = return home, 1 = hover, 2 = land
+  rth_altitude: number;          // 20-500m
+  device_sn: string;
+  wayline_type: number;          // from wayline.template_types[0]
+  execute_time?: number;         // Unix timestamp ms — for timed/conditional
+  task_days?: number[];          // for conditional tasks
+  task_periods?: number[][];     // for conditional tasks
+  min_battery_capacity?: number;
+  min_storage_capacity?: number;
+}
+
+// DELETE /wayline/api/v1/workspaces/{wid}/jobs?job_id=X
+export interface DeleteTaskParams {
+  job_id: string;
+}
+
+// PUT /wayline/api/v1/workspaces/{wid}/jobs/{job_id}
+export interface UpdateTaskStatusBody {
+  status: number; // 0 = suspend, 1 = resume
+}

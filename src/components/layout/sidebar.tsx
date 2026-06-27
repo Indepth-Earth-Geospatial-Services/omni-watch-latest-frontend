@@ -18,6 +18,8 @@ import {
   Loader2,
   Brain,
   Bell,
+  Film,
+  Calendar,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -31,6 +33,8 @@ const navigation = [
   { name: 'Control', href: '/control', icon: Settings },
   { name: 'AI Detection', href: '/ai-detection', icon: Brain },
   { name: 'Alerts', href: '/alerts', icon: Bell },
+  { name: 'Media Files', href: '/media', icon: Film },
+  { name: 'Task Plan Library', href: '/task', icon: Calendar },
   // {
   //   name: 'Reports',
   //   href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',

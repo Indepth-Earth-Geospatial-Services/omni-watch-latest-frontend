@@ -15,7 +15,7 @@ import type {
   GetElementGroupsParams,
 } from '@/lib/types';
 
-const { MANAGE, MAP, CONTROL, WAYLINE } = DJI_CONFIG;
+const { MANAGE, MAP, MEDIA, CONTROL, WAYLINE } = DJI_CONFIG;
 
 // Builds a query string from any plain object, skipping undefined/null/empty values.
 function qs(params: Record<string, unknown>): string {
@@ -101,6 +101,15 @@ export const DJI_URLS = {
     switch: `${MANAGE}/live/streams/switch`,
   },
 
+  // ── Media ──────────────────────────────────────────────────────────────────
+  media: {
+    files: (workspaceId: string, params?: { page?: number; page_size?: number }) =>
+      `${MEDIA}/files/${workspaceId}/files${qs(params ?? {})}`,
+
+    fileUrl: (workspaceId: string, fileId: string) =>
+      `${MEDIA}/files/${workspaceId}/file/${fileId}/url`,
+  },
+
   // ── Device Logs ─────────────────────────────────────────────────────────────
   logs: {
     available: (workspaceId: string, sn: string, params: DeviceLogsQueryParams) => {
@@ -167,6 +176,24 @@ export const DJI_URLS = {
     // Pre-signed download URL for a wayline KMZ (uses file_id as the wayline identifier)
     downloadUrl: (workspaceId: string, waylineId: string) =>
       `${WAYLINE}/workspaces/${workspaceId}/waylines/${waylineId}/url`,
+
+    // Create a new flight task
+    createTask: (workspaceId: string) => `${WAYLINE}/workspaces/${workspaceId}/flight-tasks`,
+
+    // Delete a flight task by job_id
+    deleteTask: (workspaceId: string) => `${WAYLINE}/workspaces/${workspaceId}/jobs`,
+
+    // Update a flight task's status (suspend/resume)
+    updateTaskStatus: (workspaceId: string, jobId: string) =>
+      `${WAYLINE}/workspaces/${workspaceId}/jobs/${jobId}`,
+
+    // Trigger immediate media upload for a completed flight task
+    uploadMedia: (workspaceId: string, jobId: string) =>
+      `${WAYLINE}/workspaces/${workspaceId}/jobs/${jobId}/media-highest`,
+
+    // Delete a wayline file from the workspace
+    deleteWayline: (workspaceId: string, waylineId: string) =>
+      `${WAYLINE}/workspaces/${workspaceId}/waylines/${waylineId}`,
   },
 
   // ── Dock / Flight Control ───────────────────────────────────────────────────

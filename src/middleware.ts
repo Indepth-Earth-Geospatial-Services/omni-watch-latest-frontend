@@ -29,6 +29,9 @@ const DASHBOARD_ROUTES = [
   '/assets',
   '/flightroutes',
   '/control',
+  '/media',
+  '/ai-detection',
+  '/alerts',
 ];
 
 // Routes that logged-in users should be bounced away from
