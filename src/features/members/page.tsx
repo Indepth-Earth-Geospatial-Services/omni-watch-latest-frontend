@@ -1,39 +1,39 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import MembersHeader from '@/features/members/components/MembersHeader';
-import MembersTable from '@/features/members/components/MembersTable';
+import DJIMembersTable from '@/features/members/components/DJIMembersTable';
 import InviteMemberModal from '@/features/members/components/InviteMemberModal';
-import EditMemberModal from '@/features/members/components/EditMemberModal';
-import { useMembers, useAddMember, useUpdateMember, useInviteMember } from '@/features/members/hooks/useMembers';
-import type { OrgUser, UpdateOrgUserRequest, AddOrgUserRequest, TeamInviteRequest } from '@/lib/types';
+import { useDjiWorkspaceUsers, useUpdateDjiWorkspaceUser, useInviteMember } from '@/features/members/hooks/useMembers';
+import { useAuth } from '@/providers/AuthProvider';
+import type { UpdateDJIWorkspaceUserRequest } from '@/lib/types';
 
 export default function MembersPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<OrgUser | null>(null);
 
-  const { data: members = [], isLoading, error } = useMembers();
-  const { mutate: addMember, isPending: isAdding } = useAddMember();
-  const { mutate: updateMember, isPending: isUpdating } = useUpdateMember();
+  const { data: djiUsers = [], isLoading, error } = useDjiWorkspaceUsers();
+  const { mutate: updateDjiUser, isPending: isDjiUpdating } = useUpdateDjiWorkspaceUser();
   const { mutate: inviteMember, isPending: isInviting } = useInviteMember();
 
+  const isAdmin = user?.user_type === 1;
+
   useEffect(() => {
-    if (error) toast.error(error.message, { id: 'members-load-error' });
+    if (error) toast.error(error.message, { id: 'dji-users-load-error' });
   }, [error]);
 
-  const handleAddMember = useCallback((body: AddOrgUserRequest) => {
-    addMember(body, {
+  const handleDjiUpdate = useCallback((userId: string, body: UpdateDJIWorkspaceUserRequest) => {
+    updateDjiUser({ userId, body }, {
       onSuccess: () => {
-        toast.success('Member added successfully');
-        setInviteOpen(false);
+        toast.success('MQTT credentials updated');
       },
       onError: (err) => toast.error(err.message),
     });
-  }, [addMember]);
+  }, [updateDjiUser]);
 
-  const handleInvite = useCallback((body: TeamInviteRequest) => {
+  const handleInvite = useCallback((body: { email: string; workspace_id: string; role: string }) => {
     inviteMember(body, {
       onSuccess: () => {
         toast.success('Invitation sent');
@@ -43,49 +43,51 @@ export default function MembersPage() {
     });
   }, [inviteMember]);
 
-  const handleSaveEdit = useCallback((userId: string, payload: UpdateOrgUserRequest) => {
-    updateMember({ userId, payload }, {
-      onSuccess: () => {
-        toast.success('Member updated');
-        setEditTarget(null);
-      },
-      onError: (err) => toast.error(err.message),
-    });
-  }, [updateMember]);
-
   return (
-    <>
-      <div className='mt-10'>
-        <MembersHeader
-          onSearch={setSearch}
-          onInviteClick={() => setInviteOpen(true)}
-        />
+    <div className='font-poppins space-y-4 px-4 pt-6 pb-4'>
+      {/* Filter bar */}
+      <div className='flex items-center gap-3 flex-wrap'>
+        <div className='relative flex-1 max-w-sm'>
+          <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
+            <Search size={12} className='text-zinc-500' />
+          </div>
+          <input
+            type='text'
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder='Search members...'
+            className='w-full text-xs font-poppins text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-zinc-600'
+          />
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className='flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-[#1C93FF] rounded-lg hover:bg-[#1C93FF]/80 transition-colors'
+          >
+            <UserPlus size={13} />
+            Invite Member
+          </button>
+        )}
       </div>
-      <main className='p-4'>
-        <MembersTable
-          members={members}
-          isLoading={isLoading}
-          error={error}
-          searchTerm={search}
-          onEdit={setEditTarget}
+
+      <DJIMembersTable
+        users={djiUsers}
+        isLoading={isLoading}
+        searchTerm={search}
+        onUpdate={handleDjiUpdate}
+        isUpdating={isDjiUpdating}
+      />
+
+      {isAdmin && (
+        <InviteMemberModal
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          onInvite={handleInvite}
+          isInviting={isInviting}
+          workspaceId={user?.workspace_id ?? ''}
         />
-      </main>
-
-      <InviteMemberModal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        onAddMember={handleAddMember}
-        onInvite={handleInvite}
-        isAdding={isAdding}
-        isInviting={isInviting}
-      />
-
-      <EditMemberModal
-        member={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSave={handleSaveEdit}
-        isSaving={isUpdating}
-      />
-    </>
+      )}
+    </div>
   );
 }

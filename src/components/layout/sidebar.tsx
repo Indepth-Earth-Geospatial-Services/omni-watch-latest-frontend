@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Satellite,
@@ -13,9 +13,7 @@ import {
   FileText,
   Users,
   Terminal,
-  LogOut,
   Settings,
-  Loader2,
   Brain,
   Bell,
   Film,
@@ -52,16 +50,8 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { collapsed, toggle } = useSidebar();
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
-
-  async function handleSignOut() {
-    setIsLoggingOut(true);
-    logout();
-    router.push('/sign-in');
-  }
 
   // Derive display values from live user profile, fall back gracefully while loading
   const displayName = user?.username ?? '—';
@@ -131,36 +121,6 @@ export function Sidebar({ className }: SidebarProps) {
           <projectsLink.icon className={cn('h-4 w-4', !collapsed && 'mr-3')} />
           {!collapsed && projectsLink.name}
         </Link>
-      </div>
-
-      {/* User footer */}
-      <div className={cn(
-        'border-t border-border',
-        collapsed ? 'p-2' : 'p-4 space-y-3'
-      )}>
-        {!collapsed && (
-          <div className='text-sm text-muted-foreground'>
-            {displayName}
-            <br />
-            <span className='text-xs'>{displayRole}</span>
-          </div>
-        )}
-        <button
-          onClick={handleSignOut}
-          disabled={isLoggingOut}
-          title={collapsed ? (isLoggingOut ? 'Signing out…' : 'Sign Out') : undefined}
-          className={cn(
-            'flex items-center text-xs text-red-500 hover:text-red-400 transition-colors disabled:opacity-60',
-            collapsed ? 'justify-center w-full' : ''
-          )}
-        >
-          {isLoggingOut ? (
-            <Loader2 className={cn('h-3 w-3 animate-spin', !collapsed && 'mr-1')} />
-          ) : (
-            <LogOut className={cn('h-3 w-3', !collapsed && 'mr-1')} />
-          )}
-          {!collapsed && (isLoggingOut ? 'Signing out…' : 'Sign Out')}
-        </button>
       </div>
 
       {/* Collapse toggle — desktop only */}

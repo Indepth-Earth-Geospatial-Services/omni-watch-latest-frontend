@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, LogOut, User, ChevronDown, Building2, Loader2, Menu, X } from 'lucide-react';
+import { Bell, Settings, LogOut, User, ChevronDown, Building2, Loader2, Menu, X, Satellite } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface NavItem {
@@ -67,14 +67,9 @@ const Navbar = () => {
     <nav className='relative flex items-center justify-between w-full h-16 px-6 bg-black border-b border-zinc-800'>
       {/* 1. Brand Logo */}
       <div className='flex items-center flex-shrink-0'>
-        <Link href='/' className='transition-opacity hover:opacity-80 focus:outline-none'>
-          <Image
-            src='/iegs-logo.png'
-            alt='IEGS Logo'
-            width={50}
-            height={18}
-            className='invert brightness-0'
-          />
+        <Link href='/' className='flex items-center transition-opacity hover:opacity-80 focus:outline-none'>
+          <Satellite className='h-5 w-5 text-sky-400 mr-2' />
+          <span className='text-lg font-bold text-sky-400'>OmniWach OS</span>
         </Link>
       </div>
 
@@ -87,11 +82,11 @@ const Navbar = () => {
               key={item.label}
               href={item.href}
               className={`relative flex items-center h-full text-sm font-semibold font-poppins tracking-widest transition-colors focus:outline-none
-                ${isActive ? 'text-[#A00000]' : 'text-zinc-400 hover:text-white'}`}
+                ${isActive ? 'text-sky-400' : 'text-zinc-400 hover:text-white'}`}
             >
               {item.label}
               {isActive && (
-                <span className='absolute bottom-0 left-0 w-full h-[2px] bg-[#FF0000]' />
+                <span className='absolute bottom-0 left-0 w-full h-[2px] bg-sky-500' />
               )}
             </Link>
           );
@@ -114,7 +109,7 @@ const Navbar = () => {
             className='flex items-center gap-2 focus:outline-none group'
           >
             {/* Avatar */}
-            <div className='relative w-8 h-8 rounded-lg border border-zinc-700 group-hover:border-zinc-500 transition-colors overflow-hidden bg-zinc-800 flex items-center justify-center flex-shrink-0'>
+            <div className='relative w-8 h-8 rounded-full border border-zinc-700 group-hover:border-zinc-500 transition-colors overflow-hidden bg-zinc-800 flex items-center justify-center flex-shrink-0'>
               <Image
                 src='/user-avatar.jpg'
                 alt='User Profile'
@@ -141,21 +136,11 @@ const Navbar = () => {
               {/* Profile header */}
               <div className='px-4 py-4 border-b border-zinc-800'>
                 <div className='flex items-center gap-3'>
-                  <div className='w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 relative overflow-hidden'>
-                    <Image
-                      src='/user-avatar.jpg'
-                      alt='User Profile'
-                      fill
-                      sizes='40px'
-                      className='object-cover'
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                    <span className='text-xs font-black text-zinc-300 select-none absolute'>
-                      {initials}
-                    </span>
-                  </div>
+                  <div className='w-10 h-10 rounded-full bg-sky-600 flex items-center justify-center flex-shrink-0 relative overflow-hidden'>
+                      <span className='text-xs font-bold text-white'>
+                        {initials}
+                      </span>
+                    </div>
                   <div className='min-w-0'>
                     <p className='text-sm font-bold text-zinc-100 truncate'>{displayName}</p>
                     <p className='text-[10px] text-zinc-500 font-mono truncate'>
@@ -217,7 +202,7 @@ const Navbar = () => {
           aria-label='Toggle navigation menu'
         >
           {mobileMenuOpen ? (
-            <X size={20} strokeWidth={1.5} className="text-[#FF0000]" />
+            <X size={20} strokeWidth={1.5} className="text-sky-400" />
           ) : (
             <Menu size={20} strokeWidth={1.5} />
           )}
@@ -239,19 +224,19 @@ const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center justify-between py-3 px-4 rounded-lg font-poppins tracking-widest text-sm font-semibold transition-all duration-200
                     ${isActive 
-                      ? 'text-white bg-red-950/20 border-l-2 border-[#FF0000]' 
+                      ? 'text-white bg-sky-950/20 border-l-2 border-sky-500' 
                       : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50 border-l-2 border-transparent'
                     }`}
                 >
                   <span className='flex items-center gap-3'>
-                    <span className={`text-[10px] font-mono tracking-normal ${isActive ? 'text-[#FF0000]' : 'text-zinc-600'}`}>
+                    <span className={`text-[10px] font-mono tracking-normal ${isActive ? 'text-sky-400' : 'text-zinc-600'}`}>
                       {numStr}
                     </span>
                     {item.label}
                   </span>
                   
                   {isActive && (
-                    <span className='w-1.5 h-1.5 rounded-full bg-[#FF0000] shadow-[0_0_8px_#FF0000]' />
+                    <span className='w-1.5 h-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_#1C93FF]' />
                   )}
                 </Link>
               );

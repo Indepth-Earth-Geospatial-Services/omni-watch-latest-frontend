@@ -194,6 +194,10 @@ export const DJI_URLS = {
     // Delete a wayline file from the workspace
     deleteWayline: (workspaceId: string, waylineId: string) =>
       `${WAYLINE}/workspaces/${workspaceId}/waylines/${waylineId}`,
+
+    // Upload a KMZ wayline file to the workspace
+    upload: (workspaceId: string) =>
+      `${WAYLINE}/workspaces/${workspaceId}/waylines/file/upload`,
   },
 
   // ── Dock / Flight Control ───────────────────────────────────────────────────

@@ -1,9 +1,15 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
-import { getWaylines, downloadWaylineKmz } from '@/services/djiservice-layer/dji-service';
+import { getToken } from '@/lib/config/token-store';
+import {
+  getWaylines,
+  downloadWaylineKmz,
+  deleteWaylineFile,
+  uploadWaylineKmz,
+} from '@/services/djiservice-layer/dji-service';
 import { parseKmzBuffer } from '@/lib/utils/parseWaylineKmz';
 import type { WaypointCoord } from '@/lib/types';
 
@@ -38,5 +44,66 @@ export function useWaylineRoute(waylineId: string | null) {
     enabled: !!waylineId && !!workspaceId,
     staleTime: 10 * 60 * 1000,
     retry: 1,
+  });
+}
+
+/** Deletes a wayline file from the workspace and invalidates the list cache. */
+export function useDeleteWayline() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (waylineId) => deleteWaylineFile(workspaceId, waylineId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waylines', workspaceId] });
+    },
+  });
+}
+
+/** Downloads a wayline KMZ file via the server-side proxy (avoids CORS). */
+export function useDownloadWayline() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+
+  return useMutation<void, Error, { waylineId: string; fileName: string }>({
+    mutationFn: async ({ waylineId, fileName }) => {
+      const token = getToken() ?? '';
+      const name = fileName.endsWith('.kmz') ? fileName : `${fileName}.kmz`;
+      const params = new URLSearchParams({ workspaceId, waylineId, fileName: name });
+
+      const res = await fetch(`/api/wayline/download?${params}`, {
+        headers: { 'x-auth-token': token },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(body.error || `Download failed (${res.status})`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+/** Uploads a KMZ wayline file and invalidates the waylines list cache. */
+export function useUploadWayline() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, File>({
+    mutationFn: (file) => uploadWaylineKmz(workspaceId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waylines', workspaceId] });
+    },
   });
 }

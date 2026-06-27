@@ -551,3 +551,10 @@ export function uploadMediaNow(workspaceId: string, jobId: string): Promise<void
 export function deleteWaylineFile(workspaceId: string, waylineId: string): Promise<void> {
   return djiRequest.delete<void>(DJI_URLS.waylines.deleteWayline(workspaceId, waylineId));
 }
+
+/** Uploads a KMZ wayline file to the workspace via multipart/form-data. */
+export function uploadWaylineKmz(workspaceId: string, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  return djiRequest.postForm<void>(DJI_URLS.waylines.upload(workspaceId), formData);
+}
