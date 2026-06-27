@@ -14,6 +14,8 @@ export interface SystemStatusFooterProps {
   dockOnline?: boolean;
   dockModeCode?: number;
   joystickInvalidState?: JoystickInvalidState | null;
+  droneAltitude?: number;
+  onTakeoffSucceeded?: (lat: number, lng: number) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,6 +73,8 @@ const SystemStatusFooter = ({
   dockOnline = false,
   dockModeCode = -1,
   joystickInvalidState = null,
+  droneAltitude = 0,
+  onTakeoffSucceeded,
 }: SystemStatusFooterProps) => {
   const [expanded, setExpanded] = useState(false);
   const toggle = () => setExpanded((p) => !p);
@@ -138,6 +142,8 @@ const SystemStatusFooter = ({
                 dockOnline={dockOnline}
                 dockModeCode={dockModeCode}
                 joystickInvalidState={joystickInvalidState}
+                droneAltitude={droneAltitude}
+                onTakeoffSucceeded={onTakeoffSucceeded}
               />
             </div>
 

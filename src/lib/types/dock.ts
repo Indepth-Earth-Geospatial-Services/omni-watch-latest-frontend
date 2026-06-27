@@ -92,7 +92,7 @@ export interface PayloadAuthorityRequest {
 
 // ─── DRC (Drone Remote Control) ───────────────────────────────────────────────
 
-/** POST /control/api/v1/workspaces/{wid}/drc/connect */
+/** POST /control/api/v1/workspaces/{wid}/drc/connect — request body */
 export interface DRCConnectRequest {
   client_id: string;
   expire_sec: number;
@@ -107,19 +107,26 @@ export interface DRCConnectResponse {
   expire_sec: number;
 }
 
-/** POST /control/api/v1/workspaces/{wid}/drc/enter */
+/** POST /control/api/v1/workspaces/{wid}/drc/enter — request body */
 export interface DRCEnterRequest {
   client_id: string;
   dock_sn: string;
 }
 
-/** Response from /drc/enter — MQTT pub/sub topics for sending commands */
+/** Response from /drc/enter — MQTT pub/sub topics + optional embedded broker credentials.
+ *  Some servers (e.g. the DJI reference server) return the broker address/auth here
+ *  instead of requiring a separate /drc/connect call. */
 export interface DRCEnterResponse {
-  pub: string[];   // topics to publish drone_control / heart_beat messages
-  sub: string[];   // topics to subscribe for DRC responses
+  pub: string[];           // topics to publish drone_control / heart_beat / emergency_stop
+  sub: string[];           // topics to subscribe for DRC responses
+  address?: string;        // MQTT broker address if embedded (e.g. "tcp://host:1883")
+  username?: string;
+  password?: string;
+  client_id?: string;
+  expire_sec?: number;
 }
 
-/** POST /control/api/v1/workspaces/{wid}/drc/exit */
+/** POST /control/api/v1/workspaces/{wid}/drc/exit — request body */
 export interface DRCExitRequest {
   client_id: string;
   dock_sn: string;

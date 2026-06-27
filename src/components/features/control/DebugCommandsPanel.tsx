@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useExecuteJob, useRequestFlightAuthority } from '@/hooks/useDockController';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
+import { useDRC } from '@/hooks/useDRC';
 import { DOCK_MODE_LABELS } from './ControlShared';
 import { DebugActivationModal } from './DebugActivationModal';
 import { DebugModeTab }         from './DebugModeTab';
@@ -14,10 +15,12 @@ export interface DebugCommandsPanelProps {
   dockOnline: boolean;
   dockModeCode?: number;
   joystickInvalidState?: JoystickInvalidState | null;
+  droneAltitude?: number;
+  onTakeoffSucceeded?: (lat: number, lng: number) => void;
 }
 
 export const DebugCommandsPanel = ({
-  dockSn, dockOnline, dockModeCode = -1, joystickInvalidState,
+  dockSn, dockOnline, dockModeCode = -1, joystickInvalidState, droneAltitude = 0, onTakeoffSucceeded,
 }: DebugCommandsPanelProps) => {
   const [activeTab,       setActiveTab]       = useState<'debug' | 'flight'>('debug');
   const [debugActive,     setDebugActive]     = useState(false);
@@ -26,6 +29,25 @@ export const DebugCommandsPanel = ({
   const [flightAuth,      setFlightAuth]      = useState(false);
   const [isGrabbingAuth,  setIsGrabbingAuth]  = useState(false);
   const [confirmPending,  setConfirmPending]  = useState<string | null>(null);
+
+  // DRC lives here so it persists across tab switches within the Command & Control drawer.
+  // FlightAuthorityTab unmounts when the user switches to the Debug tab — keeping the hook
+  // one level up means the MQTT channel (and emergency stop) stays alive.
+  const { status: drcStatus, activate: drcActivate, deactivate: drcDeactivate, sendEmergencyStop } = useDRC();
+
+  // Trigger DRC connection when dock becomes ready. drcActivate is idempotent —
+  // if already connected it returns immediately, so dockOnline fluctuations are harmless.
+  // No cleanup here: a brief dockOnline flicker must NOT disconnect the MQTT session.
+  useEffect(() => {
+    if (!dockSn || !dockOnline) return;
+    drcActivate(dockSn).catch((err: Error) => {
+      console.warn('[DRC] Auto-activate failed:', err.message);
+    });
+  }, [dockSn, dockOnline]); // intentionally no cleanup
+
+  // Disconnect only when the selected dock changes or this panel unmounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { return () => { drcDeactivate(); }; }, [dockSn]);
 
   // Sync debug state from MQTT mode_code — skip while a toggle is in-flight
   useEffect(() => {
@@ -211,6 +233,12 @@ export const DebugCommandsPanel = ({
           isPending={isPending}
           onToggle={handleFlightAuthToggle}
           exec={exec}
+          droneAltitude={droneAltitude}
+          onTakeoffSucceeded={onTakeoffSucceeded}
+          drcStatus={drcStatus}
+          drcActivate={drcActivate}
+          drcDeactivate={drcDeactivate}
+          sendEmergencyStop={sendEmergencyStop}
         />
       )}
 

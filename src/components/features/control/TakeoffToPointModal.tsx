@@ -9,9 +9,10 @@ import { FormInput, FormSelect } from './ControlShared';
 interface TakeoffToPointModalProps {
   dockSn: string;
   onClose: () => void;
+  onTakeoffSucceeded?: (lat: number, lng: number) => void;
 }
 
-export const TakeoffToPointModal = ({ dockSn, onClose }: TakeoffToPointModalProps) => {
+export const TakeoffToPointModal = ({ dockSn, onClose, onTakeoffSucceeded }: TakeoffToPointModalProps) => {
   // Target GPS
   const [lat,       setLat]       = useState('');
   const [lng,       setLng]       = useState('');
@@ -66,6 +67,7 @@ export const TakeoffToPointModal = ({ dockSn, onClose }: TakeoffToPointModalProp
       onSuccess: () => {
         console.log('[TakeoffToPoint] ✅ Command accepted by DJI server');
         toast.success('Takeoff command sent successfully');
+        onTakeoffSucceeded?.(latNum, lngNum);
         onClose();
       },
       onError: (err) => {

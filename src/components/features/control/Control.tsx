@@ -73,6 +73,9 @@ export default function ControlPage() {
   const [mainPanel, setMainPanel] = useState<PanelId>('viewport');
   const [coverOpen, setCoverOpen] = useState(false);
 
+  // ─── Active takeoff target ────────────────────────────────────────────────
+  const [takeoffTarget, setTakeoffTarget] = useState<{ lat: number; lng: number } | null>(null);
+
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
   const [selectedCameraId, setSelectedCameraId] = useState('');
@@ -127,7 +130,7 @@ export default function ControlPage() {
   }, [videos]);
 
   // ─── Dock MQTT (mode_code for debug/operation state) ─────────────────────
-  const { getDockModeCode, getJoystickInvalidState } = useDockMQTT();
+  const { getDockModeCode, getJoystickInvalidState, getDockCoverState } = useDockMQTT();
 
   // ─── Dock & telemetry ─────────────────────────────────────────────────────
   const dockDevice = useMemo(
@@ -145,6 +148,12 @@ export default function ControlPage() {
   const isFlying = droneData ? droneData.modeCode !== 0 : false;
   const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
   const joystickInvalidState = dockDevice ? getJoystickInvalidState(dockDevice.deviceSn) : null;
+  const dockCoverState = dockDevice ? getDockCoverState(dockDevice.deviceSn) : null;
+
+  // Clear takeoff target when drone returns to dock (modeCode=0 = IDLE/in dock)
+  useEffect(() => {
+    if (droneData?.modeCode === 0) setTakeoffTarget(null);
+  }, [droneData?.modeCode]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -309,12 +318,16 @@ export default function ControlPage() {
   );
 
   // ─── Auto-select chain ────────────────────────────────────────────────────
+  // Select drone SN as soon as the dock reports its childDeviceSn — do NOT
+  // gate on capacityMap. Capacity is a one-shot fetch that won't re-fire when
+  // a sleeping drone wakes up, so gating on it leaves selectedSn='' and the
+  // FlightStatsBar blank until the user refreshes the page.
   useEffect(() => {
-    if (dockDevice?.childDeviceSn && !selectedSn && capacityMap?.has(dockDevice.childDeviceSn)) {
+    if (dockDevice?.childDeviceSn && !selectedSn) {
       console.log(`[Control:AutoSelect] drone → ${dockDevice.childDeviceSn}`);
       setSelectedSn(dockDevice.childDeviceSn);
     }
-  }, [dockDevice, capacityMap, selectedSn]);
+  }, [dockDevice, selectedSn]);
 
   useEffect(() => {
     if (cameras.length > 0 && !selectedCameraId) {
@@ -395,6 +408,7 @@ export default function ControlPage() {
                   activeStreamUrl={activeStreamUrl}
                   dockSn={dockDevice?.deviceSn}
                   dockOnline={dockOnline}
+                  payloadIndex={selectedCameraId}
                   onDeviceChange={handleDeviceChange}
                   onVideoTypeChange={handleVideoTypeChange}
                   onQualityChange={handleQualityChange}
@@ -421,6 +435,8 @@ export default function ControlPage() {
                       <TacticalMiniMap
                         droneData={droneData}
                         dockData={dockData}
+                        targetLat={takeoffTarget?.lat}
+                        targetLng={takeoffTarget?.lng}
                         className='w-full h-[700px]'
                       />
                     </ControlErrorBoundary>
@@ -431,6 +447,8 @@ export default function ControlPage() {
                         dockDevice={dockDevice}
                         droneData={droneData}
                         dockCapacity={dockCapacity}
+                        coverState={dockCoverState}
+                        dockModeCode={dockModeCode}
                         onCoverChange={setCoverOpen}
                         className='w-full h-[700px]'
                       />
@@ -446,7 +464,12 @@ export default function ControlPage() {
                       {id === 'viewport' && viewportPanel(false)}
                       {id === 'map' && (
                         <ControlErrorBoundary section='TacticalMiniMap'>
-                          <TacticalMiniMap droneData={droneData} />
+                          <TacticalMiniMap
+                            droneData={droneData}
+                            dockData={dockData}
+                            targetLat={takeoffTarget?.lat}
+                            targetLng={takeoffTarget?.lng}
+                          />
                         </ControlErrorBoundary>
                       )}
                       {id === 'dock' && (
@@ -455,6 +478,8 @@ export default function ControlPage() {
                             dockDevice={dockDevice}
                             droneData={droneData}
                             dockCapacity={dockCapacity}
+                            coverState={dockCoverState}
+                            dockModeCode={dockModeCode}
                             onCoverChange={setCoverOpen}
                           />
                         </ControlErrorBoundary>
@@ -475,6 +500,8 @@ export default function ControlPage() {
           dockOnline={dockOnline}
           dockModeCode={dockModeCode}
           joystickInvalidState={joystickInvalidState}
+          droneAltitude={droneData?.altitude ?? 0}
+          onTakeoffSucceeded={(lat, lng) => setTakeoffTarget({ lat, lng })}
         />
       </ControlErrorBoundary>
     </div>

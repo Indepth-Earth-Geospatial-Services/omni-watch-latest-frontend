@@ -16,15 +16,21 @@ function degToCompass(deg: number): string {
 
 const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
   const battery = droneData?.battery ?? 0;
-  const altitude = droneData?.altitude;
-  const speedMs = droneData?.speed;
-  const heading = droneData?.heading;
-  const direction = droneData?.direction;
   const online = droneData?.online;
   const gpsNumber = droneData?.gpsNumber ?? 0;
   const isGPSFixed = droneData?.isGPSFixed;
-  const windSpeedMs = droneData?.windSpeed;
-  const windDir = droneData?.windDirection;
+
+  // modeCode 0 = docked/standby. Flight-only metrics (altitude, speed, heading,
+  // wind) are meaningless when the drone is sitting in the dock — the GPS height
+  // reflects the installation elevation, not flight altitude. Show — instead.
+  const isAirborne = droneData ? droneData.modeCode !== 0 : false;
+
+  const altitude    = isAirborne ? droneData?.altitude      : undefined;
+  const speedMs     = isAirborne ? droneData?.speed         : undefined;
+  const heading     = isAirborne ? droneData?.heading       : undefined;
+  const direction   = isAirborne ? droneData?.direction     : undefined;
+  const windSpeedMs = isAirborne ? droneData?.windSpeed     : undefined;
+  const windDir     = isAirborne ? droneData?.windDirection : undefined;
 
   const batteryColor =
     battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-[#45F0CF]';

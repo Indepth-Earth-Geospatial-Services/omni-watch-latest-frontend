@@ -10,7 +10,8 @@ export const DOCK_MODE_LABELS: Record<number, string> = {
   1: 'On-site Debug',
   2: 'Remote Debug',
   3: 'Upgrading',
-  4: 'In Operation',
+  4: 'Working',
+  5: 'Dormant',
 };
 
 export const JOYSTICK_INVALID_REASONS: Record<number, string> = {

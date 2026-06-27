@@ -167,5 +167,11 @@ export function useDockMQTT() {
     [joystickStates]
   );
 
-  return { isConnected, dockStates, getDockModeCode, isDockOnlineMQTT, getJoystickInvalidState };
+  // cover_state: 0 = closed, 1 = open. Returns null when no MQTT data yet.
+  const getDockCoverState = useCallback(
+    (sn: string): number | null => dockStates.get(sn)?.cover_state ?? null,
+    [dockStates]
+  );
+
+  return { isConnected, dockStates, getDockModeCode, isDockOnlineMQTT, getJoystickInvalidState, getDockCoverState };
 }

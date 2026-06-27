@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Crosshair, Navigation, VideoOff } from 'lucide-react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { AlertTriangle, Crosshair, Navigation, RefreshCw, VideoOff } from 'lucide-react';
 import FlightControlActions from './FlightControlActions';
+import GimbalControls from './GimbalControls';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
@@ -24,6 +25,7 @@ interface MissionControlViewportProps {
   activeStreamUrl: string;
   dockSn?: string;
   dockOnline?: boolean;
+  payloadIndex?: string;
   onDeviceChange: (sn: string) => void;
   onVideoTypeChange: (type: string) => void;
   onQualityChange: (quality: number) => void;
@@ -61,6 +63,7 @@ const MissionControlViewport = ({
   activeStreamUrl,
   dockSn,
   dockOnline,
+  payloadIndex,
   onDeviceChange,
   onVideoTypeChange,
   onQualityChange,
@@ -76,6 +79,14 @@ const MissionControlViewport = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [streamConnectState, setStreamConnectState] = useState<StreamState | null>(null);
+  const [reconnectKey, setReconnectKey] = useState(0);
+
+  // Remounts the WebRTCPlayer for a fresh negotiation without stopping the server-side stream.
+  const handleReconnect = useCallback(() => {
+    setMediaStream(null);
+    setStreamConnectState(null);
+    setReconnectKey((k) => k + 1);
+  }, []);
 
   // Set srcObject and muted imperatively — React's `muted` JSX prop doesn't reliably
   // set the DOM property, blocking autoplay. Call play() after srcObject is assigned so
@@ -178,9 +189,11 @@ const MissionControlViewport = ({
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
-        {/* WebRTC player — headless, mounts only while a stream URL is active */}
+        {/* WebRTC player — headless, mounts only while a stream URL is active.
+            key={reconnectKey} forces a fresh WebRTC negotiation on reconnect. */}
         {activeStreamUrl && (
           <WebRTCPlayer
+            key={reconnectKey}
             url={activeStreamUrl}
             onStateChange={(state) => setStreamConnectState(state)}
             onMediaStream={setMediaStream}
@@ -207,8 +220,14 @@ const MissionControlViewport = ({
         {/* Error state */}
         {streamConnectState === 'error' && (
           <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#050709]'>
-            <VideoOff size={26} className='text-red-500/60' />
+            <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
+            <button
+              onClick={handleReconnect}
+              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
+            >
+              <RefreshCw size={9} /> Reconnect
+            </button>
           </div>
         )}
 
@@ -277,39 +296,51 @@ const MissionControlViewport = ({
           <div className='absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent animate-spin [animation-duration:4s]' />
         </div>
 
-        {/* HUD: Stream status (bottom right) */}
+        {/* Bottom-right cluster: gimbal controls (full only) + stream HUD */}
         <div
-          className={`absolute flex flex-col items-end bg-white/5 backdrop-blur-md border border-white/10 rounded-md shadow-xl pointer-events-none ${
-            isMini ? 'bottom-3 right-3 px-2 py-1 gap-0.5' : 'bottom-6 right-6 px-3 py-2 gap-1'
+          className={`absolute flex flex-col items-end ${
+            isMini ? 'bottom-3 right-3 gap-1.5' : 'bottom-6 right-6 gap-2'
           }`}
         >
-          <div className='flex items-center gap-2 mb-1'>
-            <div
-              className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
-            />
+          {/* Gimbal controls — full viewport only, requires a dockSn to send commands */}
+          {!isMini && dockSn && (
+            <GimbalControls dockSn={dockSn} droneSn={selectedSn} payloadIndex={payloadIndex ?? '99-0-0'} />
+          )}
+
+          {/* Stream status HUD */}
+          <div
+            className={`flex flex-col items-end bg-white/5 backdrop-blur-md border border-white/10 rounded-md shadow-xl pointer-events-none ${
+              isMini ? 'px-2 py-1 gap-0.5' : 'px-3 py-2 gap-1'
+            }`}
+          >
+            <div className='flex items-center gap-2 mb-1'>
+              <div
+                className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+              />
+              <span
+                className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+              >
+                {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              </span>
+            </div>
+            {selectedSn && (
+              <span
+                className={`font-mono text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              >
+                {selectedSn}
+              </span>
+            )}
             <span
-              className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
-              {isStreaming ? 'Stream Active' : 'Stream Idle'}
+              Lat: 6.5244° N
+            </span>
+            <span
+              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+            >
+              Lon: 3.3792° E
             </span>
           </div>
-          {selectedSn && (
-            <span
-              className={`font-mono text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-            >
-              {selectedSn}
-            </span>
-          )}
-          <span
-            className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-          >
-            Lat: 6.5244° N
-          </span>
-          <span
-            className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
-          >
-            Lon: 3.3792° E
-          </span>
         </div>
       </div>
 
