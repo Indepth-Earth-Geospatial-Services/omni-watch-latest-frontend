@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useExecuteJob, useRequestFlightAuthority } from '@/hooks/useDockController';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
 import { useDRC } from '@/hooks/useDRC';
+import { useDJIWebSocket } from '@/hooks/useDJIWebSocket';
 import { DOCK_MODE_LABELS } from './ControlShared';
 import { DebugActivationModal } from './DebugActivationModal';
 import { DebugModeTab } from './DebugModeTab';
@@ -17,6 +18,7 @@ export interface DebugCommandsPanelProps {
   joystickInvalidState?: JoystickInvalidState | null;
   droneAltitude?: number;
   onTakeoffSucceeded?: (lat: number, lng: number) => void;
+  onOpenFlightCommand?: (lat: number | null, lng: number | null) => void;
 }
 
 export const DebugCommandsPanel = ({
@@ -26,14 +28,30 @@ export const DebugCommandsPanel = ({
   joystickInvalidState,
   droneAltitude = 0,
   onTakeoffSucceeded,
+  onOpenFlightCommand,
 }: DebugCommandsPanelProps) => {
   const [activeTab, setActiveTab] = useState<'debug' | 'flight'>('debug');
   const [debugActive, setDebugActive] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
-  const [flightAuth, setFlightAuth] = useState(false);
   const [isGrabbingAuth, setIsGrabbingAuth] = useState(false);
   const [confirmPending, setConfirmPending] = useState<string | null>(null);
+
+  // Authority state persists across page reload and network blips.
+  // Re-grab is issued automatically whenever the WebSocket reconnects.
+  const authStorageKey = dockSn ? `omni_flight_auth_${dockSn}` : null;
+  const [flightAuth, setFlightAuth] = useState<boolean>(() => {
+    if (!authStorageKey) return false;
+    try { return localStorage.getItem(authStorageKey) === 'true'; } catch { return false; }
+  });
+
+  const { isConnected } = useDJIWebSocket();
+  const prevConnected = useRef(false);
+  // Refs so the reconnect effect always sees the latest values without re-running on them
+  const flightAuthRef = useRef(flightAuth);
+  flightAuthRef.current = flightAuth;
+  const dockOnlineRef = useRef(dockOnline);
+  dockOnlineRef.current = dockOnline;
 
   // DRC lives here so it persists across tab switches within the Command & Control drawer.
   // FlightAuthorityTab unmounts when the user switches to the Debug tab — keeping the hook
@@ -80,6 +98,24 @@ export const DebugCommandsPanel = ({
 
   const { mutate: runJob, isPending } = useExecuteJob(dockSn);
   const { mutate: grabAuthority } = useRequestFlightAuthority(dockSn);
+
+  // Persist flight authority preference so it survives page navigation and refresh
+  useEffect(() => {
+    if (!authStorageKey) return;
+    try { localStorage.setItem(authStorageKey, flightAuth ? 'true' : 'false'); } catch {}
+  }, [flightAuth, authStorageKey]);
+
+  // Re-establish authority automatically after a WebSocket reconnect if it was held
+  useEffect(() => {
+    const reconnected = isConnected && !prevConnected.current;
+    prevConnected.current = isConnected;
+    if (reconnected && flightAuthRef.current && dockOnlineRef.current) {
+      grabAuthority(undefined, {
+        onSuccess: () => toast.success('Flight authority re-established after reconnect'),
+        onError: () => toast.error('Re-grab authority failed — toggle the switch to retry'),
+      });
+    }
+  }, [isConnected, grabAuthority]);
 
   const exec = useCallback(
     (serviceIdentifier: string, body?: object) => {
@@ -259,6 +295,7 @@ export const DebugCommandsPanel = ({
           exec={exec}
           droneAltitude={droneAltitude}
           onTakeoffSucceeded={onTakeoffSucceeded}
+          onOpenFlightCommand={onOpenFlightCommand}
           drcStatus={drcStatus}
           drcActivate={drcActivate}
           drcDeactivate={drcDeactivate}

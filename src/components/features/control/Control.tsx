@@ -8,6 +8,7 @@ import DroneFeed from '@/components/features/control/DroneFeed';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import TacticalMiniMap from '@/components/features/control/MiniMap';
+import { FlightCommandModal } from '@/components/features/control/FlightCommandModal';
 import DockFeed from '@/components/features/control/DockFeed';
 import FlightControlActions from '@/components/features/control/FlightControlActions';
 // import SensorToolbar from '@/components/features/control/SensorToolBar';
@@ -78,8 +79,28 @@ export default function ControlPage() {
   const [mainPanel, setMainPanel] = useState<PanelId>('viewport');
   const [coverOpen, setCoverOpen] = useState(false);
 
-  // ─── Active takeoff target ────────────────────────────────────────────────
+  // ─── Map style — shared across both map instances, persisted to localStorage ─
+  const [mapStyle, setMapStyle] = useState<'dark' | 'satellite'>(() => {
+    try {
+      return localStorage.getItem('omni_map_style') === 'satellite' ? 'satellite' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const handleMapStyleChange = useCallback((style: 'dark' | 'satellite') => {
+    setMapStyle(style);
+    try { localStorage.setItem('omni_map_style', style); } catch {}
+  }, []);
+
+  // ─── Active mission target (current destination) ─────────────────────────
   const [takeoffTarget, setTakeoffTarget] = useState<{ lat: number; lng: number } | null>(null);
+  // Launch origin — dock position captured at the moment takeoff is commanded
+  const [originPoint, setOriginPoint] = useState<{ lat: number; lng: number } | null>(null);
+  // Ordered history of every destination the drone has been commanded to fly to
+  const [flightWaypoints, setFlightWaypoints] = useState<Array<{ lat: number; lng: number }>>([]);
+
+  // ─── Flight command modal (unified Takeoff + Fly-To) ─────────────────────
+  const [flightCommandTarget, setFlightCommandTarget] = useState<{ lat: number; lng: number } | null>(null);
 
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
@@ -180,6 +201,17 @@ export default function ControlPage() {
   useEffect(() => {
     if (droneData?.modeCode === 0) setTakeoffTarget(null);
   }, [droneData?.modeCode]);
+
+  // Opens the unified FlightCommandModal; lat/lng null → fall back to dock position
+  const handleOpenFlightCommand = useCallback(
+    (lat: number | null, lng: number | null) => {
+      setFlightCommandTarget({
+        lat: lat ?? dockData?.latitude ?? 0,
+        lng: lng ?? dockData?.longitude ?? 0,
+      });
+    },
+    [dockData?.latitude, dockData?.longitude]
+  );
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleDeviceChange = useCallback((sn: string) => {
@@ -485,17 +517,27 @@ export default function ControlPage() {
                     {viewportPanel(true)}
                   </div>
 
-                  {mainPanel === 'map' && (
+                  {/* Main map — always mounted so MapLibre state survives panel swaps.
+                      CSS-hidden when another panel is active; visible=true triggers
+                      a canvas resize() after the div is revealed. */}
+                  <div className={mainPanel !== 'map' ? 'hidden' : ''}>
                     <ControlErrorBoundary section='TacticalMiniMap'>
                       <TacticalMiniMap
                         droneData={droneData}
                         dockData={dockData}
                         targetLat={takeoffTarget?.lat}
                         targetLng={takeoffTarget?.lng}
+                        originLat={originPoint?.lat}
+                        originLng={originPoint?.lng}
+                        waypoints={flightWaypoints}
+                        onRightClick={handleOpenFlightCommand}
+                        visible={mainPanel === 'map'}
+                        mapStyle={mapStyle}
+                        onMapStyleChange={handleMapStyleChange}
                         className='w-full h-[633px]'
                       />
                     </ControlErrorBoundary>
-                  )}
+                  </div>
                   {mainPanel === 'dock' && (
                     <ControlErrorBoundary section='DockFeed'>
                       <DockFeed
@@ -527,19 +569,25 @@ export default function ControlPage() {
                     {viewportPanel(false)}
                   </div>
 
-                  {mainPanel !== 'map' && (
-                    <div className='relative'>
-                      {swapBtn('map')}
-                      <ControlErrorBoundary section='TacticalMiniMap'>
-                        <TacticalMiniMap
-                          droneData={droneData}
-                          dockData={dockData}
-                          targetLat={takeoffTarget?.lat}
-                          targetLng={takeoffTarget?.lng}
-                        />
-                      </ControlErrorBoundary>
-                    </div>
-                  )}
+                  {/* Sidebar map — always mounted, hidden when map is the main panel */}
+                  <div className={`relative ${mainPanel === 'map' ? 'hidden' : ''}`}>
+                    {swapBtn('map')}
+                    <ControlErrorBoundary section='TacticalMiniMap'>
+                      <TacticalMiniMap
+                        droneData={droneData}
+                        dockData={dockData}
+                        targetLat={takeoffTarget?.lat}
+                        targetLng={takeoffTarget?.lng}
+                        originLat={originPoint?.lat}
+                        originLng={originPoint?.lng}
+                        waypoints={flightWaypoints}
+                        onRightClick={handleOpenFlightCommand}
+                        visible={mainPanel !== 'map'}
+                        mapStyle={mapStyle}
+                        onMapStyleChange={handleMapStyleChange}
+                      />
+                    </ControlErrorBoundary>
+                  </div>
 
                   {mainPanel !== 'dock' && (
                     <div className='relative'>
@@ -584,8 +632,35 @@ export default function ControlPage() {
           joystickInvalidState={joystickInvalidState}
           droneAltitude={droneData?.altitude ?? 0}
           onTakeoffSucceeded={(lat, lng) => setTakeoffTarget({ lat, lng })}
+          onOpenFlightCommand={handleOpenFlightCommand}
         />
       </ControlErrorBoundary>
+
+      {/* Unified flight command modal — opened via map right-click or sidebar buttons */}
+      {flightCommandTarget && dockDevice?.deviceSn && (
+        <FlightCommandModal
+          dockSn={dockDevice.deviceSn}
+          isAirborne={(droneData?.altitude ?? 0) > 60}
+          initialLat={flightCommandTarget.lat}
+          initialLng={flightCommandTarget.lng}
+          dockLat={dockData?.latitude}
+          dockLng={dockData?.longitude}
+          onClose={() => setFlightCommandTarget(null)}
+          onTakeoffSucceeded={(lat, lng) => {
+            // Capture the dock as launch origin and start a fresh path for this mission
+            setOriginPoint({ lat: dockData?.latitude ?? 0, lng: dockData?.longitude ?? 0 });
+            setFlightWaypoints([]);
+            setTakeoffTarget({ lat, lng });
+            setFlightCommandTarget(null);
+          }}
+          onFlyToSucceeded={(lat, lng) => {
+            // Move the current target into the waypoint history, then set the new destination
+            setFlightWaypoints((prev) => [...prev, takeoffTarget ?? { lat, lng }]);
+            setTakeoffTarget({ lat, lng });
+            setFlightCommandTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

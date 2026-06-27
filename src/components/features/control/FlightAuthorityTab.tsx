@@ -21,8 +21,6 @@ import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
 import type { DRCStatus } from '@/hooks/useDRC';
 import { cancelAllJobs } from '@/services/djiservice-layer/dji-service';
 import { CmdButton, SectionHeader, JOYSTICK_INVALID_REASONS } from './ControlShared';
-import { TakeoffToPointModal } from './TakeoffToPointModal';
-import { FlyToPointModal } from './FlyToPointModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +35,8 @@ export interface FlightAuthorityTabProps {
   exec: (serviceIdentifier: string, body?: object) => void;
   droneAltitude?: number;
   onTakeoffSucceeded?: (lat: number, lng: number) => void;
+  /** Opens the unified FlightCommandModal; lat/lng are pre-filled from the caller */
+  onOpenFlightCommand?: (lat: number | null, lng: number | null) => void;
   // DRC — owned by DebugCommandsPanel so the channel persists across tab switches
   drcStatus: DRCStatus;
   drcActivate: (dockSn: string) => Promise<void>;
@@ -100,7 +100,8 @@ export const FlightAuthorityTab = ({
   onToggle,
   exec,
   droneAltitude = 0,
-  onTakeoffSucceeded,
+  onTakeoffSucceeded: _onTakeoffSucceeded,
+  onOpenFlightCommand,
   drcStatus,
   drcActivate,
   drcDeactivate,
@@ -109,9 +110,6 @@ export const FlightAuthorityTab = ({
   const [expanded, setExpanded] = useState<'flyto' | 'takeoff' | 'stop' | null>(null);
   const toggle = (section: 'flyto' | 'takeoff' | 'stop') =>
     setExpanded((prev) => (prev === section ? null : section));
-
-  const [showTakeoffModal, setShowTakeoffModal] = useState(false);
-  const [showFlyToModal, setShowFlyToModal] = useState(false);
 
   // Cancel all active dock jobs — clears stuck job state that blocks DRC connection
   const { mutate: cancelJobs, isPending: isCancellingJobs } = useMutation({
@@ -144,16 +142,6 @@ export const FlightAuthorityTab = ({
 
   return (
     <>
-      {showFlyToModal && (
-        <FlyToPointModal dockSn={dockSn} onClose={() => setShowFlyToModal(false)} />
-      )}
-      {showTakeoffModal && (
-        <TakeoffToPointModal
-          dockSn={dockSn}
-          onClose={() => setShowTakeoffModal(false)}
-          onTakeoffSucceeded={onTakeoffSucceeded}
-        />
-      )}
       <div className='flex flex-col gap-3'>
         {/* ── Authority toggle card ── */}
         <div
@@ -232,11 +220,14 @@ export const FlightAuthorityTab = ({
                 <li>Full error details shown on failure</li>
               </ul>
               <button
-                onClick={() => setShowFlyToModal(true)}
+                onClick={() => onOpenFlightCommand?.(null, null)}
                 className='w-full py-2 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/30 hover:border-blue-400 transition-colors'
               >
-                Open Fly-To Form
+                Open Flight Command
               </button>
+              <p className='text-[8px] text-zinc-600 text-center leading-relaxed'>
+                Tip: right-click the tactical map to pre-fill coordinates
+              </p>
             </div>
           )}
         </div>
@@ -278,11 +269,14 @@ export const FlightAuthorityTab = ({
                 </div>
               )}
               <button
-                onClick={() => setShowTakeoffModal(true)}
+                onClick={() => onOpenFlightCommand?.(null, null)}
                 className='w-full py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/30 hover:border-emerald-400 transition-colors'
               >
-                Open Launch Form
+                Open Flight Command
               </button>
+              <p className='text-[8px] text-zinc-600 text-center leading-relaxed'>
+                Tip: right-click the tactical map to pre-fill coordinates
+              </p>
             </div>
           )}
         </div>
