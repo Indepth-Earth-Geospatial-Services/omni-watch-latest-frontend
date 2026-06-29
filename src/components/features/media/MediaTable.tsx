@@ -139,29 +139,29 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
 
   if (isLoading) {
     return (
-      <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+      <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
         <table className='w-full text-left'>
           <thead>
-            <tr className='border-b border-zinc-800/50'>
+            <tr className='border-b border-border/50'>
               <th className='px-4 py-3 w-8'></th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>File Name</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Drone</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Payload</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Original</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Created</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Action</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>File Name</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Drone</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Payload</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Original</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Action</th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
-              <tr key={i} className='border-b border-zinc-800/20'>
+              <tr key={i} className='border-b border-border/20'>
                 <td className='px-4 py-3'></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-32' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-20' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-16' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-8' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-24' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-8' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-32' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-20' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-16' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-8' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-24' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-8' /></td>
               </tr>
             ))}
           </tbody>
@@ -173,23 +173,23 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
   if (!data || data.list.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
-        <Image aria-hidden size={16} className='text-zinc-600' />
-        <p className='text-xs font-poppins text-zinc-600 mt-2'>No media files found</p>
+        <Image aria-hidden size={16} className='text-muted-foreground' />
+        <p className='text-xs font-ui text-muted-foreground mt-2'>No media files found</p>
       </div>
     );
   }
 
   return (
-    <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+    <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
       {selectedIds.size > 0 && (
-        <div className='flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800/50'>
-          <span className='text-xs font-poppins text-zinc-400'>
+        <div className='flex items-center justify-between px-4 py-2 bg-secondary border-b border-border/50'>
+          <span className='text-xs font-ui text-muted-foreground'>
             {selectedIds.size} file{selectedIds.size !== 1 ? 's' : ''} selected
           </span>
           <button
             onClick={handleBulkDownload}
             disabled={bulkDownloading}
-            className='flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-poppins font-medium text-zinc-300 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50'
+            className='flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-ui font-medium text-muted-foreground bg-secondary border border-border rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50'
           >
             {bulkDownloading ? (
               <Loader2 size={10} className='animate-spin' />
@@ -203,32 +203,32 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
 
       <table className='w-full text-left'>
         <thead>
-          <tr className='border-b border-zinc-800/50'>
+          <tr className='border-b border-border/50'>
             <th className='px-4 py-3 w-8'>
-              <button onClick={toggleSelectAll} className='text-zinc-500 hover:text-zinc-300'>
+              <button onClick={toggleSelectAll} className='text-muted-foreground hover:text-muted-foreground'>
                 {allSelected ? <CheckSquare size={12} /> : <Square size={12} />}
               </button>
             </th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>File Name</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Drone</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Payload</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Original</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Created</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Action</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>File Name</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Drone</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Payload</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Original</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Action</th>
           </tr>
         </thead>
         <tbody>
           {data.list.map((file) => (
             <tr
               key={file.file_id}
-              className={`border-b border-zinc-800/20 hover:bg-zinc-800/30 transition-colors ${
-                selectedIds.has(file.file_id) ? 'bg-zinc-800/20' : ''
+              className={`border-b border-border/20 hover:bg-secondary/30 transition-colors ${
+                selectedIds.has(file.file_id) ? 'bg-secondary/20' : ''
               }`}
             >
               <td className='px-4 py-3'>
                 <button
                   onClick={() => toggleSelect(file.file_id)}
-                  className='text-zinc-500 hover:text-zinc-300'
+                  className='text-muted-foreground hover:text-muted-foreground'
                 >
                   {selectedIds.has(file.file_id) ? (
                     <CheckSquare size={12} className='text-sky-400' />
@@ -238,20 +238,20 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
                 </button>
               </td>
               <td className='px-4 py-3'>
-                <span className='text-xs font-poppins text-[#E2E2E8] truncate max-w-[200px] block'>
+                <span className='text-xs font-ui text-foreground truncate max-w-[200px] block'>
                   {file.file_name}
                 </span>
-                <span className='text-[9px] font-poppins text-zinc-600 block'>
+                <span className='text-[9px] font-ui text-muted-foreground block'>
                   {file.file_path}
                 </span>
               </td>
               <td className='px-4 py-3'>
-                <span className='text-[10px] font-mono font-poppins text-zinc-500'>
+                <span className='text-[10px] font-logs font-ui text-muted-foreground'>
                   {file.drone || '-'}
                 </span>
               </td>
               <td className='px-4 py-3'>
-                <span className='text-[10px] font-mono font-poppins text-zinc-500'>
+                <span className='text-[10px] font-logs font-ui text-muted-foreground'>
                   {file.payload || '-'}
                 </span>
               </td>
@@ -260,14 +260,14 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
                   className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
                     file.is_original
                       ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-zinc-600/30 text-zinc-500'
+                      : 'bg-zinc-600/30 text-muted-foreground'
                   }`}
                 >
                   {file.is_original ? 'Yes' : 'No'}
                 </span>
               </td>
               <td className='px-4 py-3'>
-                <span className='text-[10px] font-poppins text-zinc-500'>
+                <span className='text-[10px] font-ui text-muted-foreground'>
                   {formatTimestamp(file.create_time)}
                 </span>
               </td>
@@ -279,7 +279,7 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
                       className='p-1 rounded hover:bg-zinc-700/50 transition-colors'
                       title='Preview'
                     >
-                      <Eye className='w-3.5 h-3.5 text-zinc-500 hover:text-sky-400' />
+                      <Eye className='w-3.5 h-3.5 text-muted-foreground hover:text-sky-400' />
                     </button>
                   )}
                   <button
@@ -289,9 +289,9 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
                     title='Download'
                   >
                     {downloadingFileId === file.file_id ? (
-                      <Loader2 className='w-3.5 h-3.5 text-zinc-500 animate-spin' />
+                      <Loader2 className='w-3.5 h-3.5 text-muted-foreground animate-spin' />
                     ) : (
-                      <Download className='w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300' />
+                      <Download className='w-3.5 h-3.5 text-muted-foreground hover:text-muted-foreground' />
                     )}
                   </button>
                 </div>
@@ -301,7 +301,7 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
         </tbody>
       </table>
       <div className='flex items-center justify-center py-3'>
-        <span className='text-[10px] font-poppins text-zinc-600'>
+        <span className='text-[10px] font-ui text-muted-foreground'>
           {data.pagination.total} file{data.pagination.total !== 1 ? 's' : ''} total
         </span>
       </div>
@@ -367,31 +367,31 @@ function PreviewModal({
       onClick={onClose}
     >
       <div
-        className='relative max-w-[90vw] max-h-[90vh] bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl'
+        className='relative max-w-[90vw] max-h-[90vh] bg-secondary border border-border rounded-xl overflow-hidden shadow-2xl'
         onClick={(e) => e.stopPropagation()}
       >
-        <div className='flex items-center justify-between px-4 py-2 border-b border-zinc-800'>
-          <span className='text-xs font-poppins text-zinc-400 truncate max-w-[300px]'>
+        <div className='flex items-center justify-between px-4 py-2 border-b border-border'>
+          <span className='text-xs font-ui text-muted-foreground truncate max-w-[300px]'>
             {file.file_name}
           </span>
           <button
             onClick={onClose}
-            className='p-1 rounded hover:bg-zinc-800 transition-colors'
+            className='p-1 rounded hover:bg-secondary transition-colors'
           >
-            <X className='w-4 h-4 text-zinc-400' />
+            <X className='w-4 h-4 text-muted-foreground' />
           </button>
         </div>
         <div className='flex items-center justify-center p-2 min-h-[200px] min-w-[300px]'>
           {imgState === 'loading' && !blobUrl && (
             <div className='flex flex-col items-center gap-2'>
-              <Loader2 className='w-6 h-6 text-zinc-600 animate-spin' />
-              <span className='text-[10px] font-poppins text-zinc-600'>Loading preview...</span>
+              <Loader2 className='w-6 h-6 text-muted-foreground animate-spin' />
+              <span className='text-[10px] font-ui text-muted-foreground'>Loading preview...</span>
             </div>
           )}
           {imgState === 'error' && (
             <div className='flex flex-col items-center gap-2 p-6'>
-              <AlertTriangle className='w-8 h-8 text-zinc-600' />
-              <span className='text-xs font-poppins text-zinc-500 text-center max-w-[280px]'>
+              <AlertTriangle className='w-8 h-8 text-muted-foreground' />
+              <span className='text-xs font-ui text-muted-foreground text-center max-w-[280px]'>
                 {errorMsg}
               </span>
             </div>

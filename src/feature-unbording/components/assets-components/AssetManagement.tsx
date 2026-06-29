@@ -11,18 +11,16 @@ interface AssetManagementProps {
   devices: DJIDevice[];
   isLoading: boolean;
   error: Error | null;
+  searchQuery?: string;
 }
 
-const AssetManagement = ({ devices, isLoading, error }: AssetManagementProps) => {
+const AssetManagement = ({ devices, isLoading, error, searchQuery = '' }: AssetManagementProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('All');
 
   return (
-    <div className='flex flex-col gap-6 w-full p-2'>
-      <div className='flex justify-start'>
-        <AssetTabs activeTab={activeTab} onTabChange={setActiveTab} devices={devices} />
-      </div>
-
-      <AssetTable activeTab={activeTab} devices={devices} isLoading={isLoading} error={error} />
+    <div className='flex flex-col gap-4 w-full'>
+      <AssetTabs activeTab={activeTab} onTabChange={setActiveTab} devices={devices} />
+      <AssetTable activeTab={activeTab} devices={devices} isLoading={isLoading} error={error} searchQuery={searchQuery} />
     </div>
   );
 };

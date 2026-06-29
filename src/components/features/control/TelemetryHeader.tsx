@@ -18,7 +18,7 @@ function degToCompass(deg: number): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const Divider = () => <div className='w-px h-5 bg-zinc-700/60 flex-shrink-0' />;
+const Divider = () => <div className='w-px h-5 bg-border/60 flex-shrink-0' />;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ const TelemetryHeader = ({
   const hasWind = windSpeed != null && windSpeed > 0;
 
   return (
-    <div className='flex items-center justify-between w-full h-14 px-6 bg-[#1A1C20] border border-[#42475426]/15 rounded-lg gap-4'>
+    <div className='flex items-center justify-between w-full h-14 px-6 bg-card border border-border/15 rounded-lg gap-4'>
 
       {/* ── Left: identity + stats ── */}
       <div className='flex items-center gap-5 flex-1 min-w-0'>
@@ -62,10 +62,10 @@ const TelemetryHeader = ({
         {workspaceName && (
           <>
             <div className='flex items-center gap-1.5'>
-              <span className='text-[10px] font-normal tracking-widest text-[#8C90A0] uppercase font-poppins'>
+              <span className='text-[10px] font-normal tracking-widest text-muted-foreground uppercase font-ui'>
                 Workspace
               </span>
-              <span className='text-xs font-semibold text-[#E2E2E8] font-poppins'>
+              <span className='text-xs font-semibold text-foreground font-ui'>
                 {workspaceName}
               </span>
             </div>
@@ -79,7 +79,7 @@ const TelemetryHeader = ({
             <Wifi size={10} />
             Online
           </div>
-          <span className='text-sm font-bold text-[#E2E2E8] font-poppins truncate'>
+          <span className='text-sm font-bold text-foreground font-ui truncate'>
             {dockName ?? 'Dock'}
           </span>
         </div>
@@ -92,11 +92,11 @@ const TelemetryHeader = ({
             size={14}
             className={hasBattery ? batteryColor(dockBattery!) : 'text-zinc-600'}
           />
-          <span className='text-[10px] font-normal tracking-widest text-[#8C90A0] uppercase font-poppins'>
+          <span className='text-[10px] font-normal tracking-widest text-muted-foreground uppercase font-ui'>
             Dock Pwr
           </span>
           <span
-            className={`text-xs font-bold font-poppins ${
+            className={`text-xs font-bold font-ui ${
               hasBattery ? batteryColor(dockBattery!) : 'text-zinc-600'
             }`}
           >
@@ -110,14 +110,14 @@ const TelemetryHeader = ({
             <Divider />
             <div className='flex items-center gap-1.5 flex-shrink-0'>
               <Wind size={13} className='text-zinc-500' />
-              <span className='text-[10px] font-normal tracking-widest text-[#8C90A0] uppercase font-poppins'>
+              <span className='text-[10px] font-normal tracking-widest text-muted-foreground uppercase font-ui'>
                 Wind
               </span>
-              <span className='text-xs font-semibold text-[#E2E2E8] font-poppins'>
+              <span className='text-xs font-semibold text-foreground font-ui'>
                 {windSpeed!.toFixed(1)} m/s
               </span>
               {windDirection != null && (
-                <span className='text-[10px] text-zinc-500 font-poppins'>
+                <span className='text-[10px] text-zinc-500 font-ui'>
                   {degToCompass(windDirection)}
                 </span>
               )}
@@ -131,12 +131,12 @@ const TelemetryHeader = ({
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-colors flex-shrink-0 ${
             coverOpen
-              ? 'bg-[#45F0CF1A] border-[#45F0CF80] text-[#45F0CF]'
-              : 'bg-zinc-800/50 border-zinc-700 text-zinc-500'
+              ? 'bg-theme-accent/10 border-theme-accent/50 text-theme-accent'
+              : 'bg-secondary/50 border-border text-muted-foreground'
           }`}
         >
           {coverOpen ? <DoorOpen size={13} /> : <DoorClosed size={13} />}
-          <span className='text-[10px] font-bold uppercase tracking-wider font-poppins'>
+          <span className='text-[10px] font-bold uppercase tracking-wider font-ui'>
             {coverOpen ? 'Cover Open' : 'Cover Closed'}
           </span>
         </div>

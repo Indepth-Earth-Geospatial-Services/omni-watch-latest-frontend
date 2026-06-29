@@ -194,7 +194,7 @@ export interface DJIWorkspaceUser {
   user_id: string;
   username: string;
   email: string;
-  user_type: number;         // 1 = Web, 2 = Pilot
+  user_type: string;         // "Web" or "Pilot"
   workspace_id: string;
   workspace_name: string;
   mqtt_username: string;
@@ -202,6 +202,7 @@ export interface DJIWorkspaceUser {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  create_time: string;       // alternative timestamp field from API
 }
 
 // Request body for PUT /manage/api/v1/users/{wid}/users/{userId}

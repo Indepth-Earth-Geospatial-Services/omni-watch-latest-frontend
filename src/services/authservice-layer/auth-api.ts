@@ -35,6 +35,7 @@ export interface AuthTokenResponse {
   mqtt_username: string;
   mqtt_password: string;
   access_token: string;
+  role: string;
 }
 
 export interface MeResponse {

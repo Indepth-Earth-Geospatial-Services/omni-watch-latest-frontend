@@ -93,7 +93,7 @@ export default function MediaPage() {
 
   return (
     <MainLayout title='Media Files' subtitle='Review and download drone-captured media'>
-      <div className='font-poppins space-y-4'>
+      <div className='font-ui space-y-4'>
         {/* Filter bar */}
         <div className='flex items-center gap-3 flex-wrap'>
           <div className='flex items-center gap-2'>
@@ -103,7 +103,7 @@ export default function MediaPage() {
               type='date'
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-              className='text-xs font-poppins text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
+              className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
             />
           </div>
           <div className='flex items-center gap-2'>
@@ -112,7 +112,7 @@ export default function MediaPage() {
               type='date'
               value={dateTo}
               onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-              className='text-xs font-poppins text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
+              className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
             />
           </div>
           {uniqueDrones.length > 0 && (
@@ -121,7 +121,7 @@ export default function MediaPage() {
               <select
                 value={droneFilter}
                 onChange={(e) => { setDroneFilter(e.target.value); setPage(1); }}
-                className='text-xs font-poppins text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
+                className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
               >
                 <option value=''>All Drones</option>
                 {uniqueDrones.map((d) => (
@@ -138,7 +138,7 @@ export default function MediaPage() {
                 setDroneFilter('');
                 setPage(1);
               }}
-              className='text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+              className='text-[10px] font-ui text-zinc-500 hover:text-zinc-300 transition-colors'
             >
               Clear filters
             </button>

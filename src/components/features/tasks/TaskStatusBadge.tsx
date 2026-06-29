@@ -2,12 +2,12 @@ import { FlightTaskStatusMap } from '@/lib/types/wayline';
 import type { FlightTaskStatus } from '@/lib/types/wayline';
 
 const statusColors: Record<FlightTaskStatus, string> = {
-  0: 'bg-zinc-500',
+  0: 'bg-muted',
   1: 'bg-blue-500',
   2: 'bg-green-500',
   3: 'bg-red-500',
   4: 'bg-yellow-500',
-  5: 'bg-zinc-500',
+  5: 'bg-muted',
 };
 
 interface TaskStatusBadgeProps {
@@ -24,7 +24,7 @@ export function TaskStatusBadge({ status }: TaskStatusBadgeProps) {
       <span
         className={`w-2 h-2 rounded-full ${color} ${safeStatus === 1 ? 'animate-pulse' : ''}`}
       />
-      <span className='text-xs text-zinc-300'>{label}</span>
+      <span className='text-xs text-muted-foreground'>{label}</span>
     </span>
   );
 }

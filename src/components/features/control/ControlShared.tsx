@@ -38,7 +38,7 @@ export const CmdButton = ({
 }: CmdButtonProps) => {
   const base = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all duration-150 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed';
   const styles: Record<string, string> = {
-    default: 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-700/60 hover:border-zinc-500 hover:text-white',
+    default: 'bg-secondary/50 border-border/50 text-muted-foreground hover:bg-secondary/60 hover:border-border hover:text-foreground',
     danger:  'bg-red-950/40 border-red-800/50 text-red-400 hover:bg-red-900/50 hover:border-red-600 hover:text-red-200',
     confirm: 'bg-amber-900/50 border-amber-600/60 text-amber-300 animate-pulse',
   };
@@ -53,7 +53,7 @@ export const CmdButton = ({
 // ─── SectionHeader ────────────────────────────────────────────────────────────
 
 export const SectionHeader = ({ title }: { title: string }) => (
-  <p className='text-[9px] font-black tracking-[0.18em] text-zinc-600 uppercase mb-1.5'>{title}</p>
+  <p className='text-[9px] font-black tracking-[0.18em] text-muted-foreground uppercase mb-1.5'>{title}</p>
 );
 
 // ─── FormInput ────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ export const FormInput = ({
   label, value, onChange, type = 'number', min, max, step, unit, disabled, placeholder,
 }: FormInputProps) => (
   <div className='flex flex-col gap-0.5'>
-    <label className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>{label}</label>
+    <label className='text-[8px] font-black uppercase tracking-widest text-muted-foreground'>{label}</label>
     <div className='flex items-center gap-1'>
       <input
         type={type}
@@ -86,9 +86,9 @@ export const FormInput = ({
         step={step}
         disabled={disabled}
         placeholder={placeholder}
-        className='w-full bg-[#0A0C10] border border-zinc-700/50 rounded text-[11px] text-zinc-300 px-2 py-1 focus:outline-none focus:border-zinc-500 disabled:opacity-40 placeholder:text-zinc-700'
+        className='w-full bg-background border border-border/50 rounded text-[11px] text-muted-foreground px-2 py-1 focus:outline-none focus:border-border disabled:opacity-40 placeholder:text-muted-foreground'
       />
-      {unit && <span className='text-[9px] text-zinc-600 flex-shrink-0 font-mono'>{unit}</span>}
+      {unit && <span className='text-[9px] text-muted-foreground flex-shrink-0 font-mono'>{unit}</span>}
     </div>
   </div>
 );
@@ -112,12 +112,12 @@ export const FormSelect = ({
   label, value, onChange, options, disabled,
 }: FormSelectProps) => (
   <div className='flex flex-col gap-0.5'>
-    <label className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>{label}</label>
+    <label className='text-[8px] font-black uppercase tracking-widest text-muted-foreground'>{label}</label>
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className='bg-[#0A0C10] border border-zinc-700/50 rounded text-[11px] text-zinc-300 px-2 py-1 focus:outline-none focus:border-zinc-500 disabled:opacity-40 cursor-pointer'
+      className='bg-background border border-border/50 rounded text-[11px] text-muted-foreground px-2 py-1 focus:outline-none focus:border-border disabled:opacity-40 cursor-pointer'
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>

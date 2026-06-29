@@ -3,13 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const DJI_BASE_URL = process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '';
 
 /**
- * Wayline download proxy — solves CORS by fetching the pre-signed GCS URL server-side.
- *
- * Flow:
- *   1. Browser calls /api/wayline/download?workspaceId=...&waylineId=...&fileName=...
- *   2. This route calls DJI API to get the pre-signed URL
- *   3. Fetches the file from GCS server-side (no CORS)
- *   4. Streams the binary back to the browser
+ * Wayline download proxy — fetches the KMZ file from DJI server-side (avoids CORS).
+ * The DJI /waylines/{id}/url endpoint returns the file directly as binary,
+ * NOT a JSON envelope.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,10 +19,24 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (!DJI_BASE_URL) {
+    return NextResponse.json(
+      { error: 'DJI API URL not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
     const token = request.headers.get('x-auth-token') ?? '';
 
-    // Step 1: Get pre-signed URL from DJI API
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No auth token provided' },
+        { status: 401 }
+      );
+    }
+
+    // The DJI endpoint returns the KMZ binary directly (not JSON)
     const djiUrl = `${DJI_BASE_URL}/wayline/api/v1/workspaces/${workspaceId}/waylines/${waylineId}/url`;
 
     const djiRes = await fetch(djiUrl, {
@@ -34,48 +44,22 @@ export async function GET(request: NextRequest) {
     });
 
     if (!djiRes.ok) {
+      const errText = await djiRes.text().catch(() => 'unknown');
       return NextResponse.json(
         { error: `DJI API returned ${djiRes.status}` },
         { status: djiRes.status }
       );
     }
 
-    const envelope = await djiRes.json();
-
-    if (envelope.code !== 0) {
-      return NextResponse.json(
-        { error: envelope.message || 'DJI API error' },
-        { status: 502 }
-      );
-    }
-
-    const fileUrl = envelope.data?.url;
-    if (!fileUrl) {
-      return NextResponse.json(
-        { error: 'No download URL in DJI response' },
-        { status: 502 }
-      );
-    }
-
-    // Step 2: Fetch the file from GCS server-side (no CORS)
-    const fileRes = await fetch(fileUrl);
-
-    if (!fileRes.ok) {
-      return NextResponse.json(
-        { error: `GCS returned ${fileRes.status}` },
-        { status: fileRes.status }
-      );
-    }
-
-    // Step 3: Stream the file back to the browser
+    // Stream the binary KMZ back to the browser
     const fileName = searchParams.get('fileName') || 'wayline.kmz';
-    const contentType = fileRes.headers.get('content-type') ?? 'application/octet-stream';
+    const contentType = djiRes.headers.get('content-type') ?? 'application/octet-stream';
 
     const responseHeaders = new Headers();
     responseHeaders.set('Content-Type', contentType);
     responseHeaders.set('Content-Disposition', `attachment; filename="${fileName}"`);
 
-    return new NextResponse(fileRes.body, {
+    return new NextResponse(djiRes.body, {
       status: 200,
       headers: responseHeaders,
     });

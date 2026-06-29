@@ -97,7 +97,7 @@ export default function LiveFeedPage() {
       <div className='bg-background text-foreground min-h-screen'>
         <MainLayout title='Live Feeds' subtitle=''>
           <EmptyPage
-            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            icon={<PlaneTakeoff className='w-8 h-8 text-muted-foreground' />}
             title='No project open'
             body='Open a project from the Projects page to begin monitoring.'
             action={{ label: 'Go to Projects', onClick: () => router.push('/projects') }}
@@ -112,12 +112,12 @@ export default function LiveFeedPage() {
       <div className='bg-background text-foreground min-h-screen'>
         <MainLayout title='Live Feeds' subtitle={activeProject.name}>
           <EmptyPage
-            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            icon={<PlaneTakeoff className='w-8 h-8 text-muted-foreground' />}
             title='No devices assigned'
             body={
               <>
                 Assign at least one device to{' '}
-                <span className='text-zinc-300 font-semibold'>{activeProject.name}</span> to start
+                <span className='text-muted-foreground font-semibold'>{activeProject.name}</span> to start
                 monitoring live feeds.
               </>
             }
@@ -142,7 +142,7 @@ export default function LiveFeedPage() {
       </div>
 
       <MainLayout title='Live Feeds' subtitle={activeProject.name}>
-        <div className='flex gap-4 h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex gap-4 h-[calc(100vh-10rem)] font-ui'>
           {/* Sidebar — desktop only */}
           <div className='hidden lg:flex h-full'>
             <DeviceSidebar
@@ -159,7 +159,7 @@ export default function LiveFeedPage() {
             />
           </div>
 
-          <div className='flex-1 flex flex-col bg-[#0C0D10] border border-zinc-800 rounded-xl overflow-hidden min-w-0'>
+          <div className='flex-1 flex flex-col bg-background border border-border rounded-xl overflow-hidden min-w-0'>
             <FeedToolbar
               viewMode={viewMode}
               selectedDevice={selectedDevice}
@@ -191,8 +191,8 @@ export default function LiveFeedPage() {
                   />
                 ) : (
                   <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
-                    <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
-                    <p className='text-sm text-zinc-600'>Select a device from the panel.</p>
+                    <PlaneTakeoff className='w-8 h-8 text-muted-foreground' />
+                    <p className='text-sm text-muted-foreground'>Select a device from the panel.</p>
                   </div>
                 )
               ) : (

@@ -46,24 +46,24 @@ export const DetectionPanel = memo(function DetectionPanel({
   const isConnectingMessage = emptyMessage.toLowerCase().includes('connecting') || emptyMessage.toLowerCase().includes('reconnecting');
 
   return (
-    <div className='flex flex-col bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden w-full lg:w-80 flex-shrink-0'>
+    <div className='flex flex-col bg-background border border-border/50 rounded-xl overflow-hidden w-full lg:w-80 flex-shrink-0'>
       {/* Header */}
-      <div className='flex items-center justify-between px-3 py-2.5 border-b border-zinc-800/50'>
+      <div className='flex items-center justify-between px-3 py-2.5 border-b border-border/50'>
         <div className='flex items-center gap-2'>
           {onToggleAll && (
             <input
               type='checkbox'
               checked={allChecked}
               onChange={onToggleAll}
-              className='w-3.5 h-3.5 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
+              className='w-3.5 h-3.5 rounded border-zinc-600 bg-secondary accent-primary cursor-pointer'
             />
           )}
           <div className={`w-1 h-4 rounded-full ${accent.dot}`} />
-          <span className='text-xs font-semibold font-poppins uppercase tracking-wider text-[#8C90A0]'>
+          <span className='text-xs font-semibold font-ui uppercase tracking-wider text-muted-foreground'>
             {title}
           </span>
         </div>
-        <span className='text-[10px] font-poppins px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-500'>
+        <span className='text-[10px] font-ui px-1.5 py-0.5 rounded bg-zinc-800/80 text-muted-foreground'>
           {detections.length}
         </span>
       </div>
@@ -73,11 +73,11 @@ export const DetectionPanel = memo(function DetectionPanel({
         {detections.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-8 px-3 text-center'>
             {isConnectingMessage ? (
-              <Loader2 size={12} className='text-zinc-600 animate-spin' />
+              <Loader2 size={12} className='text-muted-foreground animate-spin' />
             ) : (
               <div className='animate-pulse'>{accent.icon}</div>
             )}
-            <p className='text-xs font-poppins text-zinc-600 mt-2'>{emptyMessage}</p>
+            <p className='text-xs font-ui text-muted-foreground mt-2'>{emptyMessage}</p>
           </div>
         ) : (
           detections.map((d) => (

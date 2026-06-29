@@ -44,7 +44,7 @@ const QUALITY_LABELS: Record<string, string> = {
 };
 
 const selectCls =
-  'bg-[#1A1C20] border border-zinc-700 text-zinc-200 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-40';
+  'bg-card border border-border text-foreground text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-40';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ const MissionControlViewport = ({
 
   return (
     <div
-      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col mb-2 ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
+      className={`relative bg-background overflow-hidden flex flex-col mb-2 ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
       style={
         isMini
           ? { width: '301px', height: '342px' }
@@ -120,7 +120,7 @@ const MissionControlViewport = ({
     >
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
       {!isMini && (
-        <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-wrap'>
+        <div className='flex items-center gap-2 px-3 py-2 bg-card border-b border-border/50 flex-wrap'>
           {/* Device */}
           <select
             value={selectedSn}
@@ -188,7 +188,7 @@ const MissionControlViewport = ({
       )}
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
-      <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-black'>
+      <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-background'>
         {/* WebRTC player — headless, mounts only while a stream URL is active.
             key={reconnectKey} forces a fresh WebRTC negotiation on reconnect. */}
         {activeStreamUrl && (
@@ -211,20 +211,20 @@ const MissionControlViewport = ({
 
         {/* Connecting spinner */}
         {activeStreamUrl && streamConnectState === 'connecting' && !mediaStream && (
-          <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050709]'>
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background'>
             <div className='w-7 h-7 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin' />
-            <span className='text-[11px] font-medium text-zinc-500 tracking-wide'>Connecting…</span>
+            <span className='text-[11px] font-medium text-muted-foreground tracking-wide'>Connecting…</span>
           </div>
         )}
 
         {/* Error state */}
         {streamConnectState === 'error' && (
-          <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#050709]'>
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background'>
             <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
             <button
               onClick={handleReconnect}
-              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
+              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-muted-foreground border border-border rounded hover:bg-secondary/60 transition-colors'
             >
               <RefreshCw size={9} /> Reconnect
             </button>
@@ -233,7 +233,7 @@ const MissionControlViewport = ({
 
         {/* No-stream placeholder */}
         {!activeStreamUrl && (
-          <div className='absolute inset-0 bg-[#050709]'>
+          <div className='absolute inset-0 bg-background'>
             <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.012)_2px,rgba(255,255,255,0.012)_4px)] pointer-events-none' />
           </div>
         )}
@@ -287,7 +287,7 @@ const MissionControlViewport = ({
                 size={isMini ? 14 : 24}
               />
               <div
-                className={`absolute font-mono font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
+                className={`absolute font-logs font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
               >
                 {heading}°
               </div>
@@ -315,28 +315,28 @@ const MissionControlViewport = ({
           >
             <div className='flex items-center gap-2 mb-1'>
               <div
-                className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+                className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-muted'}`}
               />
               <span
-                className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+                className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-muted-foreground'}`}
               >
                 {isStreaming ? 'Stream Active' : 'Stream Idle'}
               </span>
             </div>
             {selectedSn && (
               <span
-                className={`font-mono text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+                className={`font-logs text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
               >
                 {selectedSn}
               </span>
             )}
             <span
-              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              className={`font-logs text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
               Lat: 6.5244° N
             </span>
             <span
-              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              className={`font-logs text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
               Lon: 3.3792° E
             </span>

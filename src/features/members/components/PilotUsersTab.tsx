@@ -4,37 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Check, X, Loader2, Users } from 'lucide-react';
 import type { DJIWorkspaceUser, UpdateDJIWorkspaceUserRequest } from '@/lib/types';
 
-interface DJIMembersTableProps {
+interface PilotUsersTabProps {
   users: DJIWorkspaceUser[];
   isLoading: boolean;
-  searchTerm?: string;
   onUpdate: (userId: string, body: UpdateDJIWorkspaceUserRequest) => void;
   isUpdating: boolean;
 }
 
-const userTypeBadge: Record<string, { label: string; className: string }> = {
-  Web: { label: 'Web', className: 'bg-blue-500/20 text-blue-400' },
-  Pilot: { label: 'Pilot', className: 'bg-emerald-500/20 text-emerald-400' },
-};
-
-const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdating }: DJIMembersTableProps) => {
+const PilotUsersTab = ({ users, isLoading, onUpdate, isUpdating }: PilotUsersTabProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [mqttUsername, setMqttUsername] = useState('');
   const [mqttPassword, setMqttPassword] = useState('');
 
   useEffect(() => {
     setEditingId(null);
-  }, [searchTerm]);
-
-  const filtered = users.filter((u) => {
-    const q = searchTerm.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      u.username.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.workspace_name.toLowerCase().includes(q)
-    );
-  });
+  }, [users]);
 
   const startEdit = (user: DJIWorkspaceUser) => {
     setEditingId(user.user_id);
@@ -62,7 +46,7 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
         <table className='w-full text-left'>
           <thead>
             <tr className='border-b border-zinc-800/50'>
-              {['Account', 'Type', 'Workspace', 'MQTT Username', 'MQTT Password', 'Joined', 'Actions'].map(
+              {['Account', 'MQTT Username', 'MQTT Password', 'Joined', 'Actions'].map(
                 (col) => (
                   <th key={col} className='px-4 py-3 text-[11px] font-ui font-medium text-zinc-500 uppercase'>
                     {col}
@@ -72,11 +56,9 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 7 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className='border-b border-zinc-800/20'>
                 <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-32' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-14' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-28' /></td>
                 <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-24' /></td>
                 <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-24' /></td>
                 <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-20' /></td>
@@ -89,12 +71,12 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
     );
   }
 
-  if (filtered.length === 0) {
+  if (users.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
         <Users size={16} className='text-zinc-600' />
         <p className='text-sm font-ui text-zinc-600 mt-2'>
-          {searchTerm ? 'No users match your search.' : 'No DJI workspace users found.'}
+          No pilot users found.
         </p>
       </div>
     );
@@ -105,7 +87,7 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
       <table className='w-full text-left'>
         <thead>
           <tr className='border-b border-zinc-800/50'>
-            {['Account', 'Type', 'Workspace', 'MQTT Username', 'MQTT Password', 'Joined', 'Actions'].map(
+            {['Account', 'MQTT Username', 'MQTT Password', 'Joined', 'Actions'].map(
               (col) => (
                 <th key={col} className='px-4 py-3 text-[11px] font-ui font-medium text-zinc-500 uppercase'>
                   {col}
@@ -115,12 +97,8 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
           </tr>
         </thead>
         <tbody>
-          {filtered.map((user) => {
+          {users.map((user) => {
             const isEditing = editingId === user.user_id;
-            const badge = userTypeBadge[user.user_type] ?? {
-              label: user.user_type || 'Unknown',
-              className: 'bg-zinc-600/30 text-zinc-500',
-            };
             return (
               <tr
                 key={user.user_id}
@@ -134,18 +112,6 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
                   </span>
                   <span className='text-xs font-ui text-zinc-500 block'>
                     {user.email}
-                  </span>
-                </td>
-
-                <td className='px-4 py-3'>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${badge.className}`}>
-                    {badge.label}
-                  </span>
-                </td>
-
-                <td className='px-4 py-3'>
-                  <span className='text-xs font-ui text-zinc-400'>
-                    {user.workspace_name}
                   </span>
                 </td>
 
@@ -181,7 +147,7 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
 
                 <td className='px-4 py-3'>
                   <span className='text-xs font-mono font-ui text-zinc-400'>
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {new Date(user.created_at || user.create_time).toLocaleDateString()}
                   </span>
                 </td>
 
@@ -226,11 +192,11 @@ const DJIMembersTable = ({ users, isLoading, searchTerm = '', onUpdate, isUpdati
 
       <div className='flex items-center justify-center py-3 border-t border-zinc-800/50'>
         <span className='text-xs font-ui text-zinc-600'>
-          {filtered.length} user{filtered.length !== 1 ? 's' : ''} total
+          {users.length} pilot user{users.length !== 1 ? 's' : ''} total
         </span>
       </div>
     </div>
   );
 };
 
-export default DJIMembersTable;
+export default PilotUsersTab;

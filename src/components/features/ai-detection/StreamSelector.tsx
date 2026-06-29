@@ -54,16 +54,16 @@ export const StreamSelector = memo(function StreamSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-poppins font-semibold transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-ui font-semibold transition-colors ${
             selectedIds.size > 0
-              ? 'bg-[#1C93FF]/15 text-[#1C93FF] border border-[#1C93FF]/30'
+              ? 'bg-primary/15 text-primary border border-primary/30'
               : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
           }`}
         >
           <Wifi size={11} />
           <span className='hidden sm:inline'>Select Streams</span>
           {selectedIds.size > 0 && (
-            <span className='ml-0.5 px-1 py-0.5 rounded-full bg-[#1C93FF]/20 text-[#1C93FF] text-[9px] leading-none'>
+              <span className='ml-0.5 px-1 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] leading-none'>
               {selectedIds.size}
             </span>
           )}
@@ -71,7 +71,7 @@ export const StreamSelector = memo(function StreamSelector({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align='end' className='w-64 bg-[#12151C] border-zinc-800'>
+      <DropdownMenuContent align='end' className='w-64 bg-card border-zinc-800'>
         <DropdownMenuLabel className='text-zinc-500 text-[10px] uppercase tracking-wider'>
           {selectedIds.size}/{maxSelections} streams selected
         </DropdownMenuLabel>
@@ -79,7 +79,7 @@ export const StreamSelector = memo(function StreamSelector({
         <div className='flex items-center gap-1 px-2 pb-1'>
           <button
             onClick={selectAll}
-            className='px-2 py-0.5 rounded text-[10px] font-semibold text-[#1C93FF] hover:bg-[#1C93FF]/10 transition-colors'
+            className='px-2 py-0.5 rounded text-[10px] font-semibold text-primary hover:bg-primary/10 transition-colors'
           >
             Select All
           </button>

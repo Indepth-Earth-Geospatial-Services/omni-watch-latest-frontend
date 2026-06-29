@@ -44,17 +44,17 @@ interface DeviceRowProps {
 }
 
 const DeviceRow = ({ name, type, online, icon: Icon }: DeviceRowProps) => (
-  <div className='flex items-center gap-3 py-2.5 border-b bg-[#33353980]/50 border-zinc-800/60 last:border-0 rounded-lg px-2'>
-    <div className='flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-800/60 flex-shrink-0'>
+  <div className='flex items-center gap-3 py-2.5 border-b bg-muted/50 border-border/60 last:border-0 rounded-lg px-2'>
+    <div className='flex items-center justify-center w-8 h-8 rounded-lg bg-secondary/50 flex-shrink-0'>
       <Icon size={15} className='text-zinc-400' strokeWidth={1.5} />
     </div>
     <div className='flex-1 min-w-0'>
-      <p className='text-xs font-semibold text-[#E2E2E8] font-poppins leading-none mb-0.5 truncate'>{name}</p>
-      <p className='text-[10px] text-zinc-500 font-poppins'>{type}</p>
+      <p className='text-xs font-semibold text-foreground font-ui leading-none mb-0.5 truncate'>{name}</p>
+      <p className='text-[10px] text-zinc-500 font-ui'>{type}</p>
     </div>
     <div className='flex items-center gap-2 flex-shrink-0'>
-      <span className={`text-[10px] font-semibold font-poppins border px-2 py-0.5 rounded ${
-        online ? 'text-[#45F0CF] border-[#45F0CF]/30' : 'text-zinc-600 border-zinc-700/40'
+      <span className={`text-[10px] font-semibold font-ui border px-2 py-0.5 rounded ${
+        online ? 'text-theme-accent border-theme-accent/30' : 'text-muted-foreground border-border/40'
       }`}>
         {online ? 'Online' : 'Offline'}
       </span>
@@ -93,7 +93,7 @@ const SystemStatusFooter = ({
 
   return (
     <div className='fixed bottom-0 left-0 lg:left-64 right-0 z-50 flex flex-col items-center pointer-events-none'>
-      <div className='w-[calc(100%-48px)] bg-[#0A0C10] shadow-2xl pointer-events-auto'>
+      <div className='w-[calc(100%-48px)] bg-background shadow-2xl pointer-events-auto'>
 
         {/* Drag handle */}
         <div className='flex flex-col items-center gap-1 py-2 cursor-pointer group' onClick={toggle}>
@@ -103,19 +103,19 @@ const SystemStatusFooter = ({
 
         {/* Persistent header */}
         <div
-          className='flex items-center justify-between px-8 p-4 cursor-pointer bg-[#1A1C20] rounded-t-lg'
+          className='flex items-center justify-between px-8 p-4 cursor-pointer bg-card rounded-t-lg'
           onClick={toggle}
         >
           <div className='flex items-center gap-3 flex-1'>
             <Activity size={16} strokeWidth={2.5} className='text-zinc-400' />
-            <span className='text-sm font-black tracking-[0.2em] text-zinc-100 uppercase'>
+            <span className='text-sm font-black tracking-[0.2em] text-foreground uppercase'>
               Command &amp; Control
             </span>
           </div>
-          <div className='flex items-center justify-end w-[440px] gap-4 pl-4 border-l border-zinc-800/50'>
+          <div className='flex items-center justify-end w-[440px] gap-4 pl-4 border-l border-border/50'>
             <div className='flex items-center gap-3'>
               <Cpu size={16} className='text-zinc-400' strokeWidth={2.5} />
-              <span className='text-sm font-black tracking-[0.2em] text-zinc-100 uppercase'>
+              <span className='text-sm font-black tracking-[0.2em] text-foreground uppercase'>
                 Network Devices
               </span>
             </div>
@@ -129,7 +129,7 @@ const SystemStatusFooter = ({
 
         {/* Expandable drawer */}
         <div
-          className={`overflow-hidden transition-all duration-500 ease-in-out rounded-b-lg bg-[#1A1C20] ${
+          className={`overflow-hidden transition-all duration-500 ease-in-out rounded-b-lg bg-card ${
             expanded ? 'max-h-[420px] opacity-100 mb-4' : 'max-h-0 opacity-0'
           }`}
         >
@@ -148,15 +148,15 @@ const SystemStatusFooter = ({
             </div>
 
             {/* Vertical divider */}
-            <div className='w-px bg-zinc-800 flex-shrink-0 mx-4' />
+            <div className='w-px bg-secondary flex-shrink-0 mx-4' />
 
             {/* Right: paired device list */}
             <div className='w-[280px] flex-shrink-0 flex flex-col gap-1 overflow-y-auto pr-1 custom-scrollbar'>
-              <p className='text-[9px] font-black tracking-[0.18em] text-zinc-600 uppercase mb-1'>
+              <p className='text-[9px] font-black tracking-[0.18em] text-muted-foreground uppercase mb-1'>
                 Paired Devices
               </p>
               {pairedDevices.length === 0 ? (
-                <p className='text-center text-[10px] text-zinc-600 py-6'>
+                <p className='text-center text-[10px] text-muted-foreground py-6'>
                   {dockSn ? 'Dock not found in device list' : 'No drone selected'}
                 </p>
               ) : (

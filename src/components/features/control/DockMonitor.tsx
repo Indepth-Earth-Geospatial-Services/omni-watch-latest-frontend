@@ -184,11 +184,11 @@ const DockMonitor = ({
 
   return (
     <div
-      className={`relative flex flex-col bg-[#1A1C20] border border-zinc-800/50 rounded-lg overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
+      className={`relative flex flex-col bg-card border border-border/50 rounded-lg overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
       style={className ? undefined : { width: '301px', height: '336px' }}
     >
       {/* ── Camera viewport ───────────────────────────────────────────── */}
-      <div className='relative flex-1 bg-black overflow-hidden'>
+      <div className='relative flex-1 bg-background overflow-hidden'>
         {/* Video element always in DOM — opacity reveals it when playing */}
         <video
           ref={videoRef}
@@ -202,9 +202,9 @@ const DockMonitor = ({
 
         {/* Dock offline */}
         {!dockOnline && (
-          <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
+          <div className='absolute inset-0 bg-background flex flex-col items-center justify-center gap-2'>
             <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
+            <span className='text-[10px] font-logs text-zinc-700 uppercase tracking-widest'>
               Dock Offline
             </span>
             <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
@@ -213,9 +213,9 @@ const DockMonitor = ({
 
         {/* Connecting / buffering */}
         {dockOnline && (isStarting || streamState === 'connecting') && (
-          <div className='absolute inset-0 bg-[#0A0C10]/80 flex flex-col items-center justify-center gap-2'>
+          <div className='absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-2'>
             <div className='w-6 h-6 border-2 border-zinc-600 border-t-emerald-400 rounded-full animate-spin' />
-            <span className='text-[10px] font-mono text-zinc-500 uppercase tracking-widest'>
+            <span className='text-[10px] font-logs text-zinc-500 uppercase tracking-widest'>
               Connecting…
             </span>
           </div>
@@ -223,14 +223,14 @@ const DockMonitor = ({
 
         {/* Stream error */}
         {dockOnline && streamState === 'error' && (
-          <div className='absolute inset-0 bg-[#0A0C10]/90 flex flex-col items-center justify-center gap-2'>
+          <div className='absolute inset-0 bg-background/90 flex flex-col items-center justify-center gap-2'>
             <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-red-500 uppercase tracking-widest'>
+            <span className='text-[10px] font-logs text-red-500 uppercase tracking-widest'>
               Stream Error
             </span>
             <button
               onClick={handleReconnect}
-              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
+              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-muted-foreground border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
             >
               <RefreshCw size={9} /> Reconnect
             </button>
@@ -239,12 +239,12 @@ const DockMonitor = ({
 
         {/* No feed / waiting for capacity */}
         {dockOnline && !streamUrl && !isStarting && !streamState && (
-          <div className='absolute inset-0 bg-[#0A0C10] flex flex-col items-center justify-center gap-2'>
+          <div className='absolute inset-0 bg-background flex flex-col items-center justify-center gap-2'>
             <VideoOff size={28} className='text-zinc-700' strokeWidth={1.5} />
-            <span className='text-[10px] font-mono text-zinc-700 uppercase tracking-widest'>
+            <span className='text-[10px] font-logs text-zinc-700 uppercase tracking-widest'>
               No Feed
             </span>
-            <span className='text-[8px] font-mono text-zinc-800 uppercase tracking-wider'>
+            <span className='text-[8px] font-logs text-zinc-800 uppercase tracking-wider'>
               CAM-02
             </span>
             <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.015)_2px,rgba(255,255,255,0.015)_4px)] pointer-events-none' />
@@ -263,8 +263,8 @@ const DockMonitor = ({
         <div
           className={`absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 border rounded transition-colors ${
             isDoorOpen
-              ? 'bg-[#45F0CF1A] border-[#45F0CF80] text-[#45F0CF]'
-              : 'bg-zinc-800/50 border-zinc-700 text-zinc-500'
+              ? 'bg-theme-accent/10 border-theme-accent/50 text-theme-accent'
+              : 'bg-secondary/50 border-border text-muted-foreground'
           }`}
         >
           {isDoorOpen ? <DoorOpen size={12} /> : <DoorClosed size={12} />}
@@ -292,7 +292,7 @@ const DockMonitor = ({
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-1.5'>
               <HardDrive size={11} className='text-zinc-400' />
-              <span className='text-[10px] font-semibold text-zinc-200 truncate max-w-[140px]'>
+              <span className='text-[10px] font-semibold text-foreground truncate max-w-[140px]'>
                 {dockName}
               </span>
             </div>
@@ -308,20 +308,20 @@ const DockMonitor = ({
             )}
           </div>
           <div className='flex items-center justify-between mt-0.5'>
-            <span className='text-[8px] font-mono text-zinc-600 truncate max-w-[160px]'>
+            <span className='text-[8px] font-logs text-zinc-600 truncate max-w-[160px]'>
               {dockSn ? `SN: ${dockSn.slice(-8)}` : 'No dock linked'}
             </span>
             {firmware !== '—' && (
-              <span className='text-[8px] font-mono text-zinc-600'>fw {firmware}</span>
+              <span className='text-[8px] font-logs text-zinc-600'>fw {firmware}</span>
             )}
           </div>
         </div>
       </div>
 
       {/* ── Hardware controls ─────────────────────────────────────────── */}
-      <div className='flex flex-col gap-2 p-2 bg-[#333539E5] border-t border-zinc-800/50'>
+      <div className='flex flex-col gap-2 p-2 bg-muted border-t border-border/50'>
         {!isDebugMode && (
-          <p className='text-[9px] text-amber-400/70 font-mono text-center'>
+          <p className='text-[9px] text-amber-400/70 font-logs text-center'>
             ⚠ Debug Mode required to control the cover
           </p>
         )}
@@ -331,8 +331,8 @@ const DockMonitor = ({
             disabled={!dockOnline || isPending || isDoorOpen}
             className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isDoorOpen
-                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+                ? 'bg-theme-accent/20 border-theme-accent/50 text-theme-accent shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-secondary border-border text-white hover:text-muted-foreground hover:border-zinc-600'
             }`}
           >
             {isPending && isDoorOpen ? '…' : 'Open'}
@@ -342,8 +342,8 @@ const DockMonitor = ({
             disabled={!dockOnline || isPending || !isDoorOpen}
             className={`flex-1 py-2 text-xs font-bold rounded border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               !isDoorOpen
-                ? 'bg-[#45F0CF33] border-[#45F0CF80] text-[#45F0CF] shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                : 'bg-[#1E2024] border-[#424754] text-white hover:text-zinc-300 hover:border-zinc-600'
+                ? 'bg-theme-accent/20 border-theme-accent/50 text-theme-accent shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : 'bg-secondary border-border text-white hover:text-muted-foreground hover:border-zinc-600'
             }`}
           >
             {isPending && !isDoorOpen ? '…' : 'Close'}

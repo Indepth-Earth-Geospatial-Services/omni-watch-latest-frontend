@@ -167,7 +167,7 @@ export function TaskPage() {
   if (!activeProject) {
     return (
       <EmptyPage
-        icon={<Calendar className='w-6 h-6 text-zinc-400' />}
+        icon={<Calendar className='w-6 h-6 text-muted-foreground' />}
         title='No Project Selected'
         body='Please select a project from the sidebar to access the Task Plan Library.'
         action={{
@@ -181,10 +181,10 @@ export function TaskPage() {
   return (
     <MainLayout title='Task Plan Library' subtitle='Manage flight tasks and create new mission plans'>
       <div className='-my-6 -mr-6'>
-        <div className='flex flex-col h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex flex-col h-[calc(100vh-10rem)] font-ui'>
           {/* Header */}
           <div className='px-4 pt-4 flex items-center justify-between flex-shrink-0'>
-            <h2 className='text-sm font-semibold text-zinc-200'>
+            <h2 className='text-sm font-semibold text-foreground'>
               {mode === 'list' ? 'Flight Tasks' : 'New Flight Plan'}
             </h2>
             {mode === 'list' && (

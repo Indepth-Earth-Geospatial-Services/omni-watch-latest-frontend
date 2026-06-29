@@ -33,7 +33,7 @@ export default function InviteMemberModal({ open, onClose, onInvite, isInviting,
 
   return (
     <div className='fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center'>
-      <div className='bg-[#1A1C20] border border-zinc-800 rounded-xl w-full max-w-md mx-4 shadow-2xl shadow-black/60'>
+      <div className='bg-card border border-zinc-800 rounded-xl w-full max-w-md mx-4 shadow-2xl shadow-black/60'>
         <div className='flex items-center justify-between px-6 pt-6 pb-4'>
           <h3 className='text-lg font-semibold text-zinc-100'>Invite Member</h3>
           <button onClick={onClose} className='p-1 hover:bg-zinc-800 rounded transition-colors'>
@@ -53,7 +53,7 @@ export default function InviteMemberModal({ open, onClose, onInvite, isInviting,
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder='user@example.com'
-                className='w-full pl-9 pr-3 py-2 bg-[#32353C] border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent placeholder-zinc-600'
+                className='w-full pl-9 pr-3 py-2 bg-input border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent placeholder-zinc-600'
                 required
               />
             </div>

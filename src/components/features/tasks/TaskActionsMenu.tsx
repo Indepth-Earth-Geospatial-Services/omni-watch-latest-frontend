@@ -64,8 +64,8 @@ export function TaskActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className='p-1 rounded hover:bg-zinc-800 transition-colors'>
-          <MoreVertical className='w-4 h-4 text-zinc-400' />
+        <button className='p-1 rounded hover:bg-secondary transition-colors'>
+          <MoreVertical className='w-4 h-4 text-muted-foreground' />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>

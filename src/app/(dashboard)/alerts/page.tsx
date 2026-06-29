@@ -163,7 +163,7 @@ export default function AlertsPage() {
   if (!activeProject) {
     return (
       <EmptyPage
-        icon={<Bell className='w-6 h-6 text-zinc-400' />}
+        icon={<Bell className='w-6 h-6 text-muted-foreground' />}
         title='No Project Selected'
         body='Please select a project from the sidebar to access Alerts.'
         action={{
@@ -177,7 +177,7 @@ export default function AlertsPage() {
   return (
     <MainLayout title='Alerts' subtitle='Review and manage AI detection alerts'>
       <div className='-my-6 -mr-6'>
-        <div className='flex flex-col h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex flex-col h-[calc(100vh-10rem)] font-ui'>
           {/* Header */}
           <div className='px-4 pt-4 flex-shrink-0'>
             <AlertsHeader
@@ -200,33 +200,33 @@ export default function AlertsPage() {
           <div ref={listRef} className='flex-1 min-h-0 overflow-y-auto px-4 pt-3'>
             {isLoadingHistory && filteredDetections.length === 0 ? (
               <div className='flex flex-col items-center justify-center py-12 text-center'>
-                <Loader2 size={16} className='text-zinc-600 animate-spin' />
-                <p className='text-xs font-poppins text-zinc-600 mt-2'>Loading alerts...</p>
+                <Loader2 size={16} className='text-muted-foreground animate-spin' />
+                <p className='text-xs font-ui text-muted-foreground mt-2'>Loading alerts...</p>
               </div>
             ) : filteredDetections.length === 0 ? (
               <div className='flex flex-col items-center justify-center py-12 text-center'>
                 {status === 'connecting' || status === 'reconnecting' ? (
                   <>
-                    <Loader2 size={16} className='text-zinc-600 animate-spin' />
-                    <p className='text-xs font-poppins text-zinc-600 mt-2'>
+                    <Loader2 size={16} className='text-muted-foreground animate-spin' />
+                    <p className='text-xs font-ui text-muted-foreground mt-2'>
                       {status === 'connecting' ? 'Connecting to AI server...' : 'Reconnecting to AI server...'}
                     </p>
                   </>
                 ) : status === 'error' ? (
                   <>
                     <AlertTriangle size={16} className='text-red-500/60' />
-                    <p className='text-xs font-poppins text-red-400/60 mt-2'>Connection failed</p>
+                    <p className='text-xs font-ui text-red-400/60 mt-2'>Connection failed</p>
                     <button
                       onClick={() => window.location.reload()}
-                      className='mt-2 flex items-center gap-1 text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+                      className='mt-2 flex items-center gap-1 text-[10px] font-ui text-muted-foreground hover:text-muted-foreground transition-colors'
                     >
                       <RefreshCw size={10} /> Retry
                     </button>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle size={16} className='text-zinc-600' />
-                    <p className='text-xs font-poppins text-zinc-600 mt-2'>
+                    <AlertTriangle size={16} className='text-muted-foreground' />
+                    <p className='text-xs font-ui text-muted-foreground mt-2'>
                       {historyDetections.length === 0 && liveDetections.length === 0
                         ? 'No alerts yet — waiting for detections...'
                         : 'No alerts match filters'}
@@ -235,7 +235,7 @@ export default function AlertsPage() {
                 )}
               </div>
             ) : (
-              <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+              <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
                 {filteredDetections.map((d) => (
                   <AlertListItem
                     key={d.id}
@@ -250,14 +250,14 @@ export default function AlertsPage() {
                 {/* Infinite scroll loader */}
                 {isFetchingNextPage && (
                   <div className='flex items-center justify-center py-4'>
-                    <RefreshCw size={14} className='text-zinc-600 animate-spin' />
-                    <span className='text-xs font-poppins text-zinc-600 ml-2'>Loading more...</span>
+                    <RefreshCw size={14} className='text-muted-foreground animate-spin' />
+                    <span className='text-xs font-ui text-muted-foreground ml-2'>Loading more...</span>
                   </div>
                 )}
 
                 {!hasNextPage && filteredDetections.length > 0 && (
                   <div className='flex items-center justify-center py-3'>
-                    <span className='text-[10px] font-poppins text-zinc-600'>No more alerts</span>
+                    <span className='text-[10px] font-ui text-muted-foreground'>No more alerts</span>
                   </div>
                 )}
               </div>

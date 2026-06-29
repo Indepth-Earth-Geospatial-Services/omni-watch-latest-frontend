@@ -8,8 +8,10 @@ import {
   Download,
   Star,
   Route,
+  Eye,
 } from 'lucide-react';
 import type { Wayline } from '@/lib/types';
+import WaylinePreviewModal from './WaylinePreviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,7 @@ const WeylineTable = ({
   const [localFavorites, setLocalFavorites] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [previewWayline, setPreviewWayline] = useState<Wayline | null>(null);
 
   const toggleFavorite = (id: string) => {
     setLocalFavorites((prev) => {
@@ -110,14 +113,14 @@ const WeylineTable = ({
 
   if (isLoading) {
     return (
-      <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+      <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
         <table className='w-full text-left'>
           <thead>
-            <tr className='border-b border-zinc-800/50'>
+            <tr className='border-b border-border/50'>
               <th className='px-4 py-3 w-8' />
               {['Route Name', 'Template Type', 'Drone', 'Favorited', 'Created', 'Actions'].map(
                 (col) => (
-                  <th key={col} className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>
+                  <th key={col} className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>
                     {col}
                   </th>
                 )
@@ -126,14 +129,14 @@ const WeylineTable = ({
           </thead>
           <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
-              <tr key={i} className='border-b border-zinc-800/20'>
+              <tr key={i} className='border-b border-border/20'>
                 <td className='px-4 py-3' />
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-40' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-20' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-28' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-5' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-20' /></td>
-                <td className='px-4 py-3'><div className='h-3.5 bg-zinc-800 rounded animate-pulse w-8' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-40' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-20' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-28' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-5' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-20' /></td>
+                <td className='px-4 py-3'><div className='h-3.5 bg-secondary rounded animate-pulse w-8' /></td>
               </tr>
             ))}
           </tbody>
@@ -145,8 +148,8 @@ const WeylineTable = ({
   if (filtered.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
-        <Route size={16} className='text-zinc-600' />
-        <p className='text-sm font-poppins text-zinc-600 mt-2'>
+        <Route size={16} className='text-muted-foreground' />
+        <p className='text-sm font-poppins text-muted-foreground mt-2'>
           {searchQuery ? 'No routes match your search.' : 'No flight routes found.'}
         </p>
       </div>
@@ -154,10 +157,10 @@ const WeylineTable = ({
   }
 
   return (
-    <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+    <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
       {selectedIds.size > 0 && (
-        <div className='flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800/50'>
-          <span className='text-sm font-poppins text-zinc-400'>
+        <div className='flex items-center justify-between px-4 py-2 bg-secondary border-b border-border/50'>
+          <span className='text-sm font-poppins text-muted-foreground'>
             {selectedIds.size} route{selectedIds.size !== 1 ? 's' : ''} selected
           </span>
         </div>
@@ -165,9 +168,9 @@ const WeylineTable = ({
 
       <table className='w-full text-left'>
         <thead>
-          <tr className='border-b border-zinc-800/50'>
+          <tr className='border-b border-border/50'>
             <th className='px-4 py-3 w-8'>
-              <button onClick={toggleSelectAll} className='text-zinc-500 hover:text-zinc-300'>
+              <button onClick={toggleSelectAll} className='text-muted-foreground hover:text-foreground'>
                 {allSelected ? (
                   <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
                     <rect x='3' y='3' width='18' height='18' rx='2' />
@@ -180,12 +183,12 @@ const WeylineTable = ({
                 )}
               </button>
             </th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Route Name</th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Template Type</th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Drone</th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Favorited</th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Created</th>
-            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-zinc-500 uppercase'>Actions</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Route Name</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Template Type</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Drone</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Favorited</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Created</th>
+            <th className='px-4 py-3 text-[11px] font-poppins font-medium text-muted-foreground uppercase'>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -194,12 +197,12 @@ const WeylineTable = ({
             return (
               <tr
                 key={wayline.id}
-                className={`border-b border-zinc-800/20 hover:bg-zinc-800/30 transition-colors ${
-                  selectedIds.has(wayline.id) ? 'bg-zinc-800/20' : ''
+                className={`border-b border-border/20 hover:bg-secondary/30 transition-colors ${
+                  selectedIds.has(wayline.id) ? 'bg-secondary/20' : ''
                 }`}
               >
                 <td className='px-4 py-3'>
-                  <button onClick={() => toggleSelect(wayline.id)} className='text-zinc-500 hover:text-zinc-300'>
+                  <button onClick={() => toggleSelect(wayline.id)} className='text-muted-foreground hover:text-foreground'>
                     {selectedIds.has(wayline.id) ? (
                       <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='text-sky-400'>
                         <rect x='3' y='3' width='18' height='18' rx='2' />
@@ -214,10 +217,10 @@ const WeylineTable = ({
                 </td>
 
                 <td className='px-4 py-3'>
-                  <span className='text-sm font-poppins text-[#E2E2E8] truncate max-w-[240px] block'>
+                  <span className='text-sm font-poppins text-foreground truncate max-w-[240px] block'>
                     {wayline.name}
                   </span>
-                  <span className='text-xs font-poppins text-zinc-500 block'>
+                  <span className='text-xs font-poppins text-muted-foreground block'>
                     by {wayline.user_name}
                   </span>
                 </td>
@@ -227,7 +230,7 @@ const WeylineTable = ({
                     {labels.map((t) => (
                       <span
                         key={t}
-                        className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${templateBadge[t] ?? 'bg-zinc-600/30 text-zinc-500'}`}
+                        className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${templateBadge[t] ?? 'bg-muted/30 text-muted-foreground'}`}
                       >
                         {t}
                       </span>
@@ -236,7 +239,7 @@ const WeylineTable = ({
                 </td>
 
                 <td className='px-4 py-3'>
-                  <span className='text-xs font-mono font-poppins text-zinc-400'>
+                  <span className='text-xs font-mono font-poppins text-muted-foreground'>
                     {wayline.drone_model_key}
                   </span>
                 </td>
@@ -244,37 +247,46 @@ const WeylineTable = ({
                 <td className='px-4 py-3'>
                   <button
                     onClick={() => toggleFavorite(wayline.id)}
-                    className='p-1 rounded hover:bg-zinc-700/50 transition-colors'
+                    className='p-1 rounded hover:bg-secondary/50 transition-colors'
                     title={isFavorited(wayline) ? 'Unfavorite' : 'Favorite'}
                   >
                     <Star
                       size={14}
-                      className={isFavorited(wayline) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-600'}
+                      className={isFavorited(wayline) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}
                     />
                   </button>
                 </td>
 
                 <td className='px-4 py-3'>
-                  <span className='text-xs font-mono font-poppins text-zinc-400'>
+                  <span className='text-xs font-mono font-poppins text-muted-foreground'>
                     {new Date(wayline.create_time).toLocaleDateString()}
                   </span>
                 </td>
 
                 <td className='px-4 py-3'>
                   <div className='flex items-center gap-1'>
+                    {wayline.object_key && (
+                      <button
+                        onClick={() => setPreviewWayline(wayline)}
+                        className='p-1.5 rounded hover:bg-secondary/50 transition-colors'
+                        title='Preview route on map'
+                      >
+                        <Eye size={14} className='text-muted-foreground hover:text-foreground' />
+                      </button>
+                    )}
                     <button
                       onClick={() => onDownload?.(wayline)}
-                      className='p-1.5 rounded hover:bg-zinc-700/50 transition-colors'
+                      className='p-1.5 rounded hover:bg-secondary/50 transition-colors'
                       title='Download wayline file'
                     >
-                      <Download size={14} className='text-zinc-500 hover:text-zinc-300' />
+                      <Download size={14} className='text-muted-foreground hover:text-foreground' />
                     </button>
                     <button
                       onClick={() => onDelete?.(wayline)}
-                      className='p-1.5 rounded hover:bg-zinc-700/50 transition-colors'
+                      className='p-1.5 rounded hover:bg-secondary/50 transition-colors'
                       title='Delete route'
                     >
-                      <Trash2 size={14} className='text-zinc-500 hover:text-red-400' />
+                      <Trash2 size={14} className='text-muted-foreground hover:text-red-400' />
                     </button>
                   </div>
                 </td>
@@ -284,27 +296,27 @@ const WeylineTable = ({
         </tbody>
       </table>
 
-      <div className='flex items-center justify-between px-4 py-3 border-t border-zinc-800/50'>
-        <span className='text-xs font-poppins text-zinc-600'>
+      <div className='flex items-center justify-between px-4 py-3 border-t border-border/50'>
+        <span className='text-xs font-poppins text-muted-foreground'>
           {filtered.length} route{filtered.length !== 1 ? 's' : ''} total
         </span>
         {totalPages > 1 && (
           <div className='flex items-center gap-2'>
-            <span className='text-sm font-poppins text-zinc-500'>
+            <span className='text-sm font-poppins text-muted-foreground'>
               Page {safePage} of {totalPages}
             </span>
             <div className='flex items-center gap-1'>
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                className='flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                className='flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground bg-secondary border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                className='flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                className='flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground bg-secondary border border-border rounded-lg hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
               >
                 <ChevronRight size={14} />
               </button>
@@ -312,6 +324,12 @@ const WeylineTable = ({
           </div>
         )}
       </div>
+
+      <WaylinePreviewModal
+        wayline={previewWayline}
+        open={!!previewWayline}
+        onClose={() => setPreviewWayline(null)}
+      />
     </div>
   );
 };

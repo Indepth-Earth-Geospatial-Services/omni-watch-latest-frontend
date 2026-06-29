@@ -35,17 +35,17 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className='bg-[#0C0D10] border-zinc-800/50'>
+      <AlertDialogContent className='bg-background border-border/50'>
         <AlertDialogHeader>
-          <AlertDialogTitle className='text-[#E2E2E8]'>{title}</AlertDialogTitle>
-          <AlertDialogDescription className='text-[#8C90A0]'>
+          <AlertDialogTitle className='text-foreground'>{title}</AlertDialogTitle>
+          <AlertDialogDescription className='text-muted-foreground'>
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
             disabled={isPending}
-            className='border-zinc-700 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+            className='border-border text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
           >
             Cancel
           </AlertDialogCancel>

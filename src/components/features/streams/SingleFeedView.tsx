@@ -50,16 +50,16 @@ export const SingleFeedView = memo(function SingleFeedView({
             )}
           </div>
           <div className='min-w-0'>
-            <p className='text-sm font-bold text-zinc-100 truncate'>
+            <p className='text-sm font-bold text-foreground truncate'>
               {device.nickname || device.deviceName || device.deviceSn}
             </p>
-            <p className='text-[10px] font-mono text-zinc-600 truncate'>{device.deviceSn}</p>
+            <p className='text-[10px] font-logs text-muted-foreground truncate'>{device.deviceSn}</p>
           </div>
           <span
             className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border flex-shrink-0 ${
               device.status
                 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                : 'text-zinc-600 bg-zinc-800/60 border-zinc-700/50'
+                : 'text-muted-foreground bg-zinc-800/60 border-zinc-700/50'
             }`}
           >
             <span
@@ -71,7 +71,7 @@ export const SingleFeedView = memo(function SingleFeedView({
 
         {allDevices.length > 1 && (
           <div className='flex items-center gap-1 flex-wrap'>
-            <span className='text-[10px] text-zinc-600 mr-0.5'>Switch:</span>
+            <span className='text-[10px] text-muted-foreground mr-0.5'>Switch:</span>
             {allDevices.map((d) => (
               <button
                 key={d.deviceSn}
@@ -79,8 +79,8 @@ export const SingleFeedView = memo(function SingleFeedView({
                 title={d.nickname || d.deviceName || d.deviceSn}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
                   device.deviceSn === d.deviceSn
-                    ? 'bg-[#1C93FF] border-[#1C93FF] text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    ? 'bg-theme-accent border-primary text-white'
+                    : 'bg-secondary border-border text-muted-foreground hover:border-zinc-500 hover:text-foreground'
                 }`}
               >
                 {d.nickname || d.deviceSn.slice(-6)}
@@ -112,7 +112,7 @@ export const SingleFeedView = memo(function SingleFeedView({
             activeStreamUrl={activeStreamUrl}
           />
         ) : (
-          <p className='text-xs text-zinc-600 italic'>
+          <p className='text-xs text-muted-foreground italic'>
             Live streaming is only available for drone-type devices.
           </p>
         )}

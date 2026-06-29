@@ -62,7 +62,7 @@ export default function ProjectRoutesPage() {
 
   return (
     <MainLayout title='Flight Routes' subtitle='Waylines assigned to this project'>
-      <div className='font-poppins space-y-4'>
+      <div className='font-ui space-y-4'>
         <ProjectRoutesTable
           waylines={waylines}
           isLoading={isLoading}

@@ -7,6 +7,25 @@ export interface WaypointCoord {
   index: number;
 }
 
+export interface WaylineMissionData {
+  missionType: string;
+  templateType: number;
+  flightAltitude: number;
+  flightSpeed: number;
+  transitSpeed: number;
+  droneEnumValue: number;
+  payloadEnumValue: number;
+  shootType: string;
+  photoInterval: number;
+  frontOverlap: number;
+  sideOverlap: number;
+  surveyPolygon: Array<{ lng: number; lat: number }>;
+  totalDistance: number;
+  estimatedDuration: number;
+  estimatedPhotos: number;
+  surveyArea: number;
+}
+
 // A stored wayline route file uploaded by an operator.
 export interface Wayline {
   id: string;                      // unique wayline UUID

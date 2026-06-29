@@ -33,13 +33,6 @@ const navigation = [
   { name: 'Alerts', href: '/alerts', icon: Bell },
   { name: 'Media Files', href: '/media', icon: Film },
   { name: 'Task Plan Library', href: '/task', icon: Calendar },
-  // {
-  //   name: 'Reports',
-  //   href: process.env.NEXT_PUBLIC_REPORTS_URL || '/reports',
-  //   icon: FileText,
-  // },
-  // { name: 'User Management', href: '/users', icon: Users },
-  // { name: 'System Logs', href: '/logs', icon: Terminal },
 ];
 
 const projectsLink = { name: 'Projects', href: '/projects', icon: FolderOpen };
@@ -53,9 +46,8 @@ export function Sidebar({ className }: SidebarProps) {
   const { user } = useAuth();
   const { collapsed, toggle } = useSidebar();
 
-  // Derive display values from live user profile, fall back gracefully while loading
   const displayName = user?.username ?? '—';
-  const displayRole = user?.user_type === 1 ? 'Admin' : user ? 'Operator' : '—';
+  const displayRole = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '—';
 
   return (
     <aside
@@ -66,7 +58,6 @@ export function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
-      {/* Logo */}
       <div className={cn(
         'flex items-center h-16 border-b border-border',
         collapsed ? 'justify-center px-2' : 'justify-between px-4'
@@ -79,7 +70,6 @@ export function Sidebar({ className }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Navigation */}
       <nav className='mt-4 flex-1 space-y-1'>
         {navigation.map((item) => {
           const Icon = item.icon;
@@ -105,7 +95,6 @@ export function Sidebar({ className }: SidebarProps) {
         })}
       </nav>
 
-      {/* Projects shortcut — separated from main nav, above the user footer */}
       <div className='border-t border-border'>
         <Link
           href={projectsLink.href}
@@ -123,7 +112,6 @@ export function Sidebar({ className }: SidebarProps) {
         </Link>
       </div>
 
-      {/* Collapse toggle — desktop only */}
       <div className='hidden lg:block border-t border-border'>
         <button
           onClick={toggle}

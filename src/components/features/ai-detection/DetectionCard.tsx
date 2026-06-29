@@ -39,7 +39,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
   return (
     <Card
       className={cn(
-        'bg-[#0C0D10] border-zinc-800/50 transition-colors overflow-hidden',
+        'bg-background border-border/50 transition-colors overflow-hidden',
         onSelect && 'cursor-pointer hover:bg-zinc-800/20',
         d.isVerified ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-orange-500',
         className
@@ -51,7 +51,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
     >
       {/* Thumbnail */}
       {d.imageUrl ? (
-        <div className='relative aspect-video w-full border-b border-zinc-800/50 bg-zinc-900'>
+        <div className='relative aspect-video w-full border-b border-border/50 bg-secondary'>
           <Image
             src={d.imageUrl}
             alt={`${d.type} detection`}
@@ -65,14 +65,14 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
                 type='checkbox'
                 checked={selected ?? false}
                 onChange={() => onToggleSelect(d.id)}
-                className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
+                className='w-4 h-4 rounded border-zinc-600 bg-secondary accent-primary cursor-pointer'
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           )}
         </div>
       ) : (
-        <div className='relative aspect-video w-full border-b border-zinc-800/50 bg-zinc-900 flex items-center justify-center'>
+        <div className='relative aspect-video w-full border-b border-border/50 bg-secondary flex items-center justify-center'>
           <ImageOff className='w-6 h-6 text-zinc-700' />
           {onToggleSelect && (
             <div className='absolute top-2 right-2 z-10'>
@@ -80,7 +80,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
                 type='checkbox'
                 checked={selected ?? false}
                 onChange={() => onToggleSelect(d.id)}
-                className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer'
+                className='w-4 h-4 rounded border-zinc-600 bg-secondary accent-primary cursor-pointer'
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -97,7 +97,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
                 typeDotColor[d.type] || 'bg-zinc-500'
               }`}
             />
-            <span className='text-xs font-poppins font-medium text-[#E2E2E8] capitalize'>
+            <span className='text-xs font-ui font-medium text-foreground capitalize'>
               {d.type}
             </span>
             <span
@@ -109,13 +109,13 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
               {d.isVerified ? 'Verified' : 'Pending'}
             </span>
           </div>
-          <span className={cn('text-xs font-mono font-poppins', getConfidenceColor(d.confidence))}>
+          <span className={cn('text-xs font-mono font-ui', getConfidenceColor(d.confidence))}>
             {(d.confidence * 100).toFixed(0)}%
           </span>
         </div>
 
         {/* Metadata row: Track + Stream + Time */}
-        <div className='flex items-center gap-2 text-[10px] font-poppins text-zinc-500'>
+        <div className='flex items-center gap-2 text-[10px] font-ui text-muted-foreground'>
           <span className='font-mono'>#{d.trackId}</span>
           <span className='truncate'>{d.streamId}</span>
           <div className='flex-1' />
@@ -127,7 +127,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
 
         {/* GPS row */}
         {d.droneLatitude != null && d.droneLongitude != null && (
-          <div className='flex items-center gap-1 text-[10px] font-poppins text-zinc-500'>
+          <div className='flex items-center gap-1 text-[10px] font-ui text-muted-foreground'>
             <MapPin className='w-2.5 h-2.5 flex-shrink-0' />
             <span className='font-mono'>
               {d.droneLatitude.toFixed(6)}, {d.droneLongitude.toFixed(6)}
@@ -137,7 +137,7 @@ export const DetectionCard = memo(function DetectionCard({ detection, onSelect, 
 
         {/* Reasoning preview */}
         {d.isVerified && d.reasoning && (
-          <p className='text-[10px] font-poppins text-green-500/60 line-clamp-2'>
+          <p className='text-[10px] font-ui text-green-500/60 line-clamp-2'>
             {d.reasoning.slice(0, 80)}
             {d.reasoning.length > 80 ? '...' : ''}
           </p>

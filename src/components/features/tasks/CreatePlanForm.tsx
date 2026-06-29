@@ -84,32 +84,32 @@ export function CreatePlanForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl p-6 space-y-6 max-w-2xl'>
+    <form onSubmit={handleSubmit} className='bg-background border border-border/50 rounded-xl p-6 space-y-6 max-w-2xl'>
       <div className='flex items-center gap-3 mb-2'>
         <Plane className='w-5 h-5 text-sky-400' />
-        <h3 className='text-sm font-semibold text-zinc-200'>Create Flight Plan</h3>
+        <h3 className='text-sm font-semibold text-foreground'>Create Flight Plan</h3>
       </div>
 
       {/* Plan Name */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-1.5'>Plan Name *</label>
+        <label className='block text-xs text-muted-foreground mb-1.5'>Plan Name *</label>
         <input
           type='text'
           value={planName}
           onChange={(e) => setPlanName(e.target.value)}
           placeholder='e.g., Survey Mission Alpha'
-          className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-500'
+          className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground placeholder-zinc-600 focus:outline-none focus:border-sky-500'
         />
         {errors.planName && <p className='text-red-400 text-[10px] mt-1'>{errors.planName}</p>}
       </div>
 
       {/* Flight Route */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-1.5'>Flight Route *</label>
+        <label className='block text-xs text-muted-foreground mb-1.5'>Flight Route *</label>
         <select
           value={waylineId}
           onChange={(e) => setWaylineId(e.target.value)}
-          className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+          className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
         >
           <option value=''>Select a wayline...</option>
           {projectWaylines.map((w) => (
@@ -123,11 +123,11 @@ export function CreatePlanForm({
 
       {/* Device */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-1.5'>Device *</label>
+        <label className='block text-xs text-muted-foreground mb-1.5'>Device *</label>
         <select
           value={deviceSn}
           onChange={(e) => setDeviceSn(e.target.value)}
-          className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+          className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
         >
           <option value=''>Select a device...</option>
           {projectDevices.map((pd) => (
@@ -141,7 +141,7 @@ export function CreatePlanForm({
 
       {/* Plan Timer */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-2'>Plan Timer *</label>
+        <label className='block text-xs text-muted-foreground mb-2'>Plan Timer *</label>
         <div className='flex gap-3'>
           {[
             { value: 0, label: 'Immediate' },
@@ -155,7 +155,7 @@ export function CreatePlanForm({
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
                 taskType === opt.value
                   ? 'bg-sky-600 text-white'
-                  : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                  : 'bg-secondary border border-border text-muted-foreground hover:border-zinc-600'
               }`}
             >
               {opt.label}
@@ -168,22 +168,22 @@ export function CreatePlanForm({
       {(taskType === 1 || taskType === 2) && (
         <div className='grid grid-cols-2 gap-4'>
           <div>
-            <label className='block text-xs text-zinc-400 mb-1.5'>Date *</label>
+            <label className='block text-xs text-muted-foreground mb-1.5'>Date *</label>
             <input
               type='date'
               value={executeDate}
               onChange={(e) => setExecuteDate(e.target.value)}
-              className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+              className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
             />
             {errors.executeDate && <p className='text-red-400 text-[10px] mt-1'>{errors.executeDate}</p>}
           </div>
           <div>
-            <label className='block text-xs text-zinc-400 mb-1.5'>Time *</label>
+            <label className='block text-xs text-muted-foreground mb-1.5'>Time *</label>
             <input
               type='time'
               value={executeTime}
               onChange={(e) => setExecuteTime(e.target.value)}
-              className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+              className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
             />
             {errors.executeTime && <p className='text-red-400 text-[10px] mt-1'>{errors.executeTime}</p>}
           </div>
@@ -192,21 +192,21 @@ export function CreatePlanForm({
 
       {/* RTH Altitude */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-1.5'>RTH Altitude (20-1500m) *</label>
+        <label className='block text-xs text-muted-foreground mb-1.5'>RTH Altitude (20-1500m) *</label>
         <input
           type='number'
           min={20}
           max={1500}
           value={rthAltitude}
           onChange={(e) => setRthAltitude(Number(e.target.value))}
-          className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+          className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
         />
         {errors.rthAltitude && <p className='text-red-400 text-[10px] mt-1'>{errors.rthAltitude}</p>}
       </div>
 
       {/* Lost Action */}
       <div>
-        <label className='block text-xs text-zinc-400 mb-2'>Lost Action *</label>
+        <label className='block text-xs text-muted-foreground mb-2'>Lost Action *</label>
         <div className='flex gap-3'>
           {lostActionOptions.map((opt) => (
             <button
@@ -216,7 +216,7 @@ export function CreatePlanForm({
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
                 lostAction === opt.value
                   ? 'bg-sky-600 text-white'
-                  : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                  : 'bg-secondary border border-border text-muted-foreground hover:border-zinc-600'
               }`}
             >
               {opt.label}
@@ -229,25 +229,25 @@ export function CreatePlanForm({
       {taskType === 2 && (
         <div className='grid grid-cols-2 gap-4'>
           <div>
-            <label className='block text-xs text-zinc-400 mb-1.5'>Battery Level Threshold (%)</label>
+            <label className='block text-xs text-muted-foreground mb-1.5'>Battery Level Threshold (%)</label>
             <input
               type='number'
               min={0}
               max={100}
               value={minBattery}
               onChange={(e) => setMinBattery(Number(e.target.value))}
-              className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+              className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
             />
           </div>
           <div>
-            <label className='block text-xs text-zinc-400 mb-1.5'>Storage Level Threshold (%)</label>
+            <label className='block text-xs text-muted-foreground mb-1.5'>Storage Level Threshold (%)</label>
             <input
               type='number'
               min={0}
               max={100}
               value={minStorage}
               onChange={(e) => setMinStorage(Number(e.target.value))}
-              className='w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-sky-500'
+              className='w-full px-3 py-2 bg-secondary border border-border rounded-lg text-xs text-foreground focus:outline-none focus:border-sky-500'
             />
           </div>
         </div>
@@ -258,7 +258,7 @@ export function CreatePlanForm({
         <button
           type='button'
           onClick={onCancel}
-          className='flex items-center gap-2 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition-colors'
+          className='flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors'
         >
           <ArrowLeft className='w-4 h-4' />
           Back

@@ -78,7 +78,7 @@ export default function FlightRoutesPage() {
   );
 
   return (
-    <div className='font-poppins space-y-4 px-4 pt-6 pb-4'>
+    <div className='font-ui space-y-4 px-4 pt-8 pb-4'>
       {/* Filter bar */}
       <div className='flex items-center gap-3 flex-wrap'>
         <div className='relative flex-1 max-w-sm'>
@@ -90,7 +90,7 @@ export default function FlightRoutesPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder='Search routes...'
-            className='w-full text-xs font-poppins text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-zinc-600'
+            className='w-full text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-zinc-600'
           />
         </div>
 
@@ -99,10 +99,10 @@ export default function FlightRoutesPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 text-[10px] font-poppins font-medium rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-[10px] font-ui font-medium rounded-lg transition-colors ${
                 activeTab === tab
-                  ? 'bg-[#1C93FF]/15 text-[#1C93FF] border border-[#1C93FF]/30'
-                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                  ? 'bg-theme-accent/15 text-theme-accent border border-theme-accent/30'
+                  : 'text-muted-foreground hover:text-foreground border border-transparent'
               }`}
             >
               {tab}

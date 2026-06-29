@@ -25,27 +25,27 @@ const MetricCard = ({
   unit,
   subtext,
   icon: Icon,
-  valueClass = 'text-[#E2E2E8]',
+  valueClass = 'text-foreground',
   barValue,
 }: MetricCardProps) => (
-  <div className='relative flex flex-col justify-between bg-[#13151A] border border-zinc-800/50 rounded-lg p-3 overflow-hidden'>
+  <div className='relative flex flex-col justify-between bg-card border border-border/50 rounded-lg p-3 overflow-hidden'>
     <div className='flex items-start justify-between mb-2'>
-      <span className='text-[9px] font-semibold tracking-[0.15em] text-[#8C90A0] uppercase font-poppins'>
+      <span className='text-[9px] font-semibold tracking-[0.15em] text-muted-foreground uppercase font-ui'>
         {label}
       </span>
-      <Icon size={14} className='text-zinc-500 flex-shrink-0' strokeWidth={1.5} />
+      <Icon size={14} className='text-muted-foreground flex-shrink-0' strokeWidth={1.5} />
     </div>
     <div className='flex items-end gap-1'>
-      <span className={`text-2xl font-bold leading-none font-poppins ${valueClass}`}>{value}</span>
+      <span className={`text-2xl font-bold leading-none font-ui ${valueClass}`}>{value}</span>
       {unit && (
-        <span className='text-xs font-medium text-zinc-400 mb-0.5 font-poppins'>{unit}</span>
+        <span className='text-xs font-medium text-muted-foreground mb-0.5 font-ui'>{unit}</span>
       )}
     </div>
-    {subtext && <span className='text-[10px] text-zinc-500 mt-1 font-poppins'>{subtext}</span>}
+    {subtext && <span className='text-[10px] text-muted-foreground mt-1 font-ui'>{subtext}</span>}
     {barValue !== undefined && (
-      <div className='absolute bottom-0 left-0 w-full h-[3px] bg-zinc-800'>
+      <div className='absolute bottom-0 left-0 w-full h-[3px] bg-secondary'>
         <div
-          className='h-full bg-[#45F0CF] rounded-full transition-all duration-500'
+          className='h-full bg-theme-accent rounded-full transition-all duration-500'
           style={{ width: `${barValue}%` }}
         />
       </div>
@@ -72,7 +72,7 @@ const TelemetryStreamPanel = ({ droneData, elapsedTime }: TelemetryStreamPanelPr
   const windDir      = droneData?.windDirection;
 
   const batteryClass =
-    battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-[#E2E2E8]';
+    battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-foreground';
 
   const metrics: MetricCardProps[] = [
     {
@@ -106,7 +106,7 @@ const TelemetryStreamPanel = ({ droneData, elapsedTime }: TelemetryStreamPanelPr
       value: droneData ? (online ? 'Online' : 'Offline') : '—',
       subtext: droneData ? (hasOSD ? 'OSD Active' : 'Polling') : undefined,
       icon: Signal,
-      valueClass: droneData ? (online ? 'text-[#45F0CF]' : 'text-red-400') : 'text-[#E2E2E8]',
+      valueClass: droneData ? (online ? 'text-theme-accent' : 'text-red-400') : 'text-foreground',
     },
     {
       label: 'GPS',
@@ -114,16 +114,16 @@ const TelemetryStreamPanel = ({ droneData, elapsedTime }: TelemetryStreamPanelPr
       subtext: droneData ? `${gpsNumber} Sats` : undefined,
       icon: Target,
       valueClass: isGPSFixed
-        ? 'text-[#45F0CF]'
+        ? 'text-theme-accent'
         : gpsNumber > 0
           ? 'text-amber-400'
-          : 'text-[#E2E2E8]',
+          : 'text-foreground',
     },
     {
       label: 'Flight Time',
       value: elapsedTime ?? '—',
       icon: Clock,
-      valueClass: 'text-[#E2E2E8] text-xl',
+      valueClass: 'text-foreground text-xl',
     },
     {
       label: 'Wind',

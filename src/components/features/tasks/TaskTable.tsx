@@ -56,8 +56,8 @@ export function TaskTable({
   if (isLoading && tasks.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
-        <Loader2 size={16} className='text-zinc-600 animate-spin' />
-        <p className='text-xs font-poppins text-zinc-600 mt-2'>Loading tasks...</p>
+        <Loader2 size={16} className='text-muted-foreground animate-spin' />
+        <p className='text-xs font-ui text-muted-foreground mt-2'>Loading tasks...</p>
       </div>
     );
   }
@@ -65,17 +65,17 @@ export function TaskTable({
   if (tasks.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
-        <p className='text-xs font-poppins text-zinc-600'>No tasks found</p>
+        <p className='text-xs font-ui text-muted-foreground'>No tasks found</p>
       </div>
     );
   }
 
   return (
-    <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+    <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
       <div className='overflow-x-auto'>
-        <table className='w-full text-xs font-poppins'>
+        <table className='w-full text-xs font-ui'>
           <thead>
-            <tr className='border-b border-zinc-800/50 text-zinc-500'>
+            <tr className='border-b border-border/50 text-muted-foreground'>
               <th className='px-3 py-3 text-left font-medium'>Planned/Actual Time</th>
               <th className='px-3 py-3 text-left font-medium'>Status</th>
               <th className='px-3 py-3 text-left font-medium'>Plan Name</th>
@@ -93,39 +93,39 @@ export function TaskTable({
             {tasks.map((task) => (
               <tr
                 key={task.job_id}
-                className='border-b border-zinc-800/30 hover:bg-zinc-900/50 transition-colors'
+                className='border-b border-border/30 hover:bg-secondary/50 transition-colors'
               >
                 <td className='px-3 py-3'>
-                  <div className='text-zinc-300'>{formatTimestamp(task.execute_time)}</div>
+                  <div className='text-muted-foreground'>{formatTimestamp(task.execute_time)}</div>
                   {task.completed_time && task.completed_time !== '0001-01-01 00:00:00' && (
-                    <div className='text-zinc-600 text-[10px]'>Done: {formatTimestamp(task.completed_time)}</div>
+                    <div className='text-muted-foreground text-[10px]'>Done: {formatTimestamp(task.completed_time)}</div>
                   )}
                 </td>
                 <td className='px-3 py-3'>
                   <TaskStatusBadge status={task.status} />
                 </td>
-                <td className='px-3 py-3 text-zinc-300 max-w-[160px] truncate' title={task.job_name}>
+                <td className='px-3 py-3 text-muted-foreground max-w-[160px] truncate' title={task.job_name}>
                   {task.job_name}
                 </td>
-                <td className='px-3 py-3 text-zinc-400'>
+                <td className='px-3 py-3 text-muted-foreground'>
                   {taskTypeMap[task.task_type] ?? `Type ${task.task_type}`}
                 </td>
-                <td className='px-3 py-3 text-zinc-400 max-w-[140px] truncate' title={task.file_name}>
+                <td className='px-3 py-3 text-muted-foreground max-w-[140px] truncate' title={task.file_name}>
                   {task.file_name}
                 </td>
-                <td className='px-3 py-3 text-zinc-400 max-w-[100px] truncate' title={task.dock_sn}>
+                <td className='px-3 py-3 text-muted-foreground max-w-[100px] truncate' title={task.dock_sn}>
                   {task.dock_sn}
                 </td>
-                <td className='px-3 py-3 text-zinc-400'>
+                <td className='px-3 py-3 text-muted-foreground'>
                   {task.rth_altitude}m
                 </td>
-                <td className='px-3 py-3 text-zinc-400'>
+                <td className='px-3 py-3 text-muted-foreground'>
                   {lostActionMap[task.out_of_control_action] ?? `Action ${task.out_of_control_action}`}
                 </td>
-                <td className='px-3 py-3 text-zinc-400'>
+                <td className='px-3 py-3 text-muted-foreground'>
                   {task.username}
                 </td>
-                <td className='px-3 py-3 text-zinc-400'>
+                <td className='px-3 py-3 text-muted-foreground'>
                   {task.media_count > 0 ? `${task.media_count} files` : '—'}
                 </td>
                 <td className='px-3 py-3 text-right'>
@@ -144,19 +144,19 @@ export function TaskTable({
       </div>
 
       {/* Pagination */}
-      <div className='flex items-center justify-between px-3 py-3 border-t border-zinc-800/50'>
+      <div className='flex items-center justify-between px-3 py-3 border-t border-border/50'>
         <div className='flex items-center gap-2'>
-          <span className='text-xs text-zinc-600'>Show</span>
+          <span className='text-xs text-muted-foreground'>Show</span>
           <select
             value={pagination.pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className='bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none'
+            className='bg-secondary border border-border rounded px-2 py-1 text-xs text-muted-foreground focus:outline-none'
           >
             <option value={20}>20</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
-          <span className='text-xs text-zinc-600'>
+          <span className='text-xs text-muted-foreground'>
             of {pagination.total} tasks
           </span>
         </div>
@@ -164,19 +164,19 @@ export function TaskTable({
           <button
             onClick={() => onPageChange(pagination.page - 1)}
             disabled={pagination.page <= 1}
-            className='p-1 rounded hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+            className='p-1 rounded hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
           >
-            <ChevronLeft className='w-4 h-4 text-zinc-400' />
+            <ChevronLeft className='w-4 h-4 text-muted-foreground' />
           </button>
-          <span className='px-2 text-xs text-zinc-400'>
+          <span className='px-2 text-xs text-muted-foreground'>
             Page {pagination.page} of {totalPages}
           </span>
           <button
             onClick={() => onPageChange(pagination.page + 1)}
             disabled={pagination.page >= totalPages}
-            className='p-1 rounded hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+            className='p-1 rounded hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
           >
-            <ChevronRight className='w-4 h-4 text-zinc-400' />
+            <ChevronRight className='w-4 h-4 text-muted-foreground' />
           </button>
         </div>
       </div>

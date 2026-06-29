@@ -34,25 +34,25 @@ interface ProjectRoutesTableProps {
 export function ProjectRoutesTable({ waylines, isLoading, onUnassign }: ProjectRoutesTableProps) {
   if (isLoading) {
     return (
-      <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+      <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
         <table className='w-full text-left'>
           <thead>
-            <tr className='border-b border-zinc-800/50'>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Route Name</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Template Type</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Compatible Drones</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Created</th>
-              <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Actions</th>
+            <tr className='border-b border-border/50'>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Route Name</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Template Type</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Compatible Drones</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Actions</th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
-              <tr key={i} className='border-b border-zinc-800/20'>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-32' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-20' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-16' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-24' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-zinc-800 rounded animate-pulse w-8' /></td>
+              <tr key={i} className='border-b border-border/20'>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-32' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-20' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-16' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-24' /></td>
+                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-8' /></td>
               </tr>
             ))}
           </tbody>
@@ -64,38 +64,38 @@ export function ProjectRoutesTable({ waylines, isLoading, onUnassign }: ProjectR
   if (waylines.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center py-12 text-center'>
-        <Route size={16} className='text-zinc-600' />
-        <p className='text-xs font-poppins text-zinc-600 mt-2'>No flight routes assigned to this project</p>
+        <Route size={16} className='text-muted-foreground' />
+        <p className='text-xs font-ui text-muted-foreground mt-2'>No flight routes assigned to this project</p>
       </div>
     );
   }
 
   return (
-    <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden'>
+    <div className='bg-background border border-border/50 rounded-xl overflow-hidden'>
       <table className='w-full text-left'>
         <thead>
-          <tr className='border-b border-zinc-800/50'>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Route Name</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Template Type</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Compatible Drones</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Created</th>
-            <th className='px-4 py-3 text-[10px] font-poppins font-medium text-zinc-500 uppercase'>Actions</th>
+          <tr className='border-b border-border/50'>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Route Name</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Template Type</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Compatible Drones</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Actions</th>
           </tr>
         </thead>
         <tbody>
           {waylines.map((wayline) => (
             <tr
               key={wayline.id}
-              className='border-b border-zinc-800/20 hover:bg-zinc-800/20 transition-colors'
+              className='border-b border-border/20 hover:bg-secondary/20 transition-colors'
             >
               <td className='px-4 py-4'>
                 <div className='flex items-center gap-3'>
-                  <div className='w-8 h-8 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400 flex-shrink-0'>
+                  <div className='w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center text-muted-foreground flex-shrink-0'>
                     <Route size={14} />
                   </div>
                   <div className='flex flex-col'>
-                    <span className='text-sm font-bold text-zinc-100'>{wayline.name}</span>
-                    <span className='text-[10px] text-zinc-500'>by {wayline.user_name}</span>
+                    <span className='text-sm font-bold text-foreground'>{wayline.name}</span>
+                    <span className='text-[10px] text-muted-foreground'>by {wayline.user_name}</span>
                   </div>
                 </div>
               </td>
@@ -103,7 +103,7 @@ export function ProjectRoutesTable({ waylines, isLoading, onUnassign }: ProjectR
                 <div className='flex flex-wrap gap-1'>
                   {wayline.template_types.map((t) => {
                     const label = TEMPLATE_TYPE_MAP[t] ?? `Type ${t}`;
-                    const badge = templateBadge[label] ?? 'bg-zinc-500/10 border-zinc-500/30 text-zinc-400';
+                    const badge = templateBadge[label] ?? 'bg-zinc-500/10 border-zinc-500/30 text-muted-foreground';
                     return (
                       <span
                         key={t}
@@ -116,12 +116,12 @@ export function ProjectRoutesTable({ waylines, isLoading, onUnassign }: ProjectR
                 </div>
               </td>
               <td className='px-4 py-4'>
-                <span className='text-[10px] font-mono text-zinc-500'>
+                <span className='text-[10px] font-logs text-muted-foreground'>
                   {wayline.drone_model_key}
                 </span>
               </td>
               <td className='px-4 py-4'>
-                <span className='text-[10px] text-zinc-500'>
+                <span className='text-[10px] text-muted-foreground'>
                   {formatDate(wayline.create_time)}
                 </span>
               </td>
@@ -138,7 +138,7 @@ export function ProjectRoutesTable({ waylines, isLoading, onUnassign }: ProjectR
         </tbody>
       </table>
       <div className='flex items-center justify-center py-3'>
-        <span className='text-[10px] font-poppins text-zinc-600'>
+        <span className='text-[10px] font-ui text-muted-foreground'>
           {waylines.length} route{waylines.length !== 1 ? 's' : ''} total
         </span>
       </div>

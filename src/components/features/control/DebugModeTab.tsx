@@ -38,23 +38,23 @@ export const DebugModeTab = ({
   <div className='flex flex-col gap-3'>
     {/* Toggle card */}
     <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
-      debugActive ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[#13151A] border-zinc-800/50'
+      debugActive ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card border-border/50'
     }`}>
       <div className='flex-1 min-w-0 mr-3'>
-        <p className='text-[11px] font-black text-zinc-200 uppercase tracking-wide'>Debug Mode</p>
-        <p className='text-[9px] text-zinc-600 mt-0.5'>
+        <p className='text-[11px] font-black text-foreground uppercase tracking-wide'>Debug Mode</p>
+        <p className='text-[9px] text-muted-foreground mt-0.5'>
           {!dockOnline ? 'Dock offline' : debugActive ? 'Hardware commands live' : 'Required for HW cmds'}
         </p>
         {dockModeCode !== -1 && (
-          <p className='text-[9px] font-mono text-zinc-500 mt-0.5'>
+          <p className='text-[9px] font-logs text-muted-foreground mt-0.5'>
             {DOCK_MODE_LABELS[dockModeCode] ?? `mode ${dockModeCode}`}
           </p>
         )}
       </div>
       <div className='flex items-center gap-2 flex-shrink-0'>
         {isToggling
-          ? <Loader2 size={11} className='animate-spin text-zinc-500' />
-          : <span className={`text-[9px] font-bold uppercase ${debugActive ? 'text-amber-400' : 'text-zinc-600'}`}>
+          ? <Loader2 size={11} className='animate-spin text-muted-foreground' />
+          : <span className={`text-[9px] font-bold uppercase ${debugActive ? 'text-amber-400' : 'text-muted-foreground'}`}>
               {debugActive ? 'Active' : 'Inactive'}
             </span>
         }

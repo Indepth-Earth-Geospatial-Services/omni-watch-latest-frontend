@@ -85,7 +85,7 @@ export default function DashboardPage() {
   if (!activeProject) {
     return (
       <EmptyPage
-        icon={<Gauge className='w-6 h-6 text-zinc-400' />}
+        icon={<Gauge className='w-6 h-6 text-muted-foreground' />}
         title='No Project Selected'
         body='Please select a project from the sidebar to access the Dashboard.'
         action={{
@@ -101,13 +101,13 @@ export default function DashboardPage() {
   return (
     <MainLayout title='Dashboard' subtitle='Fleet overview and key metrics'>
       <div className='-my-6 -mr-6'>
-        <div className='flex flex-col h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex flex-col h-[calc(100vh-10rem)] font-ui'>
           {/* Stats Grid */}
           <div className='px-4 pt-4 flex-shrink-0'>
             {isLoading ? (
               <div className='flex items-center justify-center py-8'>
-                <Loader2 size={16} className='text-zinc-600 animate-spin' />
-                <span className='text-xs font-poppins text-zinc-600 ml-2'>Loading dashboard...</span>
+                <Loader2 size={16} className='text-muted-foreground animate-spin' />
+                <span className='text-xs font-ui text-muted-foreground ml-2'>Loading dashboard...</span>
               </div>
             ) : (
               <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
@@ -149,20 +149,20 @@ export default function DashboardPage() {
               <div className='grid grid-cols-1 lg:grid-cols-5 gap-4 h-full'>
                 {/* Left: Recent Missions */}
                 <div className='lg:col-span-3 flex flex-col min-h-0'>
-                  <h3 className='text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2'>
+                  <h3 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
                     Recent Missions
                   </h3>
-                  <div className='flex-1 bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden min-h-0'>
+                  <div className='flex-1 bg-background border border-border/50 rounded-xl overflow-hidden min-h-0'>
                     {recentMissions.length === 0 ? (
                       <div className='flex flex-col items-center justify-center py-12 text-center'>
-                        <ListTodo size={16} className='text-zinc-600' />
-                        <p className='text-xs font-poppins text-zinc-600 mt-2'>No missions yet</p>
+                        <ListTodo size={16} className='text-muted-foreground' />
+                        <p className='text-xs font-ui text-muted-foreground mt-2'>No missions yet</p>
                       </div>
                     ) : (
                       <div className='overflow-y-auto h-full'>
-                        <table className='w-full text-xs font-poppins'>
+                        <table className='w-full text-xs font-ui'>
                           <thead>
-                            <tr className='border-b border-zinc-800/50 text-zinc-500'>
+                            <tr className='border-b border-border/50 text-muted-foreground'>
                               <th className='px-3 py-2.5 text-left font-medium'>Time</th>
                               <th className='px-3 py-2.5 text-left font-medium'>Name</th>
                               <th className='px-3 py-2.5 text-left font-medium'>Status</th>
@@ -174,21 +174,21 @@ export default function DashboardPage() {
                             {recentMissions.map((task) => (
                               <tr
                                 key={task.job_id}
-                                className='border-b border-zinc-800/30 hover:bg-zinc-900/50 transition-colors'
+                                className='border-b border-border/30 hover:bg-secondary/50 transition-colors'
                               >
-                                <td className='px-3 py-2 text-zinc-400 whitespace-nowrap'>
+                                <td className='px-3 py-2 text-muted-foreground whitespace-nowrap'>
                                   {formatTime(task.execute_time)}
                                 </td>
-                                <td className='px-3 py-2 text-zinc-300 max-w-[140px] truncate' title={task.job_name}>
+                                <td className='px-3 py-2 text-muted-foreground max-w-[140px] truncate' title={task.job_name}>
                                   {task.job_name}
                                 </td>
                                 <td className='px-3 py-2'>
                                   <TaskStatusBadge status={task.status} />
                                 </td>
-                                <td className='px-3 py-2 text-zinc-400'>
+                                <td className='px-3 py-2 text-muted-foreground'>
                                   {taskTypeMap[task.task_type] ?? `Type ${task.task_type}`}
                                 </td>
-                                <td className='px-3 py-2 text-zinc-400 max-w-[80px] truncate' title={task.dock_sn}>
+                                <td className='px-3 py-2 text-muted-foreground max-w-[80px] truncate' title={task.dock_sn}>
                                   {task.dock_sn}
                                 </td>
                               </tr>
@@ -204,34 +204,34 @@ export default function DashboardPage() {
                 <div className='lg:col-span-2 flex flex-col gap-4 min-h-0'>
                   {/* Fleet Status */}
                   <div className='flex-1 flex flex-col min-h-0'>
-                    <h3 className='text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2'>
+                    <h3 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
                       Fleet Status
                     </h3>
-                    <div className='flex-1 bg-[#0C0D10] border border-zinc-800/50 rounded-xl overflow-hidden min-h-0'>
+                    <div className='flex-1 bg-background border border-border/50 rounded-xl overflow-hidden min-h-0'>
                       {droneList.length === 0 ? (
                         <div className='flex flex-col items-center justify-center py-8 text-center'>
-                          <Plane size={16} className='text-zinc-600' />
-                          <p className='text-xs font-poppins text-zinc-600 mt-2'>No drones registered</p>
+                          <Plane size={16} className='text-muted-foreground' />
+                          <p className='text-xs font-ui text-muted-foreground mt-2'>No drones registered</p>
                         </div>
                       ) : (
                         <div className='overflow-y-auto h-full'>
                           {droneList.map((drone) => (
                             <div
                               key={drone.deviceSn}
-                              className='flex items-center justify-between px-3 py-2.5 border-b border-zinc-800/30 last:border-0'
+                              className='flex items-center justify-between px-3 py-2.5 border-b border-border/30 last:border-0'
                             >
                               <div className='flex items-center gap-2 min-w-0'>
                                 <div className={`w-2 h-2 rounded-full shrink-0 ${drone.status ? 'bg-green-500' : 'bg-zinc-600'}`} />
                                 <div className='min-w-0'>
-                                  <span className='text-xs text-zinc-300 block truncate'>
+                                  <span className='text-xs text-muted-foreground block truncate'>
                                     {drone.nickname || drone.deviceName}
                                   </span>
-                                  <span className='text-[9px] text-zinc-600 block truncate'>
+                                  <span className='text-[9px] text-muted-foreground block truncate'>
                                     {drone.deviceSn}
                                   </span>
                                 </div>
                               </div>
-                              <span className={`text-[10px] font-medium shrink-0 ml-2 ${drone.status ? 'text-green-400' : 'text-zinc-600'}`}>
+                              <span className={`text-[10px] font-medium shrink-0 ml-2 ${drone.status ? 'text-green-400' : 'text-muted-foreground'}`}>
                                 {drone.status ? 'Online' : 'Offline'}
                               </span>
                             </div>
@@ -243,48 +243,48 @@ export default function DashboardPage() {
 
                   {/* Project Info */}
                   <div className='flex-shrink-0'>
-                    <h3 className='text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2'>
+                    <h3 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
                       Project Info
                     </h3>
-                    <div className='bg-[#0C0D10] border border-zinc-800/50 rounded-xl p-4 space-y-3'>
+                    <div className='bg-background border border-border/50 rounded-xl p-4 space-y-3'>
                       <div className='flex items-center justify-between'>
-                        <span className='text-xs text-zinc-500 flex items-center gap-1.5'>
+                        <span className='text-xs text-muted-foreground flex items-center gap-1.5'>
                           <FolderOpen className='w-3.5 h-3.5' />
                           Project
                         </span>
-                        <span className='text-xs text-zinc-300 font-medium truncate max-w-[160px]'>
+                        <span className='text-xs text-muted-foreground font-medium truncate max-w-[160px]'>
                           {activeProject.name}
                         </span>
                       </div>
                       <div className='flex items-center justify-between'>
-                        <span className='text-xs text-zinc-500 flex items-center gap-1.5'>
+                        <span className='text-xs text-muted-foreground flex items-center gap-1.5'>
                           <Plane className='w-3.5 h-3.5' />
                           Devices
                         </span>
-                        <span className='text-xs text-zinc-300'>
+                        <span className='text-xs text-muted-foreground'>
                           {activeProject.devices.length}
                         </span>
                       </div>
                       <div className='flex items-center justify-between'>
-                        <span className='text-xs text-zinc-500 flex items-center gap-1.5'>
+                        <span className='text-xs text-muted-foreground flex items-center gap-1.5'>
                           <Map className='w-3.5 h-3.5' />
                           Flight Areas
                         </span>
-                        <span className='text-xs text-zinc-300'>
+                        <span className='text-xs text-muted-foreground'>
                           {activeProject.flight_areas.length}
                         </span>
                       </div>
                       <div className='flex items-center justify-between'>
-                        <span className='text-xs text-zinc-500 flex items-center gap-1.5'>
+                        <span className='text-xs text-muted-foreground flex items-center gap-1.5'>
                           <ListTodo className='w-3.5 h-3.5' />
                           Total Missions
                         </span>
-                        <span className='text-xs text-zinc-300'>
+                        <span className='text-xs text-muted-foreground'>
                           {stats.totalTasks}
                         </span>
                       </div>
                       {stats.failedMissions > 0 && (
-                        <div className='flex items-center justify-between pt-1 border-t border-zinc-800/50'>
+                        <div className='flex items-center justify-between pt-1 border-t border-border/50'>
                           <span className='text-xs text-red-400/70'>Failed Missions</span>
                           <span className='text-xs text-red-400 font-medium'>
                             {stats.failedMissions}

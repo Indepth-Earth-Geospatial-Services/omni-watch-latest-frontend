@@ -8,9 +8,9 @@ export default function Toaster() {
       position='top-right'
       toastOptions={{
         style: {
-          background: '#1A1C20',
+          background: 'hsl(var(--card))',
           border: '1px solid rgba(255,255,255,0.07)',
-          color: '#e2e4ec',
+          color: 'hsl(var(--foreground))',
         },
       }}
       closeButton

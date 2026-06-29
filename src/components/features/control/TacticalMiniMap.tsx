@@ -116,7 +116,7 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
 
   return (
     <div
-      className={`relative bg-[#0C0E12] border border-zinc-800/50 rounded-xl overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
+      className={`relative bg-background border border-border/50 rounded-xl overflow-hidden shadow-2xl${className ? ` ${className}` : ''}`}
       style={className ? undefined : { width: '304px', height: '350px' }}
     >
       {/* ── Base map ───────────────────────────────────────────────────── */}
@@ -195,7 +195,7 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
         {/* Altitude bar — right (drone altitude only) */}
         <div className='absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2'>
           <span className='text-[8px] font-black text-white/30 uppercase tracking-[0.2em]'>Alt</span>
-          <span className={`text-[10px] font-mono font-bold ${isAirborne ? 'text-blue-400' : hasPosition ? 'text-zinc-400' : 'text-zinc-600'}`}>
+          <span className={`text-[10px] font-logs font-bold ${isAirborne ? 'text-blue-400' : hasPosition ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
             {hasPosition ? `${altitude.toFixed(0)}m` : '—'}
           </span>
           <div className='relative h-36 w-[3px] bg-white/5 rounded-full overflow-hidden'>
@@ -217,19 +217,19 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
             {hasPosition && (
               <div className='flex items-center gap-1.5'>
                 <Plane size={10} className='text-blue-400 fill-blue-400' />
-                <span className='text-[8px] font-mono text-blue-400/70 uppercase tracking-wide'>Drone</span>
+                <span className='text-[8px] font-logs text-blue-400/70 uppercase tracking-wide'>Drone</span>
               </div>
             )}
             {hasDockPos && (
               <div className='flex items-center gap-1.5'>
                 <HardDrive size={10} className='text-emerald-400' />
-                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Dock</span>
+                <span className='text-[8px] font-logs text-emerald-400/70 uppercase tracking-wide'>Dock</span>
               </div>
             )}
             {hasTarget && (
               <div className='flex items-center gap-1.5'>
                 <Target size={10} className='text-amber-400' />
-                <span className='text-[8px] font-mono text-amber-400/70 uppercase tracking-wide'>Target</span>
+                <span className='text-[8px] font-logs text-amber-400/70 uppercase tracking-wide'>Target</span>
               </div>
             )}
           </div>
@@ -238,7 +238,7 @@ const TacticalMiniMap = ({ droneData, dockData, targetLat, targetLng, className 
         {/* Top-left corner bracket */}
         <div className='absolute top-3 left-3 flex flex-col gap-1'>
           <div className='w-2.5 h-2.5 border-t-2 border-l-2 border-white/30 rounded-tl' />
-          <span className='text-[8px] font-mono text-white/25 uppercase tracking-wider'>
+          <span className='text-[8px] font-logs text-white/25 uppercase tracking-wider'>
             {isAirborne ? 'Airborne' : hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
           </span>
         </div>

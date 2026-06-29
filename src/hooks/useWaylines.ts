@@ -10,7 +10,7 @@ import {
   deleteWaylineFile,
   uploadWaylineKmz,
 } from '@/services/djiservice-layer/dji-service';
-import { parseKmzBuffer } from '@/lib/utils/parseWaylineKmz';
+import { parseKmzBufferLegacy as parseKmzBuffer } from '@/lib/utils/parseWaylineKmz';
 import type { WaypointCoord } from '@/lib/types';
 
 /** Lists all wayline route files in the workspace. */
