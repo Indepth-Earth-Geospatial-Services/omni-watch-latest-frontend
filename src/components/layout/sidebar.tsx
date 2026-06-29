@@ -65,7 +65,7 @@ export function Sidebar({ className }: SidebarProps) {
         <Link href='/' className='flex items-center'>
           <Satellite className={cn('h-5 w-5 text-sky-400', collapsed ? '' : 'mr-2')} />
           {!collapsed && (
-            <h1 className='text-lg font-bold text-sky-400'>OmniWach OS</h1>
+            <h1 className='text-lg font-bold text-sky-400'>OMNIWATCH</h1>
           )}
         </Link>
       </div>

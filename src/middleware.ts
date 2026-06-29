@@ -32,6 +32,7 @@ const DASHBOARD_ROUTES = [
   '/media',
   '/ai-detection',
   '/alerts',
+  '/task',
 ];
 
 // Routes that logged-in users should be bounced away from

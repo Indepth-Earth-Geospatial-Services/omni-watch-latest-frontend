@@ -66,7 +66,7 @@ const Navbar = () => {
         <div className='flex items-center flex-shrink-0'>
           <Link href='/' className='flex items-center transition-opacity hover:opacity-80 focus:outline-none'>
             <Satellite className='h-5 w-5 text-sky-400 mr-2' />
-            <span className='text-lg font-bold text-sky-400'>OmniWach OS</span>
+            <span className='text-lg font-bold text-sky-400'>OMNIWATCH</span>
           </Link>
         </div>
 

@@ -82,7 +82,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'OmniWatch OS',
+  title: 'OMNIWATCH OS',
   description:
     'Intelligence, Surveillance, and Reconnaissance Command & Control Dashboard',
 };
