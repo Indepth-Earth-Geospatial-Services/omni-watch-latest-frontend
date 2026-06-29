@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { Search } from 'lucide-react'
 
 interface FilterOption {
   value: string
@@ -36,7 +37,7 @@ export function SearchFilter({
         {/* Search */}
         <div className="flex-1 min-w-0">
           <div className="relative">
-            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder={searchPlaceholder}

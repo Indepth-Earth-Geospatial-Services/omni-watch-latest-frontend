@@ -1,13 +1,14 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+import Link from 'next/link';
+import { ShieldAlert, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -15,74 +16,47 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth } from "@/providers/AuthProvider";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/providers/AuthProvider';
 
 // ─── Validation schema ────────────────────────────────────────────────────────
-// DJI API uses "username" (not email) — no email format validation
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Username is required" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  email: z.string().min(1, { message: 'Email is required' }),
+  pin: z.string().min(1, { message: 'PIN is required' }),
   remember: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// ─── Stable particle positions ────────────────────────────────────────────────
-// Pre-computed outside the component so they are IDENTICAL on server and client.
-// Using Math.random() inside render caused React hydration mismatches because
-// the server and client generated different random positions on each render.
-const PARTICLES = [
-  { left: "5%",  top: "12%", delay: "0s",   duration: "12s" },
-  { left: "15%", top: "78%", delay: "1s",   duration: "15s" },
-  { left: "25%", top: "34%", delay: "2s",   duration: "11s" },
-  { left: "35%", top: "56%", delay: "0.5s", duration: "14s" },
-  { left: "45%", top: "8%",  delay: "3s",   duration: "13s" },
-  { left: "55%", top: "90%", delay: "1.5s", duration: "16s" },
-  { left: "65%", top: "23%", delay: "4s",   duration: "10s" },
-  { left: "75%", top: "67%", delay: "2.5s", duration: "18s" },
-  { left: "85%", top: "45%", delay: "0.8s", duration: "12s" },
-  { left: "92%", top: "15%", delay: "3.5s", duration: "14s" },
-  { left: "8%",  top: "88%", delay: "1.2s", duration: "17s" },
-  { left: "18%", top: "50%", delay: "4.5s", duration: "11s" },
-  { left: "30%", top: "72%", delay: "0.3s", duration: "15s" },
-  { left: "42%", top: "30%", delay: "2.8s", duration: "13s" },
-  { left: "58%", top: "60%", delay: "1.8s", duration: "16s" },
-  { left: "70%", top: "82%", delay: "3.2s", duration: "10s" },
-  { left: "80%", top: "18%", delay: "0.6s", duration: "19s" },
-  { left: "88%", top: "55%", delay: "4.2s", duration: "12s" },
-  { left: "12%", top: "95%", delay: "2.2s", duration: "14s" },
-  { left: "50%", top: "40%", delay: "1.6s", duration: "11s" },
-];
+// ─── Internal Component ───────────────────────────────────────────────────────
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function SignInPage() {
+function SignInForm() {
   const { login, loginError, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   // If the user is already authenticated, redirect immediately
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/dashboard");
+      router.replace('/member');
     }
   }, [isAuthenticated, router]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { username: "", password: "", remember: false },
+    defaultValues: { email: '', pin: '', remember: false },
   });
 
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     try {
-      await login(values.username, values.password);
-      // Redirect to where the user was trying to go, or /dashboard as default
-      const next = searchParams.get("next") ?? "/dashboard";
+      await login(values.email, values.pin);
+      // Redirect to where the user was trying to go, or /member as default
+      const next = searchParams.get('next') ?? '/member';
       router.replace(next);
     } catch {
       // loginError in AuthProvider is already set — displayed below the form
@@ -92,110 +66,96 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="bg-background text-foreground min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden">
-
+    <div className='bg-background text-foreground min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden'>
       {/* Animated background — purely decorative */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: "8s" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: "10s", animationDelay: "2s" }} />
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: "12s", animationDelay: "4s" }} />
+      <div className='fixed inset-0 pointer-events-none overflow-hidden'>
+        <div
+          className='absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '8s' }}
+        />
+        <div
+          className='absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '10s', animationDelay: '2s' }}
+        />
+        <div
+          className='absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-[120px] animate-pulse'
+          style={{ animationDuration: '12s', animationDelay: '4s' }}
+        />
 
         {/* Surveillance grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:50px_50px]" />
+        <div className='absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:50px_50px]' />
 
         {/* Hex pattern */}
         <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")` }}
+          className='absolute inset-0 opacity-[0.03]'
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")`,
+          }}
         />
 
         {/* Scanline */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent animate-scan" />
+        <div className='absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent animate-scan' />
 
         {/* Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        <div className='absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background' />
 
-        {/* Particles — stable positions, no Math.random() in render */}
-        {PARTICLES.map((p, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float"
-            style={{ left: p.left, top: p.top, animationDelay: p.delay, animationDuration: p.duration }}
-          />
-        ))}
-      </div>
-
-      {/* Data stream lines */}
-      <div className="fixed top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream" />
-      </div>
-      <div className="fixed top-0 left-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream" style={{ animationDelay: "3s" }} />
       </div>
 
       {/* Animation keyframes — scoped to this page */}
       <style jsx>{`
         @keyframes scan {
-          0%   { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
+          0% {
+            transform: translateY(-100%);
+          }
+          100% {
+            transform: translateY(100%);
+          }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0; }
-          10%       { opacity: 1; }
-          90%       { opacity: 1; }
-          50%       { transform: translateY(-100px) translateX(50px); }
+        .animate-scan {
+          animation: scan 8s linear infinite;
         }
-        @keyframes data-stream {
-          0%   { transform: translateY(-100%); opacity: 0; }
-          10%  { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
-        }
-        .animate-scan        { animation: scan 8s linear infinite; }
-        .animate-float       { animation: float 15s ease-in-out infinite; }
-        .animate-data-stream { animation: data-stream 6s ease-in-out infinite; }
       `}</style>
 
       {/* ── Card ── */}
-      <div className="w-full max-w-md relative z-10">
-
+      <div className='w-full max-w-md relative z-10'>
         {/* Branding */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-3 mb-4">
-            <div className="relative">
-              <i className="fas fa-shield-alt text-cyan-400 text-3xl" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className='text-center mb-8'>
+          <Link href='/' className='inline-flex items-center space-x-3 mb-4'>
+            <div className='relative'>
+              <ShieldAlert className='text-cyan-400 text-3xl' />
+              <div className='absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse' />
             </div>
             <div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                SENTINEL
+              <span className='text-5xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
+                OmniWatch
               </span>
-              <div className="text-[10px] text-gray-500 font-mono tracking-wider">ISR COMMAND & CONTROL</div>
+              <div className='text-[10px] text-gray-500 font-mono tracking-wider'>
+                OS COMMAND & CONTROL
+              </div>
             </div>
           </Link>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          <h1 className='font-bold'>
             Welcome Back
           </h1>
-          <p className="text-gray-400">Sign in to access your command center</p>
+          <p className='text-gray-400'>Sign in to access your command center</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-card/50 backdrop-blur-xl p-8 rounded-2xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10">
+        <div className='bg-card/50 backdrop-blur-xl p-8 rounded-2xl border border-cyan-500/20 shadow-2xl shadow-cyan-500/10'>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
-
-              {/* Username */}
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6' noValidate>
+              {/* Email */}
               <FormField
                 control={form.control}
-                name="username"
+                name='email'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input
-                        type="text"
-                        placeholder="your_username"
-                        autoComplete="username"
+                        type='email'
+                        placeholder='user@example.com'
+                        autoComplete='email'
                         {...field}
                       />
                     </FormControl>
@@ -204,20 +164,32 @@ export default function SignInPage() {
                 )}
               />
 
-              {/* Password */}
+              {/* PIN */}
               <FormField
                 control={form.control}
-                name="password"
+                name='pin'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>PIN</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        autoComplete="current-password"
-                        {...field}
-                      />
+                      <div className='relative'>
+                        <Input
+                          type={showPin ? 'text' : 'password'}
+                          placeholder='••••••••'
+                          autoComplete='current-password'
+                          className='pr-10'
+                          {...field}
+                        />
+                        <button
+                          type='button'
+                          onClick={() => setShowPin((v) => !v)}
+                          className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors'
+                          tabIndex={-1}
+                          aria-label={showPin ? 'Hide password' : 'Show password'}
+                        >
+                          {showPin ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -225,64 +197,79 @@ export default function SignInPage() {
               />
 
               {/* Remember me + forgot password */}
-              <div className="flex items-center justify-between">
+              <div className='flex items-center justify-between'>
                 <FormField
                   control={form.control}
-                  name="remember"
+                  name='remember'
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormItem className='flex flex-row items-center space-x-2 space-y-0'>
                       <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="text-sm font-normal cursor-pointer">
+                      <FormLabel className='text-sm font-normal cursor-pointer'>
                         Remember me
                       </FormLabel>
                     </FormItem>
                   )}
                 />
-                <Link href="#" className="text-sm text-blue-400 hover:text-blue-300">
+                <Link href='#' className='text-sm text-blue-400 hover:text-blue-300'>
                   Forgot password?
                 </Link>
               </div>
 
               {/* Server-side auth error — shown inline, never in an alert() */}
               {loginError && (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400">
+                <div className='rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400'>
                   {loginError}
                 </div>
               )}
 
               {/* Submit */}
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type='submit' className='w-full' disabled={isSubmitting}>
                 {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className='flex items-center justify-center gap-2'>
+                    <span className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
                     Signing in…
                   </span>
                 ) : (
-                  "Sign In"
+                  'Sign In'
                 )}
               </Button>
-
             </form>
           </Form>
         </div>
 
         {/* Footer links */}
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Don&apos;t have an account?{" "}
-          <Link href="/sign-up" className="text-blue-400 hover:text-blue-300 font-medium">
+        <p className='mt-6 text-center text-sm text-gray-400'>
+          Don&apos;t have an account?{' '}
+          <Link href='/sign-up' className='text-blue-400 hover:text-blue-300 font-medium'>
             Sign up for free
           </Link>
         </p>
-        <div className="mt-4 text-center">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1">
-            <i className="fas fa-arrow-left" />
+        <div className='mt-4 text-center'>
+          <Link
+            href='/'
+            className='text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1'
+          >
+            <ArrowLeft />
             <span>Back to home</span>
           </Link>
         </div>
-
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-background flex items-center justify-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500'></div>
+        </div>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   );
 }

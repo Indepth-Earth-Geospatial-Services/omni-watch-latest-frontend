@@ -1,31 +1,71 @@
 // Device log types for the DJI Cloud API
 
-export interface UploadedLog {
-  logs_id: string;
-  device_sn: string;
-  create_time: number;  // Unix timestamp ms
-  update_time: number;
-  status: number;       // 0 = uploading, 1 = done, 2 = failed
-  list: LogFileItem[];
+// ─── POST /devices/{device_sn}/logs request ──────────────────────────────────
+
+export interface TriggerLogFileItem {
+  bootIndex: number;
+  endTime: number;    // Unix timestamp ms
+  startTime: number;  // Unix timestamp ms
+  size: number;       // bytes
 }
 
-export interface LogFileItem {
-  module: number;       // subsystem identifier (flight controller, camera, etc.)
-  start_time: number;   // Unix timestamp ms — earliest log entry
-  end_time: number;     // Unix timestamp ms — latest log entry
-  size: number;         // file size in bytes
-  url: string;          // pre-signed download URL
-}
-
-export interface DeviceLogModule {
-  module: number;       // subsystem identifier
-  start_time: number;
-  end_time: number;
+export interface TriggerLogFile {
+  deviceSn: string;
+  list: TriggerLogFileItem[];
+  module: string;     // domain/module identifier, e.g. "0"
+  objectKey: string;
 }
 
 export interface TriggerLogUploadRequest {
-  logs_info: Array<{
-    device_sn: string;
-    list: Array<{ module: number }>;
-  }>;
+  logsInformation: string;
+  happenTime: number;         // Unix timestamp ms
+  files: TriggerLogFile[];
+}
+
+// ─── DELETE /devices/{device_sn}/logs request ────────────────────────────────
+
+export interface CancelLogUploadRequest {
+  moduleList: string[];       // module/domain identifiers to cancel, e.g. ["0"]
+  status: 'cancel';
+}
+
+// ─── Query params ─────────────────────────────────────────────────────────────
+
+export interface DeviceLogsQueryParams {
+  domain_list: string[];      // required — e.g. ["0"] for flight controller
+}
+
+export interface UploadedLogsQueryParams {
+  [key: string]: unknown;
+  page?: number;
+  status?: number;            // 0 = uploading, 1 = done, 2 = failed
+  page_size?: number;
+  begin_time?: number;        // Unix timestamp ms
+  end_time?: number;
+  logs_information?: string;
+}
+
+// ─── Response shapes (Swagger shows data: {} — camelCase inferred from pattern) ─
+
+export interface LogFileItem {
+  module: number;
+  startTime: number;
+  endTime: number;
+  size: number;
+  url: string;
+}
+
+export interface UploadedLog {
+  logsId: string;
+  deviceSn: string;
+  createTime: number;
+  updateTime: number;
+  status: number;     // 0 = uploading, 1 = done, 2 = failed
+  list: LogFileItem[];
+}
+
+export interface DeviceLogModule {
+  module: number;
+  startTime: number;
+  endTime: number;
 }

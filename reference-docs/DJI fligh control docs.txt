@@ -1,0 +1,1922 @@
+Live Flight Controls
+2025-08-05
+No Rating
+Github Edit 
+#Event
+#Flyto execution result event notification
+Topic: thing/product/{gateway_sn}/events
+
+Direction: up
+
+Method: fly_to_point_progress
+
+Data:
+
+Column	Name	Type	constraint	Description
+fly_to_id	Flyto target point ID	text		
+status	State	enum_string	{"wayline_cancel":"Cancel flying to target point","wayline_failed":"Execution failed","wayline_ok":"Executed successfully, flown to target point","wayline_progress":"Executing"}	
+result	Return code	int		Non-zero represents an error
+way_point_index	Currently executing the nth waypoint	int		
+remaining_distance	Remaining mission distance	float	{"step":0.1,"unit_name":"Meters / m"}	
+remaining_time	Remaining mission time	float	{"step":0.1,"unit_name":"Seconds / s"}	
+planned_path_points	List of planned trajectory points	array	{"size": -, "item_type": struct}	
+»latitude	Latitude of the trajectory point	double	{"max":90,"min":-90}	Latitude of the trajectory point, angle value, negative for south latitude, positive for north latitude, accurate to 6 decimal places.
+»longitude	Longitude of the trajectory point	double	{"max":180,"min":-180}	Longitude of the trajectory point, angle value, east longitude is positive, west longitude is negative, precision to 6 decimal places.
+»height	Trajectory point height	float	{"step":0.1,"unit_name":"Meters / m"}	Trajectory point height, ellipsoid height
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"fly_to_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+		"planned_path_points": [
+			{
+				"height": 123.234,
+				"latitude": 13.23,
+				"longitude": 123.234
+			}
+		],
+		"remaining_distance": 0,
+		"remaining_time": 0,
+		"result": 0,
+		"status": "wayline_progress",
+		"way_point_index": 0
+	},
+	"need_reply": 1,
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 16540709686556,
+	"method": "fly_to_point_progress"
+}
+#One-key takeoff result event notification
+Topic: thing/product/{gateway_sn}/events
+
+Direction: up
+
+Method: takeoff_to_point_progress
+
+Data:
+
+Column	Name	Type	constraint	Description
+status	Task state	enum_string	{"task_finish":"One-key takeoff mission completed","task_ready":"Ready for takeoff","wayline_cancel":"Cancel flying to target point","wayline_failed":"Execution failed","wayline_ok":"Executed successfully, flown to target point","wayline_progress":"Executing"}	
+result	Return code	int		Non-zero represents an error
+flight_id	One-key takeoff mission UUID	text		
+track_id	Track ID	text		
+way_point_index	Currently executing the nth waypoint	int		
+remaining_distance	Remaining mission distance	float	{"step":0.1,"unit_name":"Meters / m"}	
+remaining_time	Remaining mission time	float	{"step":0.1,"unit_name":"Seconds / s"}	
+planned_path_points	List of planned trajectory points	array	{"size": -, "item_type": struct}	
+»latitude	Latitude of the trajectory point	double	{"max":90,"min":-90}	Latitude of the trajectory point, angle value, negative for south latitude, positive for north latitude, accurate to 6 decimal places.
+»longitude	Longitude of the trajectory point	double	{"max":180,"min":-180}	Longitude of the trajectory point, angle value, east longitude is positive, west longitude is negative, precision to 6 decimal places.
+»height	Trajectory point height	float	{"step":0.1,"unit_name":"Meters / m"}	Trajectory point height, ellipsoid height
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"flight_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+		"planned_path_points": [
+			{
+				"height": 123.234,
+				"latitude": 13.23,
+				"longitude": 123.234
+			}
+		],
+		"remaining_distance": 0,
+		"remaining_time": 0,
+		"result": 0,
+		"status": "wayline_ok",
+		"track_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+		"way_point_index": 1
+	},
+	"need_reply": 1,
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 16540709686556,
+	"method": "takeoff_to_point_progress"
+}
+#DRC link state notification (Abandoned)
+Note: This protocol is no longer maintained and may be inaccurate. For more accurate DRC link status, use the device attribute “drc_state” reported by the dock or the “DRC-heart beat”.
+
+Topic: thing/product/{gateway_sn}/events
+
+Direction: up
+
+Method: drc_status_notify
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+drc_state	Live flight controls state	enum_int	{"0":"Not connected","1":"Connecting","2":"Connected"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"drc_state": 2,
+		"result": 0
+	},
+	"need_reply": 1,
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "drc_status_notify"
+}
+#Notification of DRC - flight control invalidity reasons
+The DRC - flight control is an integrated control feature for the aircraft. If it is unavailable, the drone_control capability cannot be used for manual operation. Topic: thing/product/{gateway_sn}/events
+
+Direction: up
+
+Method: joystick_invalid_notify
+
+Data:
+
+Column	Name	Type	constraint	Description
+reason	Task state	int	{"0":"Remote controller lost connection","1":"Low battery return","2":"Low battery landing","3":"Close to the flight restriction zone","4":"Remote controller takeover control authority (for example, triggered return, B control takeover)"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"reason": 0
+	},
+	"need_reply": 1,
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "joystick_invalid_notify"
+}
+#Upload capture progress
+Topic: thing/product/{gateway_sn}/events
+
+Direction: up
+
+Method: camera_photo_take_progress
+
+Data:
+
+Column	Name	Type	constraint	Description
+output	Output	struct		
+»status	Capturing state	enum_string	{"fail":"Failed","in_progress":"Executing","ok":"Cpmpleted"}	
+»progress	Progress	struct		
+»»current_step	Execution step	enum_int	{"3000":"Panorama photo capturing is not start or is finished","3002":"Panorama photo is capturing","3005":"Panorama photo is synthesizing"}	
+»»percent	Progress value	int	{"max":"100","min":"0","step":"1"}	
+»ext	Extended content	struct		
+»»camera_mode	Current camera mode	enum_int	{"3":"Panorama"}	
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"output": {
+			"ext": {
+				"camera_mode": 3
+			},
+			"progress": {
+				"current_step": 0,
+				"percent": 100
+			},
+			"status": "ok"
+		},
+		"result": 0
+	},
+	"need_reply": 1,
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_photo_take_progress"
+}
+#Service
+#Grabbing flight control authority
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: flight_authority_grab
+
+Data: null
+
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "flight_authority_grab"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: flight_authority_grab
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "flight_authority_grab"
+}
+#Payload control authority grab
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: payload_authority_grab
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Payload enumeration value	text		Enumeration of camera payload and mounted location. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "payload_authority_grab"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: payload_authority_grab
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "payload_authority_grab"
+}
+#Enter live flight controls mode
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: drc_mode_enter
+
+Data:
+
+Column	Name	Type	constraint	Description
+mqtt_broker	Broker connection information	struct		Get the address and authentication information of the MQTT relay service
+»address	Server connection address	text		Server connection address, for example, 192.0.2.1:8883, mqtt.dji.com:8883
+»client_id	Client ID	text		Customizable MQTT client ID. It is recommended to use the device's serial number (SN code). It can also be combined with a meaningful prefix, such as drc-4J4R101
+»username	User name	text		Username used when establishing a connection
+»password	Password	text		Password required for authentication when establishing a connection
+»expire_time	Authentication information expiration time	int	{"unit_name":"Seconds / s"}	Authentication information can be reused within the validity period. The expiration of authentication information does not affect devices that have already established a connection.
+»enable_tls	Whether to enable TLS	bool		Enable TLS, i.e., encrypt the MQTT link
+osd_frequency	OSD frequency	int	{"max":30,"min":1,"unit_name":"Hertz / Hz"}	Set OSD reporting frequency
+hsi_frequency	HSI frequency	int	{"max":30,"min":1,"unit_name":"Hertz / Hz"}	Set HSI reporting frequency
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"hsi_frequency": 1,
+		"mqtt_broker": {
+			"address": "mqtt.dji.com:8883",
+			"client_id": "sn_a",
+			"enable_tls": true,
+			"expire_time": 1672744922,
+			"password": "jwt_token",
+			"username": "sn_a_username"
+		},
+		"osd_frequency": 10
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "drc_mode_enter"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: drc_mode_enter
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "drc_mode_enter"
+}
+#Exit live flight controls mode
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: drc_mode_exit
+
+Data: null
+
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "drc_mode_exit"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: drc_mode_exit
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "drc_mode_exit"
+}
+#One-key takeoff
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: takeoff_to_point
+
+Data:
+
+Column	Name	Type	constraint	Description
+target_latitude	Target point latitude	double	{"max":90,"min":-90}	Target point latitude, in degree values. Negative for south, positive for north. Precision up to 6 decimal places
+target_longitude	Target point longitude	double	{"max":180,"min":-180}	Target point longitude, in degree values. Positive for east, negative for west. Precision up to 6 decimal places
+target_height	Target point height	float	{"max":1500,"min":2,"step":0.1,"unit_name":"Meters / m"}	Target point height (ellipsoidal height), using the WGS84 model. Default behavior after reaching the point is hovering
+security_takeoff_height	Safe takeoff height	float	{"max":1500,"min":20,"step":0.1,"unit_name":"Meters / m"}	Relative altitude to the takeoff point (dock) - ALT. The aircraft ascends to a specific height before flying to the target point.
+rth_mode	[Required] Return home mode setting value	enum_int	{"0":"Intelligent altitude","1":"Preset altitude"}	In intelligent return home mode, the aircraft will automatically plan the optimal return home altitude. The DJI dock currently does not support setting the return home altitude mode and can only choose the 'Preset Altitude' mode. When the environment or lighting does not meet the requirements of the visual system (such as direct sunlight in the evening, weak or no light at night), the aircraft will use the return home altitude you set for straight-line return home.
+rth_altitude	Return home altitude	int	{"max":1500,"min":2,"step":1,"unit_name":"Meters / m"}	Height relative to the (dock) takeoff point, relative high ALT
+rc_lost_action	Remote controller lost control action	enum_int	{"0":"Hovering","1":"Landing","2":"Returning to home"}	Remote controller lost control action
+commander_mode_lost_action	[Required] To-point flight loss of control action	enum_int	{"0":"Continue with the to-point flight mission","1":"Exit the to-point flight mission and perform normal loss of control behavior"}	
+commander_flight_mode	[Required] To-point mode setting value	enum_int	{"0":"Optimal height flight","1":"Preset height flight"}	
+commander_flight_height	[Required] To-point height	float	{"max":3000,"min":2,"step":0.1,"unit_name":"Meters / m"}	Height relative to the (dock) takeoff point, relative high ALT
+flight_id	One-key takeoff mission UUID	text		Wayline UUID, globally unique, used for coloring, distinguishing between a regular planned mission and a one-key takeoff mission on the cloud
+max_speed	Achievable maximum speed during one-key takeoff	int	{"max":15,"min":1,"unit_name":"Meters per second / m/s"}	
+simulate_mission	Whether to execute the mission in the simulator	struct		Optional field for simulating mission debugging indoors.
+Note: Before performing simulated flights, be sure to remove the propellers to prevent them from being damaged by the closing hatch.
+»is_enable	Whether to enable the simulator mission	enum_int	{"0":"Do not enable","1":"Enable"}	Open or close the simulator for this mission
+»latitude	Latitude	double	{"max":"90.0","min":"-90.0"}	
+»longitude	Longitude	double	{"max":"180.0","min":"-180.0"}	
+flight_safety_advance_check	Pre-check for flight safety	bool	{"0":"Closed","1":"Opened"}	Set to pre-check the flight safety for Take Off and flight route task.This field is optional. The default value is 0, which represents closed. 1 represents opened.Checking if the local operating area file is consistent with the cloud side before the task starts. If the files are different, pull file from the cloud side to update.
+Example:
+
+{
+    "bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "data": {
+        "flight_id": "ABDEAC21DCADDA",
+        "max_speed": 12,
+        "rc_lost_action": 0,
+        "rth_altitude": 100,
+        "security_takeoff_height": 100,
+        "target_height": 100,
+        "target_latitude": 12.23,
+        "target_longitude": 12.32,
+        "commander_mode_lost_action": 1,
+        "commander_flight_height": 80,
+        "flight_safety_advance_check": 1
+    },
+    "tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "timestamp": 1654070968655,
+	"method": "takeoff_to_point"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: takeoff_to_point
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "takeoff_to_point"
+}
+#Fly to target point
+The aircraft has a minimum flight altitude (20m) safety guarantee mechanism. If the altitude of the aircraft relative to the take-off point is lower than 20m, it will first rise to 20m.
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: fly_to_point
+
+Data:
+
+Column	Name	Type	constraint	Description
+fly_to_id	Flyto target point ID	text		
+max_speed	Achievable maximum speed during flyto	int	{"max":15,"min":0,"unit_name":"Meters per second / m/s"}	
+points	List of flyto target points	array	{"size": -, "item_type": struct}	Only supports 1 target point
+»latitude	Target point latitude	double	{"max":90,"min":-90}	Target point latitude, in degree values. Negative for south, positive for north. Precision up to 6 decimal places
+»longitude	Target point longitude	double	{"max":180,"min":-180}	Target point longitude, in degree values. Positive for east, negative for west. Precision up to 6 decimal places
+»height	Target point height	float	{"max":10000,"min":2,"step":0.1,"unit_name":"Meters / m"}	Target point height (ellipsoid height), using the WGS84 model
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"fly_to_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+		"max_speed": 12,
+		"points": [
+			{
+				"height": 100,
+				"latitude": 12.23,
+				"longitude": 12.23
+			}
+		]
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: fly_to_point
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point"
+}
+#End Flyto task to target point
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: fly_to_point_stop
+
+Data: null
+
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point_stop"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: fly_to_point_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point_stop"
+}
+#Update the target point of flyto
+During the process of one-key takeoff or flyto target point, the target point can be quickly updated through this command
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: fly_to_point_update
+
+Data:
+
+Column	Name	Type	constraint	Description
+max_speed	Achievable maximum speed during the live flight controls	int	{"max":15,"min":1,"unit_name":"Meters per second / m/s"}	
+points	Updated target points list	array	{"size": -, "item_type": struct}	Only supports 1 target point
+»latitude	Target point latitude	double	{"max":90,"min":-90}	Target point latitude, in degree values. Negative for south, positive for north. Precision up to 6 decimal places
+»longitude	Target point longitude	double	{"max":180,"min":-180}	Target point longitude, in degree values. Positive for east, negative for west. Precision up to 6 decimal places
+»height	Target point height	float	{"max":10000,"min":2,"step":0.1,"unit_name":"Meters / m"}	Target point height (ellipsoid height), using the WGS84 model
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"max_speed": 12,
+		"points": [
+			{
+				"height": 100,
+				"latitude": 12.23,
+				"longitude": 12.23
+			}
+		]
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point_update"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: fly_to_point_update
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "fly_to_point_update"
+}
+#Payload control - subject zoom
+The subject zoom function enables to select and frame a target area within the camera's field of view. When activated, the camera screen will automatically switch to the target frame, zoom in and adjust the gimbal to the center.
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_frame_zoom
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		
+camera_type	Camera type	enum_string	{"ir":"Infrared","wide":"Wide-angle","zoom":"Zoom"}	
+locked	Whether the relative relationship between the aircraft's heading and the gimbal is locked	bool	{"0":"Only gimbal turns, the aircraft body does not turn","1":"Lock the aircraft's heading. The gimbal and the aircraft body turn together"}	
+x	Upper-left coordinate x of the target frame	float	{"max":"1","min":"0","step":"0.000001","unit_name":"None / "}	
+y	Upper-left coordinate y of the target frame	float	{"max":"1","min":"0","step":"0.000001","unit_name":"None / "}	
+width	Width of the target frame	float	{"max":"1","min":"0","step":"0.000001","unit_name":"None / "}	
+height	Height of target frame	float	{"max":"1","min":"0","step":"0.000001","unit_name":"None / "}	
+Example:
+
+{
+    "bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "data": {
+        "camera_type": "zoom",
+        "height": 0.2,
+        "locked": true,
+        "payload_index": "39-0-7",
+        "width": 0.2,
+        "x": 0.5,
+        "y": 0.5
+    },
+    "tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "timestamp": 1654070968655,
+	"method": "camera_frame_zoom"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_frame_zoom
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		
+Example:
+
+{
+    "bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "data": {
+        "result": 0
+    },
+    "tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "timestamp": 1654070968655,
+	"method": "camera_frame_zoom"
+}
+#Payload control - Switch Camera Mode
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_mode_switch
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_mode	Camera mode	enum_int	{"0":"Capturing","1":"Recording","2":"Smart Low-Light","3":"Panorama"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_mode": 0,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_mode_switch"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_mode_switch
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_mode_switch"
+}
+#Payload control - Start capturing
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_photo_take
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_photo_take"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_photo_take
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+output	Output	struct		
+»status	Task state	enum_string	{"in_progress":"Executing"}	When panorama photo capturing or other persistent photo capturing is in progress, state information will be uploaded. It represents there are further persistent progress event uploading. For details, please refer to camera_photo_take_progress event.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_photo_take"
+}
+#Payload control - Stop capturing
+Command to stop capturing. Currently, only panorama mode is supported.
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_photo_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_photo_stop"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_photo_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_photo_stop"
+}
+#Payload control - Start Recording
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_recording_start
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_recording_start"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_recording_start
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_recording_start"
+}
+#Payload control - Stop Recording
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_recording_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_recording_stop"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_recording_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_recording_stop"
+}
+#Payload control - Screen Drag Control
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_screen_drag
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+locked	Whether the relative relationship between the aircraft's heading and the gimbal is locked	bool	{"false":"Only gimbal turns, the aircraft body does not turn","true":"Lock the aircraft's heading. The gimbal and the aircraft body turn together"}	
+pitch_speed	Gimbal pitch speed	double	{"unit_name":"Degree per second / degree/s"}	Gimbal pitch speed
+yaw_speed	Gimbal yaw speed	double	{"unit_name":"Degree per second / degree/s"}	Gimbal yaw speed, effective only when the aircraft head is not locked.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"locked": true,
+		"payload_index": "39-0-7",
+		"pitch_speed": 0.1,
+		"yaw_speed": 0.1
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_screen_drag"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_screen_drag
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_screen_drag"
+}
+#Payload control - Double tap to AIM
+The double-tap AIM function allows you to double-tap on a target point within the camera's field of view, making that point the center of the camera's field of view.
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_aim
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"ir":"Infrared","wide":"Wide-angle","zoom":"Zoom"}	
+locked	Whether the relative relationship between the aircraft's heading and the gimbal is locked	bool	{"false":"Only gimbal turns, the aircraft body does not turn","true":"Lock the aircraft's heading. The gimbal and the aircraft body turn together"}	
+x	Target coordinate x	double	{"max":1,"min":0}	Target coordinate x, with the upper-left corner of the lens as the coordinate center, and the horizontal direction as x.
+y	Target coordinate y	double	{"max":1,"min":0}	Target coordinates y, with the upper-left corner of the lens as the coordinate center, and the vertical direction as y.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"locked": true,
+		"payload_index": "39-0-7",
+		"x": 0.5,
+		"y": 0.5
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_aim"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_aim
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_aim"
+}
+#Payload control - Zoom
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_focal_length_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"ir":"Infrared","wide":"Wide-angle","zoom":"Zoom"}	Camera type enumeration
+zoom_factor	Zoom factor	double	{"max":200,"min":2}	Zoom factor, 2-200 for visible light, 2-20 for infrared.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"payload_index": "39-0-7",
+		"zoom_factor": 5
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focal_length_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_focal_length_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focal_length_set"
+}
+#Payload control - Reset gimbal
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: gimbal_reset
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Payload index	text		Payload index. Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+reset_mode	Reset mode type	enum_int	{"0":"Reset","1":"Downward","2":"Gimbal pan recenter","3":"Gimbal pitch downward"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7",
+		"reset_mode": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "gimbal_reset"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: gimbal_reset
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "gimbal_reset"
+}
+#Payload control - Look At
+The Look At function instructs the aircraft to turn from its current orientation to a point specified by actual latitude, longitude, and altitude. For the M30/M30T model, it is recommended to use the method of locking the head. An exception may occur if the gimbal rotates only when the gimbal limit angle is reached.
+
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_look_at
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+locked	Whether the relative relationship between the aircraft's heading and the gimbal is locked	bool	{"false":"Only gimbal turns, the aircraft body does not turn","true":"Lock the aircraft's heading. The gimbal and the aircraft body turn together"}	
+latitude	Target point latitude	double	{"max":90,"min":-90}	Angle value. Negative for south latitude, positive for north latitude, accurate to 6 decimal places.
+longitude	Target point longitude	double	{"max":180,"min":-180}	Angle value. East longitude is positive, west longitude is negative, precision to 6 decimal places.
+height	Target point height	float	{"max":10000,"min":2,"step":0.1,"unit_name":"Meters / m"}	Target point height (ellipsoid height)
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"height": 100,
+		"latitude": 12.23,
+		"locked": true,
+		"longitude": 12.23,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_look_at"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_look_at
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_look_at"
+}
+#Payload control - Split Screen
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_screen_split
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+enable	Whether to enable split screen	bool		Enable or disable split screen
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"enable": true,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_screen_split"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_screen_split
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_screen_split"
+}
+#Payload control - Photo storage settings
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: photo_storage_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+photo_storage_settings	Photo storage settings collection	array	{"size": -, "item_type": enum_string}	Photo storage types {current, vision, ir}, can be multiple
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7",
+		"photo_storage_settings": [
+			"current",
+			"vision",
+			"ir"
+		]
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "photo_storage_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: photo_storage_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "photo_storage_set"
+}
+#Payload control - Video storage settings
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: video_storage_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+video_storage_settings	Collection of video storage settings	array	{"size": -, "item_type": enum_string}	Video storage types {current, vision, ir}, can be selected multiple
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7",
+		"video_storage_settings": [
+			"current",
+			"vision",
+			"ir"
+		]
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "video_storage_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: video_storage_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "video_storage_set"
+}
+#Payload control - Camera exposure mode setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_exposure_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"wide":"Wide-angle","zoom":"Zoom"}	Camera type enumeration
+exposure_mode	Exposure mode	enum_int	{"1":"Auto","2":"Shutter priority","3":"Aperture priority","4":"Manual exposure"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"exposure_mode": 1,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_exposure_mode_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_exposure_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_exposure_mode_set"
+}
+#Payload control - Camera exposure value adjustment
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_exposure_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"wide":"Wide-angle","zoom":"Zoom"}	
+exposure_value	Exposure value	enum_string	{"1":"-5.0EV","2":"-4.7EV","3":"-4.3EV","4":"-4.0EV","5":"-3.7EV","6":"-3.3EV","7":"-3.0EV","8":"-2.7EV","9":"-2.3EV","10":"-2.0EV","11":"-1.7EV","12":"-1.3EV","13":"-1.0EV","14":"-0.7EV","15":"-0.3EV","16":"0EV","17":"0.3EV","18":"0.7EV","19":"1.0EV","20":"1.3EV","21":"1.7EV","22":"2.0EV","23":"2.3EV","24":"2.7EV","25":"3.0EV","26":"3.3EV","27":"3.7EV","28":"4.0EV","29":"4.3EV","30":"4.7EV","31":"5.0EV","255":"FIXED"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"exposure_value": 5,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_exposure_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_exposure_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_exposure_set"
+}
+#Payload control - Camera focus mode setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_focus_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"wide":"Wide-angle","zoom":"Zoom"}	Camera type enumeration. Note, this parameter only supports to be set on zoom lens when using Matrice 30 series aircraft
+focus_mode	Focus mode	enum_int	{"0":"MF","1":"AFS","2":"AFC"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"focus_mode": 1,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focus_mode_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_focus_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focus_mode_set"
+}
+#Payload control - Camera focus value setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_focus_value_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"wide":"Wide-angle","zoom":"Zoom"}	Camera type enumeration. Note, this parameter only supports to be set on zoom lens when using Matrice 30 series aircraft
+focus_value	Focus value	int		Focus value. The range can be get from the aircraft properties, zoom_max_focus_value and zoom_min_focus_value.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"focus_value": 5,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focus_value_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_focus_value_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_focus_value_set"
+}
+#Payload control - Spot AF
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: camera_point_focus_action
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+camera_type	Camera type	enum_string	{"wide":"Wide-angle","zoom":"Zoom"}	Camera type enumeration. Note, this parameter only supports to be set on zoom lens when using Matrice 30 series aircraft
+x	Focusing point coordinate x	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The horizontal direction is x.
+y	Focusing point coordinates y	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The vertical direction is y.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"camera_type": "zoom",
+		"payload_index": "39-0-7",
+		"x": 0.5,
+		"y": 0.5
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_point_focus_action"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: camera_point_focus_action
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "camera_point_focus_action"
+}
+#Payload control - Infrared temperature measurement mode setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: ir_metering_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+mode	Measurement mode	enum_int	{"0":"Close temperature measurement","1":"Point temperature measurement","2":"Area temperature measurement"}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"mode": 1,
+		"payload_index": "39-0-7"
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_mode_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: ir_metering_mode_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_mode_set"
+}
+#Payload control - Infrared temperature measurement point setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: ir_metering_point_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+x	Temperature measurement point coordinate x	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The horizontal direction is x.
+y	Temperature measurement point coordinate y	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The vertical direction is y.
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"payload_index": "39-0-7",
+		"x": 0.5,
+		"y": 0.5
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_point_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: ir_metering_point_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_point_set"
+}
+#Payload control - Infrared temperature measurement area setting
+Topic: thing/product/{gateway_sn}/services
+
+Direction: down
+
+Method: ir_metering_area_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+payload_index	Camera enumeration	text		Camera enumeration values. Non-standard device_mode_key, formatted as {type-subtype-gimbalindex}. Please refer to Product Supported
+x	Coordinate x of the left and upper corner of the temperature measurement area	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The horizontal direction is x.
+y	Coordinate y of the left and upper corner of the temperature measurement area	double	{"max":1,"min":0}	The left and upper corner of the lens is the coordinate center. The vertical direction is y.
+width	Width of the temperature measurement area	double	{"max":1,"min":0}	
+height	Height of the temperature measurement area	double	{"max":1,"min":0}	
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"height": 0.5,
+		"payload_index": "39-0-7",
+		"width": 0.5,
+		"x": 0.5,
+		"y": 0.5
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_area_set"
+}
+Topic: thing/product/{gateway_sn}/services_reply
+
+Direction: up
+
+Method: ir_metering_area_set
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return code	int		Non-zero represents an error
+Example:
+
+{
+	"bid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"data": {
+		"result": 0
+	},
+	"tid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+	"timestamp": 1654070968655,
+	"method": "ir_metering_area_set"
+}
+#DRC
+#DRC-Stick Control
+After establishing the DRC link, the "DRC Stick Control" command can be used to control the aircraft and gimbal attitude. The sending frequency must be maintained at 5-10Hz to ensure precise control of aircraft movements. This protocol has no acknowledgment mechanism.
+
+Topic: thing/product/{gateway_sn}/drc/down
+
+Direction: down
+
+Method: stick_control
+
+Data:
+
+Column	Name	Type	constraint	Description
+roll	Roll Channel	int	{"max":"1684","min":"364","unit_name":""}	Corresponds to RC A-channel (Aileron), controls aircraft roll (manifested as lateral movement). Stick range: 1024±660, 1024=neutral (no action). Increasing values indicate right tilt, decreasing values indicate left tilt.
+pitch	Pitch Channel	int	{"max":"1684","min":"364","unit_name":""}	Corresponds to RC E-channel (Elevator), controls aircraft pitch (manifested as longitudinal movement). Stick range: 1024±660, 1024=neutral (no action). Increasing values indicate forward dive, decreasing values indicate backward tilt.
+throttle	Throttle Channel	int	{"max":"1684","min":"364","unit_name":""}	Corresponds to RC T-channel (Throttle), controls aircraft altitude. Stick range: 1024±660, 1024=hover state. Increasing values indicate ascent, decreasing values indicate descent.
+yaw	Yaw Channel	int	{"max":"1684","min":"364","unit_name":""}	Corresponds to RC R-channel (Rudder), controls aircraft yaw (manifested as rotation). Stick range: 1024±660, 1024=neutral (no action). Increasing values indicate clockwise rotation, decreasing values indicate counter-clockwise rotation.
+Example:
+
+{
+    "seq": 1,
+    "method": "stick_control",
+    "data": {
+        "roll": 1024,
+        "pitch": 1024,
+        "throttle": 1024,
+        "yaw": 1024,
+        "gimbal_pitch": 1024
+    }
+}
+#DRC-Flight Control (Abandoned)
+Note: This protocol is no longer maintained, use "DRC-Stick Control" for better response performance.
+
+After the live flight controls mode is entered, this command is allowed to control the drrone flight direction and speed. The sending frequency should be maintained from 5 to 10 HZ. Therefore the speed and direction can be controlled precisely.
+
+Topic: thing/product/{gateway_sn}/drc/down
+
+Direction: down
+
+Method: drone_control
+
+Data:
+
+Column	Name	Type	constraint	Description
+seq	Command sequence number	int		Increasing sequence number ensures that the commands are executed in order. If the value of x, y, h, w change, seq should start from 0.
+x	Speed of left and right direction	double	{"min":-17,"max":17,"unitName":"m/s"}	When see the aircraft from top and the aircraft is heading forward, positive value represents aircraft going left, and negative value represents aircraft going right. Unit: m/s
+y	Speed of forward and backward direction	double	{"min":-17,"max":17,"unitName":"m/s"}	When see the aircraft from top and the aircraft is heading forward, positive value represents aircraft going forward, and negative value represents aircraft going backwarrrd. Unit: m/s
+h	Height of upward and downward direction	double	{"min":5,"max":-4,"unitName":"m/s"}	Positive value represents aircraft going upward. Negative value represents aircraft going downward. Unit: m.
+w	Degree speed of drone body	double	{"max":90,"min":-90,"unitName":"degree/s"}	Positive value is clockwise. Negative value is counterclockwise. Unit: degree/s.
+Example:
+
+{
+	"method": "drone_control",
+	"data": {
+		"seq": 1,
+		"x": 2.34,
+		"y": -2.45,
+		"h": 2.76,
+		"w": 2.86
+	}
+}
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: drone_control
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return Code	int		Non-zero represents an error. Abnormal case: No flight control authority. No virtual stick (Joystick) authority. Wrong data package sequence number.
+output	Output	struct		
+»seq	Command sequence	int		Increasing sequence number ensures that the commands are executed in order
+Example:
+
+{
+	"data": {
+		"output": {
+			"seq": -1
+		},
+		"result": 319033
+	},
+	"method": "drone_control"
+}
+#DRC-drone emergency stop
+Topic: thing/product/{gateway_sn}/drc/down
+
+Direction: down
+
+Method: drone_emergency_stop
+
+Data: null
+
+Example:
+
+{
+	"method": "drone_emergency_stop",
+	"data": {}
+}
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: drone_emergency_stop
+
+Data:
+
+Column	Name	Type	constraint	Description
+result	Return Code	int		Non-zero represents an error
+Example:
+
+{
+	"method": "drone_emergency_stop",
+	"data": {
+		"result": 0
+	}
+}
+#DRC-heart beat
+The seq at the same level as data is an incrementing sequence number that ensures the sequential execution of commands.
+
+Topic: thing/product/{gateway_sn}/drc/down
+
+Direction: down
+
+Method: heart_beat
+
+Data:
+
+Column	Name	Type	constraint	Description
+seq	[Deprecated]Command sequence	int		Increasing sequence number ensures that the commands are executed in order
+timestamp	Heart beat sending timestamp	int		The heart_beat protocol can determine whether the DRC link is active or not. If no heartbeat response is received within a certain period, the DRC link can be considered abnormal, and a retry can be initiated. If no heartbeat protocol is received for more than one minute, the device will consider the DRC link idle and exit the DRC link.
+Example:
+
+{
+	"method": "heart_beat",
+	"data": {
+		"timestamp": 1670415891013
+	},
+	"method": "heart_beat",
+	"seq": 1
+}
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: heart_beat
+
+Data:
+
+Column	Name	Type	constraint	Description
+seq	[Deprecated]Command sequence	int		Increasing sequence number ensures that the commands are executed in order
+timestamp	Heart beat sending timestamp	int		The heart_beat protocol can determine whether the DRC link is active or not. If no heartbeat response is received within a certain period, the DRC link can be considered abnormal, and a retry can be initiated. If no heartbeat protocol is received for more than one minute, the device will consider the DRC link idle and exit the DRC link.
+Example:
+
+{
+	"method": "heart_beat",
+	"data": {
+		"timestamp": 1670415891013
+	},
+	"method": "heart_beat",
+	"seq": 1
+}
+#DRC-obstacle avoidance information pushing
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: hsi_info_push
+
+Data:
+
+Column	Name	Type	constraint	Description
+up_distance	Distance of upward obstacle	int	{"unit":"mm"}	
+down_distance	Distance of downward obstacle	int	{"unit":"mm"}	
+up_enable	State of upward obstacle sensing switch	bool		
+up_work	Working state of upward obstacle sensing	bool		
+down_enable	State of downward obstacle sensing switch	bool		
+down_work	Working state of downward obstacle sensing	bool		
+around_distances	Surrounding obstacle distance	array	{"item":{"size":360,"type":"int","specs":[{"identifier":"around_distance","name":"Obstacle distance","desc":"Horizontal observation points distribute in range of [0,360). It means the distance between obstacle and drone. It distributes clockwise. For example, 0 degree represents the heading direction of drone, and 90 degree represents the right direction of drone.","dataType":{"type":"int","unit":"mm"}}]}}	
+Example:
+
+{
+	"method": "hsi_info_push",
+	"timestamp": 1670415891013,
+	"data": {
+		"up_distance": 10,
+		"down_distance": 10,
+		"around_distance": [
+			10,
+			8,
+			9,
+			16,
+			2
+		],
+		"up_enable": true,
+		"up_work": true,
+		"down_enable": true,
+		"down_work": true,
+		"left_enable": true,
+		"left_work": true,
+		"right_enable": true,
+		"right_work": true,
+		"front_enable": true,
+		"front_work": true,
+		"back_enable": true,
+		"back_work": true,
+		"vertical_enable": true,
+		"vertical_work": true,
+		"horizontal_enable": true,
+		"horizontal_work": true
+	}
+}
+#DRC-delay information pushing of image transmission link
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: delay_info_push
+
+Data:
+
+Column	Name	Type	constraint	Description
+sdr_cmd_delay	Delay of the image transmission command link	int	{"unit":"ms"}	
+liveview_delay_list	Delay of image transmission video code stream	array	{}	Multi-channel code stream
+»[array_item]	Elements in array	struct	{}	{"size": ""}
+»»video_id	Code stream index	text		
+»»liveview_delay_time	Dealy of the code stream	int	{"unit":"ms"}	
+Example:
+
+{
+	"method": "delay_info_push",
+	"timestamp": 1670415891013,
+	"data": {
+		"sdr_cmd_delay": 10,
+		"liveview_delay_list": [
+			{
+				"video_id": "1581BN210004555439234/52-0-0/normal-0",
+				"liveview_delay_time": 60
+			},
+			{
+				"video_id": "1581BN210004555439234/53-0-0/normal-0",
+				"liveview_delay_time": 80
+			}
+		]
+	}
+}
+#DRC-high frequency osd information pushing
+Topic: thing/product/{gateway_sn}/drc/up
+
+Direction: up
+
+Method: osd_info_push
+
+Data:
+
+Column	Name	Type	constraint	Description
+attitude_head	Head angle of flight attitude	double	{"unit":"degree"}	
+latitude	Flight latitude	double	{"unit":"degree"}	
+longitude	Flight longitude	double	{"unit":"degree"}	
+height	Flight altitude	double	{"unit":"degree"}	
+speed_x	Drone speed of X coordinate direction	double	{"unit":"m/s"}	
+speed_y	Drone speed of Y coordinate direction	double	{"unit":"m/s"}	
+speed_z	Drone speed of Z coordinate direction	double	{"unit":"m/s"}	
+gimbal_pitch	Pitch angle of gimbal	double	{"unit":"degree"}	
+gimbal_roll	Roll angle of pitch	double	{"unit":"degree"}	
+gimbal_yaw	Yaw angle of gimbal	double	{"unit":"degree"}	
+Example:
+
+{
+	"method": "osd_info_push",
+	"timestamp": 1670415891013,
+	"data": {
+		"attitude_head": 60,
+		"latitude": 10,
+		"longitude": 10,
+		"height": 10,
+		"speed_x": 10,
+		"speed_y": 10,
+		"speed_z": 10,
+		"gimbal_pitch": 60,
+		"gimbal_roll": 60,
+		"gimbal_yaw": 60
+	}
+}

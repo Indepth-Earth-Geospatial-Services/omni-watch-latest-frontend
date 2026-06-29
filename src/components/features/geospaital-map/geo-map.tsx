@@ -1,447 +1,788 @@
-"use client";
-import { useTelemetry } from "@/hooks/useTelemetry";
-import { useDJIDevices, useBoundDevices } from "@/hooks/useDJIDevices";
-import { useFlightAreas, useSyncFlightAreas } from "@/hooks/useMapElements";
-import { DJI_CONFIG } from "@/lib/dji/config";
-import { LayoutTemplate } from "lucide-react";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Map, {
-  Marker,
-  NavigationControl,
-  Popup,
-  MapRef,
-} from "react-map-gl/maplibre";
+'use client';
+import { MapPin } from 'lucide-react';
+import { toast } from 'sonner';
+import { useTelemetry } from '@/hooks/useTelemetry';
+import { useDJIDevices, useBoundDevices } from '@/hooks/useDJIDevices';
 import {
-  getAllStreams,
-  WebRTCStream,
-} from "@/config/webrtc-streams";
+  useFlightAreas,
+  useSyncFlightAreas,
+  useElementGroups,
+  useAddElement,
+  useDeleteElement,
+} from '@/hooks/useMapElements';
+import { useAuth } from '@/providers/AuthProvider';
+import { DJI_CONFIG } from '@/lib/config/config';
+import { feedData } from '@/lib/data';
+import type { UnifiedStream } from '@/lib/types';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import Map, { Marker, NavigationControl, Source, Layer, MapRef } from 'react-map-gl/maplibre';
+import type { MapLayerMouseEvent } from 'maplibre-gl';
+import type { DronePositionType, SelectedDroneInfo, MapViewMode, PendingPoint } from './map-types';
+import { DroneMarker } from './DroneMarker';
+import { DroneInfoPopup } from './DroneInfoPopup';
+import { TelemetryPanel } from './TelemetryPanel';
+import { MapCompass } from './MapCompass';
+import { AltitudeIndicator } from './AltitudeIndicator';
+import { AddElementPanel } from './AddElementPanel';
+import { ElementContextMenu } from './ElementContextMenu';
+import { WaylinePanel } from './WaylinePanel';
+import { useWaylines, useWaylineRoute } from '@/hooks/useWaylines';
 
-type DronePositionType = {
-  longitude: number;
-  latitude: number;
-  sn: string;
-  nickname: string;
-  incidents?: any[];
-};
-
-// Custom pulse marker component moved outside - prevents recreation on every render
-const PulseMarker = memo(
-  ({
-    drone,
-    onClick,
-  }: {
-    drone: DronePositionType;
-    onClick: (drone: DronePositionType) => void;
-  }) => {
-    const handleClick = (e: any) => {
-      e.originalEvent?.stopPropagation();
-      onClick(drone);
-    };
-
-    return (
-      <Marker
-        longitude={drone.longitude}
-        latitude={drone.latitude}
-        anchor="center"
-        onClick={handleClick}
-      >
-        <div className="cursor-pointer size-[20px] bg-red-500 rounded-full relative shadow-[0_0_0_rgba(239,68,68,1)] animate-[markerPulse_2s_ease_infinite]" />
-      </Marker>
-    );
+const MAP_STYLES: Record<string, string | object> = {
+  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  satellite: {
+    version: 8,
+    sources: {
+      esri: {
+        type: 'raster',
+        tiles: [
+          'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+      },
+    },
+    layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
   },
-  // Custom comparison - only re-render if position actually changes
-  (prevProps, nextProps) => {
-    return (
-      prevProps.drone.sn === nextProps.drone.sn &&
-      prevProps.drone.longitude === nextProps.drone.longitude &&
-      prevProps.drone.latitude === nextProps.drone.latitude
-    );
-  }
-);
-
-PulseMarker.displayName = "PulseMarker";
+};
 
 function GeoMap() {
   const mapRef = useRef<MapRef>(null);
-
-  const [selectedDrone, setSelectedDrone] = useState<DronePositionType | null>(
-    null
-  );
-
-  // DJI Cloud hooks — always called (Rules of Hooks); feature flag selects which result is used
-  const { data: djiDevices = [] } = useDJIDevices();
-  const { data: boundDevices = [] } = useBoundDevices();
-  const { data: flightAreas = [] } = useFlightAreas();
-  const { mutate: syncGeofences, isPending: isSyncing } = useSyncFlightAreas();
-
-  const staticDeviceList = getAllStreams();
-  const deviceList: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD ? djiDevices : staticDeviceList;
-
-
-  const [selectedStyle, setSelectedStyle] = useState("dark");
-  const [viewState, setViewState] = useState({
-    longitude: 7.0336,
-    latitude: 4.8242,
-    zoom: 14,
-  });
-
-  const { droneUpdates, getProcessedDroneData } = useTelemetry();
-
-  // Store drone positions directly from telemetry updates
-  const [dronePositions, setDronePositions] = useState<
-    Record<string, DronePositionType>
-  >({});
-
-  // Track previous telemetry to avoid unnecessary updates
   const prevTelemetryRef = useRef<Record<string, string>>({});
+  const hasAutoFocusedRef = useRef(false);
+  const [, startMapTransition] = useTransition();
 
-  // Update drone positions from telemetry - simplified to use droneUpdates directly
-  useEffect(() => {
-    const updatedPositions: Record<string, DronePositionType> = {};
-    let hasChanges = false;
-
-    // Iterate through all drones that have sent telemetry
-    droneUpdates.forEach((_update, sn) => {
-      const telemetry = getProcessedDroneData(sn);
-
-      if (telemetry) {
-        const currentKey = `${telemetry.latitude},${telemetry.longitude}`;
-        const prevKey = prevTelemetryRef.current[sn];
-
-        // Only update if position actually changed
-        if (currentKey !== prevKey) {
-          hasChanges = true;
-          prevTelemetryRef.current[sn] = currentKey;
-        }
-
-        const deviceNickname = deviceList.find(device => device.id === sn)?.metadata?.alias || sn;
-
-        updatedPositions[sn] = {
-          sn: sn,
-          nickname: deviceNickname,
-          longitude: telemetry.longitude,
-          latitude: telemetry.latitude,
-        };
-      }
-    });
-
-    // Only trigger re-render if positions actually changed
-    if (hasChanges) {
-      setDronePositions(updatedPositions);
-    }
-  }, [droneUpdates, getProcessedDroneData]);
-
-  // Get selected drone info for info panel
-  const selectedDroneInfo = useMemo(() => {
-    if (!selectedDrone) return null;
-
-    // Get telemetry data for the selected drone
-    const telemetry = getProcessedDroneData(selectedDrone.sn);
-    const deviceNickname = deviceList.find(device => device.id === selectedDrone.sn)?.metadata?.alias || selectedDrone.sn;
-
-    return {
-      nickname: deviceNickname, // Use serial number as nickname
-      serialNumber: selectedDrone.sn,
-      latitude: selectedDrone.latitude.toFixed(6),
-      longitude: selectedDrone.longitude.toFixed(6),
-      battery: telemetry?.battery || 0,
-      altitude: telemetry?.altitude || 0,
-      direction: telemetry?.direction || "N",
-      incidents: selectedDrone?.incidents || [],
-    };
-  }, [selectedDrone, getProcessedDroneData]);
-
-  const styles: Record<string, any> = {
-    dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-    positron: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    satellite: {
-      version: 8,
-      sources: {
-        esri: {
-          type: "raster",
-          tiles: [
-            "https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          ],
-          tileSize: 256,
-        },
-      },
-      layers: [{ id: "esri", type: "raster", source: "esri" }],
-    },
-  };
-
-  // Fit map to show all drones
-  const fitToAllDrones = useCallback(() => {
-    const positions = Object.values(dronePositions);
-    if (positions.length === 0) return;
-
-    const longitudes = positions.map((d) => d.longitude);
-    const latitudes = positions.map((d) => d.latitude);
-
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-
-    setViewState((prev) => ({
-      ...prev,
-      longitude: (minLng + maxLng) / 2,
-      latitude: (minLat + maxLat) / 2,
-      zoom: positions.length === 1 ? 16 : 14,
-    }));
-  }, [dronePositions]);
-
-  // Fly to specific drone with smooth animation
-  const flyToDrone = useCallback((drone: DronePositionType) => {
-    // Use maplibre's flyTo for smooth animation
-    mapRef.current?.flyTo({
-      center: [drone.longitude, drone.latitude],
-      zoom: 18,
-      duration: 2000, // 2 second smooth animation
-      essential: true,
-    });
-    setSelectedDrone(drone);
-  }, []);
-
-  // Handle basemap change
-  const handleBasemapChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setSelectedStyle(event.target.value);
+  // Cancel any in-flight map animation so MapLibre tears down its window-level
+  // pointer listeners cleanly before the component unmounts (prevents navigation lock).
+  useEffect(
+    () => () => {
+      mapRef.current?.stop();
     },
     []
   );
 
-  // Memoize drone positions array for stable reference
-  const dronePositionsArray = useMemo(
-    () => Object.values(dronePositions),
-    [dronePositions]
+  // ── UI state ─────────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<MapViewMode>('multi');
+  const [selectedDrone, setSelectedDrone] = useState<DronePositionType | null>(null);
+  // Tracks which drone is highlighted in the TelemetryPanel — independent of the map popup.
+  const [panelSelectedSn, setPanelSelectedSn] = useState<string | null>(null);
+  const [dronePositions, setDronePositions] = useState<Record<string, DronePositionType>>({});
+  const [selectedStyle, setSelectedStyle] = useState('dark');
+  const [showElements, setShowElements] = useState(true);
+  const [viewState, setViewState] = useState({ longitude: 7.0336, latitude: 4.8242, zoom: 14 });
+
+  // ── Draw / Add-element state ──────────────────────────────────────────────────
+  const [isDrawMode, setIsDrawMode] = useState(false);
+  const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
+  const [drawGroupId, setDrawGroupId] = useState('');
+  const [drawElementName, setDrawElementName] = useState('');
+
+  // ── Element context-menu state (right-click / double-tap to delete) ───────────
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    elementId: string;
+    elementName: string;
+  } | null>(null);
+
+  // ── Active wayline route overlay ──────────────────────────────────────────────
+  const [activeWaylineId, setActiveWaylineId] = useState<string | null>(null);
+
+  // ── Data hooks ────────────────────────────────────────────────────────────────
+  const { user } = useAuth();
+  const { data: djiDevices = [] } = useDJIDevices();
+  const { data: boundDevices = [] } = useBoundDevices();
+  const { data: flightAreas = [] } = useFlightAreas();
+  const { data: elementGroups = [] } = useElementGroups();
+  const { mutate: syncGeofences, isPending: isSyncing } = useSyncFlightAreas();
+  const { mutate: addMapElement, isPending: isAddingElement } = useAddElement();
+  const { mutate: deleteMapElement, isPending: isDeletingElement } = useDeleteElement();
+  const { droneUpdates, getProcessedDroneData } = useTelemetry();
+  const { data: waylines = [], isLoading: isLoadingWaylines } = useWaylines();
+  const { data: activeRoute, isFetching: isLoadingRoute } = useWaylineRoute(activeWaylineId);
+
+  // ── Nickname lookup list ──────────────────────────────────────────────────────
+  const deviceList: UnifiedStream[] = useMemo(() => {
+    if (DJI_CONFIG.USE_DJI_CLOUD) {
+      return djiDevices.map((device) => ({
+        id: device.deviceSn,
+        name: device.deviceName,
+        type: 'DRONE',
+        isOnline: device.status,
+        raw: device,
+        metadata: { alias: device.nickname },
+      }));
+    }
+    return feedData.map((drone) => ({
+      id: String(drone.sn),
+      name: drone.name,
+      type: drone.feedType,
+      isOnline: drone.status === 'online',
+      raw: {} as object,
+      metadata: { alias: drone.name },
+    }));
+  }, [djiDevices]);
+
+  // SNs of domain-0 devices (aircraft only) — excludes RC/dock from fleet + WS processing.
+  const droneSnSet = useMemo(
+    () => new Set(djiDevices.filter((d) => d.domain === '0').map((d) => d.deviceSn)),
+    [djiDevices]
   );
 
+  // ── Seed fleet from REST API — shows devices in panel before WS events arrive ──
+  useEffect(() => {
+    if (!djiDevices.length) return;
+    setDronePositions((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      djiDevices
+        .filter((d) => d.status && d.domain === '0') // aircraft only — exclude RC / dock
+        .forEach((d) => {
+          if (!next[d.deviceSn]) {
+            next[d.deviceSn] = {
+              sn: d.deviceSn,
+              nickname: d.nickname || d.deviceName,
+              longitude: 0,
+              latitude: 0,
+              heading: 0,
+              altitude: null,
+              hasGPS: false,
+            };
+            changed = true;
+          }
+        });
+      return changed ? next : prev;
+    });
+  }, [djiDevices]);
+
+  // ── Sync drone positions from WebSocket telemetry ─────────────────────────────
+  useEffect(() => {
+    if (!droneUpdates.size) return;
+
+    // Detect changes first (avoids state update when nothing moved)
+    const changedSns: string[] = [];
+    droneUpdates.forEach((_update, sn) => {
+      const t = getProcessedDroneData(sn);
+      if (!t) return;
+      const key = `${t.latitude},${t.longitude},${t.heading},${t.altitude}`;
+      if (key !== prevTelemetryRef.current[sn]) {
+        prevTelemetryRef.current[sn] = key;
+        changedSns.push(sn);
+      }
+    });
+    if (!changedSns.length) return;
+
+    setDronePositions((prev) => {
+      const next = { ...prev }; // preserve REST-seeded entries
+      droneUpdates.forEach((_update, sn) => {
+        if (!droneSnSet.has(sn)) return; // skip RC / dock OSD — aircraft only
+        const t = getProcessedDroneData(sn);
+        if (!t) return;
+        // useTelemetry returns sticky last-valid coords — trust lat/lng directly.
+        const hasGPS = t.latitude !== 0 || t.longitude !== 0 || (prev[sn]?.hasGPS ?? false);
+        const nickname =
+          deviceList.find((d) => d.id === sn)?.metadata?.alias ?? prev[sn]?.nickname ?? sn;
+        next[sn] = {
+          sn,
+          nickname,
+          longitude: t.longitude,
+          latitude: t.latitude,
+          heading: t.heading,
+          altitude: t.altitude,
+          hasGPS,
+        };
+      });
+      return next;
+    });
+  }, [droneUpdates, getProcessedDroneData, deviceList, droneSnSet]);
+
+  // ── Single-mode: auto-follow tracked drone ────────────────────────────────────
+  const trackedLat = panelSelectedSn ? dronePositions[panelSelectedSn]?.latitude : undefined;
+  const trackedLng = panelSelectedSn ? dronePositions[panelSelectedSn]?.longitude : undefined;
+
+  useEffect(() => {
+    if (viewMode !== 'single' || trackedLat === undefined || trackedLng === undefined) return;
+    mapRef.current?.easeTo({ center: [trackedLng, trackedLat], duration: 800 });
+  }, [viewMode, trackedLat, trackedLng]);
+
+  // ── Selected drone full telemetry ─────────────────────────────────────────────
+  const panelDrone = panelSelectedSn ? dronePositions[panelSelectedSn] : null;
+  const selectedDroneInfo: SelectedDroneInfo | null = useMemo(() => {
+    if (!panelDrone) return null;
+    const t = getProcessedDroneData(panelDrone.sn);
+    const nickname =
+      deviceList.find((d) => d.id === panelDrone.sn)?.metadata?.alias ?? panelDrone.sn;
+    return {
+      nickname,
+      serialNumber: panelDrone.sn,
+      latitude: panelDrone.latitude.toFixed(6),
+      longitude: panelDrone.longitude.toFixed(6),
+      battery: t?.battery ?? 0,
+      altitude: t?.altitude ?? null,
+      direction: t?.direction ?? 'N',
+      heading: t?.heading ?? 0,
+      speed: t?.speed ?? 0,
+      modeCode: t?.modeCode ?? 0,
+    };
+  }, [panelDrone, getProcessedDroneData, deviceList]);
+
+  // ── GeoJSON FeatureCollection from element groups ─────────────────────────────
+  const mapElementsGeoJSON = useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: elementGroups.flatMap((group) =>
+        group.elements
+          .filter((el) => el.resource?.content)
+          .map((el) => ({
+            ...el.resource.content,
+            id: el.id,
+            properties: {
+              ...el.resource.content.properties,
+              name: el.name,
+              groupId: group.id,
+              groupName: group.name,
+              elementId: el.id,
+            },
+          }))
+      ),
+    }),
+    [elementGroups]
+  );
+
+  const dronePositionsArray = useMemo(() => Object.values(dronePositions), [dronePositions]);
+
+  // ── Wayline route GeoJSON — rebuilt only when the active route changes ─────────
+  const waylineGeoJSON = useMemo(() => {
+    if (!activeRoute || activeRoute.length < 2) return null;
+    return {
+      type: 'FeatureCollection' as const,
+      features: [
+        {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: activeRoute.map((p) => [p.lng, p.lat]),
+          },
+          properties: { kind: 'route' },
+        },
+        ...activeRoute.map((p) => ({
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+          properties: { kind: 'waypoint', index: p.index, alt: p.alt },
+        })),
+      ],
+    };
+  }, [activeRoute]);
+
+  // ── One-shot auto-fly: snap to the drone the moment its first GPS fix arrives ──
+  // Only triggers when there is exactly ONE drone in the project.
+  // The ref prevents re-firing after the initial fly-to, keeping the user free to pan.
+  useEffect(() => {
+    if (hasAutoFocusedRef.current) return;
+    if (dronePositionsArray.length !== 1) return;
+    const [drone] = dronePositionsArray;
+    if (!drone.hasGPS) return;
+    mapRef.current?.flyTo({
+      center: [drone.longitude, drone.latitude],
+      zoom: 17,
+      duration: 2000,
+      essential: true,
+    });
+    hasAutoFocusedRef.current = true;
+  }, [dronePositionsArray]);
+
+  const elementCount = useMemo(
+    () => elementGroups.reduce((acc, g) => acc + g.elements.length, 0),
+    [elementGroups]
+  );
+
+  // ── Map interaction handlers ──────────────────────────────────────────────────
+  const fitToAllDrones = useCallback(() => {
+    const positions = Object.values(dronePositions).filter((d) => d.hasGPS);
+    if (!positions.length) return;
+    const lngs = positions.map((d) => d.longitude);
+    const lats = positions.map((d) => d.latitude);
+    setViewState((prev) => ({
+      ...prev,
+      longitude: (Math.min(...lngs) + Math.max(...lngs)) / 2,
+      latitude: (Math.min(...lats) + Math.max(...lats)) / 2,
+      zoom: positions.length === 1 ? 16 : 14,
+    }));
+  }, [dronePositions]);
+
+  const fitToRoute = useCallback(() => {
+    if (!activeRoute || activeRoute.length === 0) return;
+    const lngs = activeRoute.map((p) => p.lng);
+    const lats = activeRoute.map((p) => p.lat);
+    const minLng = Math.min(...lngs),
+      maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats),
+      maxLat = Math.max(...lats);
+    mapRef.current?.fitBounds(
+      [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ],
+      { padding: 80, duration: 1200, maxZoom: 18 }
+    );
+  }, [activeRoute]);
+
+  // Auto-fit map to show the full route whenever a new route loads
+  useEffect(() => {
+    if (!activeRoute || activeRoute.length === 0) return;
+    const lngs = activeRoute.map((p) => p.lng);
+    const lats = activeRoute.map((p) => p.lat);
+    mapRef.current?.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      { padding: 80, duration: 1200, maxZoom: 18 }
+    );
+  }, [activeRoute]);
+
+  const flyToDrone = useCallback((drone: DronePositionType) => {
+    mapRef.current?.flyTo({
+      center: [drone.longitude, drone.latitude],
+      zoom: 18,
+      duration: 2000,
+      essential: true,
+    });
+    setSelectedDrone(drone); // opens the map popup
+    setPanelSelectedSn(drone.sn); // highlights the panel button
+  }, []);
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!isDrawMode) return;
+      setPendingPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+    },
+    [isDrawMode]
+  );
+
+  // ── Draw mode helpers ─────────────────────────────────────────────────────────
+  const toggleDrawMode = useCallback(() => {
+    setIsDrawMode((prev) => {
+      if (prev) {
+        // Leaving draw mode — clear state
+        setPendingPoint(null);
+        setDrawGroupId('');
+        setDrawElementName('');
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleSaveElement = useCallback(() => {
+    if (!pendingPoint || !drawGroupId || !drawElementName.trim()) return;
+
+    addMapElement(
+      {
+        groupId: drawGroupId,
+        payload: {
+          id: crypto.randomUUID(),
+          name: drawElementName.trim(),
+          resource: {
+            type: 0,
+            content: {
+              type: 'Feature',
+              properties: { color: '#2D8CF0', clampToGround: true },
+              geometry: {
+                type: 'Point',
+                coordinates: [pendingPoint.lng, pendingPoint.lat],
+                radius: 0,
+              },
+            },
+            user_name: user?.username ?? 'user',
+          },
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsDrawMode(false);
+          setPendingPoint(null);
+          setDrawGroupId('');
+          setDrawElementName('');
+        },
+      }
+    );
+  }, [pendingPoint, drawGroupId, drawElementName, addMapElement, user]);
+
+  // ── Element context-menu handlers ────────────────────────────────────────────
+  const openContextMenu = useCallback(
+    (point: { x: number; y: number }) => {
+      if (!showElements || isDrawMode) return;
+      const features = mapRef.current?.queryRenderedFeatures([point.x, point.y], {
+        layers: ['map-elements-points'],
+      });
+      if (!features?.length) return;
+      const f = features[0];
+      const elementId = String(f.properties?.elementId ?? '');
+      const elementName = String(f.properties?.name ?? 'Element');
+      if (!elementId) return;
+      setContextMenu({ x: point.x, y: point.y, elementId, elementName });
+    },
+    [showElements, isDrawMode]
+  );
+
+  const handleContextMenu = useCallback(
+    (e: MapLayerMouseEvent) => {
+      e.originalEvent.preventDefault();
+      openContextMenu(e.point);
+    },
+    [openContextMenu]
+  );
+
+  const handleDblClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const features = mapRef.current?.queryRenderedFeatures([e.point.x, e.point.y], {
+        layers: ['map-elements-points'],
+      });
+      if (!features?.length) return;
+      // Prevent map zoom-in only when tapping an element
+      e.originalEvent.preventDefault();
+      openContextMenu(e.point);
+    },
+    [openContextMenu]
+  );
+
+  const handleDeleteElement = useCallback(() => {
+    if (!contextMenu) return;
+    deleteMapElement(contextMenu.elementId, {
+      onSuccess: () => setContextMenu(null),
+      onError: () => toast.error('Failed to delete element — please try again'),
+    });
+  }, [contextMenu, deleteMapElement]);
+
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <section className="h-[67dvh] relative w-full">
-      {/* Map Component */}
+    <section className='h-[67dvh] relative w-full'>
       <Map
         ref={mapRef}
         {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
-        mapStyle={styles[selectedStyle]}
-        style={{ width: "100%", height: "87vh" }}
+        onMove={(evt) => startMapTransition(() => setViewState(evt.viewState))}
+        mapStyle={MAP_STYLES[selectedStyle] as string}
+        style={{ width: '100%', height: '100%' }}
+        cursor={isDrawMode ? 'crosshair' : 'grab'}
+        onClick={handleMapClick}
+        onContextMenu={handleContextMenu}
+        onDblClick={handleDblClick}
       >
-        <NavigationControl position="top-left" />
+        <NavigationControl position='top-left' />
 
-        {/* Render all drone markers */}
-        {dronePositionsArray.map((drone) => (
-          <PulseMarker key={drone.sn} drone={drone} onClick={flyToDrone} />
-        ))}
+        {/* Drone markers — only shown once a valid GPS fix is received */}
+        {dronePositionsArray
+          .filter((drone) => drone.hasGPS)
+          .map((drone) => (
+            <DroneMarker
+              key={drone.sn}
+              drone={drone}
+              isSelected={panelSelectedSn === drone.sn}
+              showAltitude={viewMode === 'multi'}
+              onClick={flyToDrone}
+            />
+          ))}
 
-        {/* Flight area markers — DJI geofences (shown when USE_DJI_CLOUD=true) */}
-        {DJI_CONFIG.USE_DJI_CLOUD && flightAreas.map((area) => {
-          // Extract a lat/lng anchor from the content if available, otherwise skip rendering
-          const content = area.content as any;
-          const lng: number | undefined = content?.longitude ?? content?.center?.longitude;
-          const lat: number | undefined = content?.latitude ?? content?.center?.latitude;
-          if (lng === undefined || lat === undefined) return null;
+        {/* Pending point preview when in draw mode */}
+        {isDrawMode && pendingPoint && (
+          <Marker longitude={pendingPoint.lng} latitude={pendingPoint.lat} anchor='bottom'>
+            <div className='flex flex-col items-center'>
+              <div className='w-3 h-3 rounded-full bg-blue-400 border-2 border-white shadow-lg animate-bounce' />
+            </div>
+          </Marker>
+        )}
 
-          return (
-            <Marker key={area.id} longitude={lng} latitude={lat} anchor="center">
-              <div
-                title={area.name}
-                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs font-bold cursor-default ${
-                  area.status === 1
-                    ? 'border-red-500 bg-red-500/20 text-red-400'
-                    : 'border-gray-500 bg-gray-500/20 text-gray-400'
-                }`}
-              >
-                ⛔
+        {/* GeoJSON element groups (points, lines, polygons) */}
+        {showElements && (
+          <Source id='map-elements' type='geojson' data={mapElementsGeoJSON as never}>
+            <Layer
+              id='map-elements-polygons'
+              type='fill'
+              filter={['==', '$type', 'Polygon']}
+              paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.3 }}
+            />
+            <Layer
+              id='map-elements-polygons-outline'
+              type='line'
+              filter={['==', '$type', 'Polygon']}
+              paint={{ 'line-color': ['get', 'color'], 'line-width': 2 }}
+            />
+            <Layer
+              id='map-elements-lines'
+              type='line'
+              filter={['==', '$type', 'LineString']}
+              paint={{ 'line-color': ['get', 'color'], 'line-width': 3 }}
+            />
+            {/* Points are rendered as interactive React Markers below — no circle layer needed */}
+          </Source>
+        )}
+
+        {/* Flight-area geofence markers */}
+        {DJI_CONFIG.USE_DJI_CLOUD &&
+          flightAreas.map((area) => {
+            const content = area.content as Record<string, unknown> | null;
+            const lng =
+              (content?.longitude as number | undefined) ??
+              (content?.center as Record<string, number> | undefined)?.longitude;
+            const lat =
+              (content?.latitude as number | undefined) ??
+              (content?.center as Record<string, number> | undefined)?.latitude;
+            if (lng === undefined || lat === undefined) return null;
+            return (
+              <Marker key={area.id} longitude={lng} latitude={lat} anchor='center'>
+                <div
+                  title={area.name}
+                  className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs font-bold cursor-default ${
+                    area.status === 1
+                      ? 'border-red-500 bg-red-500/20 text-red-400'
+                      : 'border-gray-500 bg-gray-500/20 text-gray-400'
+                  }`}
+                >
+                  ⛔
+                </div>
+              </Marker>
+            );
+          })}
+
+        {/* Map element pins — point elements as interactive red location pins */}
+        {showElements &&
+          elementGroups.flatMap((group) =>
+            group.elements
+              .filter((el) => el.resource?.content?.geometry?.type === 'Point')
+              .map((el) => {
+                const [eLng, eLat] = el.resource.content.geometry.coordinates as [number, number];
+                return (
+                  <Marker
+                    key={el.id}
+                    longitude={eLng}
+                    latitude={eLat}
+                    anchor='bottom'
+                    onClick={(e) => {
+                      e.originalEvent.stopPropagation();
+                      mapRef.current?.flyTo({
+                        center: [eLng, eLat],
+                        zoom: 18,
+                        duration: 1200,
+                        essential: true,
+                      });
+                    }}
+                  >
+                    <div
+                      className='group relative flex flex-col items-center cursor-pointer select-none'
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopPropagation();
+                        if (!showElements || isDrawMode) return;
+                        const mapRect = mapRef.current?.getContainer().getBoundingClientRect();
+                        if (!mapRect) return;
+                        setContextMenu({
+                          x: e.clientX - mapRect.left,
+                          y: e.clientY - mapRect.top,
+                          elementId: el.id,
+                          elementName: el.name,
+                        });
+                      }}
+                    >
+                      {/* Hover tooltip */}
+                      <div className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10'>
+                        <div className='bg-neutral-900/95 backdrop-blur-sm border border-gray-700/60 px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap'>
+                          <p className='text-[11px] font-semibold text-gray-100 leading-none'>
+                            {el.name}
+                          </p>
+                          <p className='text-[9px] text-gray-500 mt-0.5'>{group.name}</p>
+                          <p className='text-[9px] text-gray-600 font-mono mt-0.5'>
+                            {eLat.toFixed(5)}, {eLng.toFixed(5)}
+                          </p>
+                        </div>
+                        <div className='w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-neutral-900/95 mx-auto' />
+                      </div>
+                      {/* Pin icon */}
+                      <MapPin
+                        className='w-8 h-8 text-red-500 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] transition-all duration-150 group-hover:scale-110 group-hover:-translate-y-0.5'
+                        strokeWidth={1.5}
+                        fill='rgba(239,68,68,0.15)'
+                      />
+                    </div>
+                  </Marker>
+                );
+              })
+          )}
+
+        {/* Wayline route overlay */}
+        {waylineGeoJSON && (
+          <Source id='wayline-route' type='geojson' data={waylineGeoJSON as never}>
+            {/* Dark casing behind the line for contrast on satellite view */}
+            <Layer
+              id='wayline-casing'
+              type='line'
+              filter={['==', ['get', 'kind'], 'route']}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{ 'line-color': '#05253d', 'line-width': 8 }}
+            />
+            {/* Main dashed route line */}
+            <Layer
+              id='wayline-line'
+              type='line'
+              filter={['==', ['get', 'kind'], 'route']}
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{ 'line-color': '#1C93FF', 'line-width': 3, 'line-dasharray': [5, 3] }}
+            />
+            {/* Waypoint pin — outer shadow halo */}
+            <Layer
+              id='wayline-waypoint-halo'
+              type='circle'
+              filter={[
+                'all',
+                ['==', ['get', 'kind'], 'waypoint'],
+                ['!=', ['get', 'index'], 0],
+                ['!=', ['get', 'index'], -1],
+              ]}
+              paint={{
+                'circle-radius': 13,
+                'circle-color': 'rgba(28, 147, 255, 0.18)',
+                'circle-stroke-width': 0,
+              }}
+            />
+            {/* Waypoint pin — filled circle */}
+            <Layer
+              id='wayline-waypoints'
+              type='circle'
+              filter={['==', ['get', 'kind'], 'waypoint']}
+              paint={{
+                'circle-radius': 9,
+                'circle-color': '#1C93FF',
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2,
+              }}
+            />
+            {/* Waypoint number label (1-based) */}
+            <Layer
+              id='wayline-waypoint-labels'
+              type='symbol'
+              filter={['==', ['get', 'kind'], 'waypoint']}
+              layout={{
+                'text-field': ['to-string', ['+', ['get', 'index'], 1]],
+                'text-size': 9,
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-anchor': 'center',
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+              }}
+              paint={{ 'text-color': '#ffffff' }}
+            />
+          </Source>
+        )}
+
+        {/* Start (S) and End (E) markers for the active wayline */}
+        {activeRoute && activeRoute.length > 0 && (
+          <>
+            <Marker longitude={activeRoute[0].lng} latitude={activeRoute[0].lat} anchor='bottom'>
+              <div className='flex flex-col items-center'>
+                <div className='bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-t-lg rounded-b-sm shadow-lg select-none border border-emerald-400 whitespace-nowrap'>
+                  START
+                </div>
+                <div className='w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-emerald-500' />
               </div>
             </Marker>
-          );
-        })}
+            {activeRoute.length > 1 && (
+              <Marker
+                longitude={activeRoute[activeRoute.length - 1].lng}
+                latitude={activeRoute[activeRoute.length - 1].lat}
+                anchor='bottom'
+              >
+                <div className='flex flex-col items-center'>
+                  <div className='bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-t-lg rounded-b-sm shadow-lg select-none border border-red-400 whitespace-nowrap'>
+                    END
+                  </div>
+                  <div className='w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-red-500' />
+                </div>
+              </Marker>
+            )}
+          </>
+        )}
 
-        {/* Popup for selected drone */}
+        {/* Selected drone popup */}
         {selectedDrone && selectedDroneInfo && (
-          <Popup
-            longitude={selectedDrone.longitude}
-            latitude={selectedDrone.latitude}
+          <DroneInfoPopup
+            drone={selectedDrone}
+            info={selectedDroneInfo}
             onClose={() => setSelectedDrone(null)}
-            anchor="bottom"
-            className="drone-popup"
-          >
-            <div className="bg-neutral-950 text-white p-3 rounded-lg min-w-[250px]">
-              <h3 className="font-semibold text-lg mb-2">
-                {selectedDroneInfo.nickname}
-              </h3>
-              <div className="text-xs text-gray-400 mb-2">
-                SN: {selectedDroneInfo.serialNumber.slice(-8)}
-              </div>
-              <div className="border-t border-gray-700 pt-2 text-sm space-y-1">
-                <div>
-                  <span className="text-gray-400">Lat:</span>{" "}
-                  <span className="font-mono">
-                    {selectedDroneInfo.latitude}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Lng:</span>{" "}
-                  <span className="font-mono">
-                    {selectedDroneInfo.longitude}
-                  </span>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-700 mt-2 pt-2 text-sm space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Incidents</span>
-                  <div className="font-mono">({selectedDrone.incidents?.length ?? 0})</div>
-                </div>
-
-                {/* Scrollable incident icons */}
-                <div className="flex overflow-x-auto space-x-4 py-2 scrollbar-thin scrollbar-thumb-gray-700">
-                  {selectedDrone.incidents?.map((incident, index) => (
-                    <div
-                      key={incident.id || index}
-                      className="flex flex-col items-center flex-shrink-0"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white font-bold">
-                        ⚠️
-                      </div>
-                      <span className="text-xs mt-1 text-gray-400">{index + 1}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </Popup>
+          />
         )}
       </Map>
 
-      {/* Controls Panel */}
-      <div className="absolute top-4 right-4 bg-neutral-950 p-4 rounded-lg shadow-lg z-10 min-w-64">
-        <div className="flex items-center gap-2 mb-4">
-          <LayoutTemplate className="w-5 h-5" />
-          <h3 className="font-semibold">Controls</h3>
+      {/* Add-element panel — floats at top-center when draw mode is active */}
+      {isDrawMode && (
+        <AddElementPanel
+          elementGroups={elementGroups}
+          selectedGroupId={drawGroupId}
+          elementName={drawElementName}
+          hasClickTarget={pendingPoint !== null}
+          isPending={isAddingElement}
+          onGroupChange={setDrawGroupId}
+          onNameChange={setDrawElementName}
+          onSave={handleSaveElement}
+          onCancel={toggleDrawMode}
+        />
+      )}
+
+      {/* Wayline route panel — floats top-left below the map navigation control */}
+      <WaylinePanel
+        waylines={waylines}
+        isLoading={isLoadingWaylines}
+        activeWaylineId={activeWaylineId}
+        activeRoute={activeRoute}
+        isLoadingRoute={isLoadingRoute}
+        onSelect={setActiveWaylineId}
+        onFitRoute={fitToRoute}
+      />
+
+      {/* Bottom-left overlays: altitude gauge + compass (shown when a drone is selected) */}
+      {selectedDroneInfo && (
+        <div className='absolute bottom-16 left-4 z-10 flex items-end gap-3'>
+          <AltitudeIndicator altitude={selectedDroneInfo.altitude} />
+          <MapCompass heading={selectedDroneInfo.heading} />
         </div>
+      )}
 
-        {/* Basemap Switcher */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">
-            Basemap Style
-          </label>
-          <select
-            value={selectedStyle}
-            onChange={handleBasemapChange}
-            className="w-full p-2 border bg-slate-800 rounded text-sm"
-          >
-            <option value="dark">Dark</option>
-            <option value="positron">Positron</option>
-            <option value="satellite">Satellite</option>
-          </select>
-        </div>
+      {/* Element context menu — right-click or double-tap a point to delete */}
+      {contextMenu && showElements && (
+        <ElementContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          elementName={contextMenu.elementName}
+          isPending={isDeletingElement}
+          onDelete={handleDeleteElement}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
 
-        {/* Info Panel */}
-        <div className="mb-4 p-2 bg-neutral-950 rounded text-sm">
-          {selectedDroneInfo ? (
-            <>
-              <div className="font-medium mb-2">Selected Asset:</div>
-              <div className="mb-1">
-                <span className="text-gray-400">Name:</span>{" "}
-                <span className="font-mono">{selectedDroneInfo.nickname}</span>
-              </div>
-              <div className="mb-1 text-xs text-gray-400">
-                SN: {selectedDroneInfo.serialNumber.slice(-8)}
-              </div>
-              <div className="border-t border-gray-700 mt-2 pt-2">
-                <div>
-                  <span className="text-gray-400">Lat:</span>{" "}
-                  <span className="font-mono">
-                    {selectedDroneInfo.latitude}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Lng:</span>{" "}
-                  <span className="font-mono">
-                    {selectedDroneInfo.longitude}
-                  </span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-gray-400 text-center py-2">
-              Click asset to view details
-            </div>
-          )}
-          <div className="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">
-            Active Asset: {Object.keys(dronePositions).length}
-          </div>
-        </div>
+      {/* Right-side telemetry + controls panel */}
+      <TelemetryPanel
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        isDrawMode={isDrawMode}
+        onToggleDrawMode={toggleDrawMode}
+        selectedStyle={selectedStyle}
+        onStyleChange={setSelectedStyle}
+        showElements={showElements}
+        onShowElementsChange={setShowElements}
+        elementCount={elementCount}
+        selectedDroneInfo={selectedDroneInfo}
+        dronePositionsArray={dronePositionsArray}
+        getProcessedDroneData={getProcessedDroneData}
+        onFitToAllDrones={fitToAllDrones}
+        onFlyToDrone={flyToDrone}
+        selectedSn={panelSelectedSn}
+        flightAreas={flightAreas}
+        isSyncing={isSyncing}
+        onSyncGeofences={syncGeofences}
+        boundDevices={boundDevices}
+      />
 
-        {/* Controls */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={fitToAllDrones}
-            disabled={Object.keys(dronePositions).length === 0}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-3 rounded text-sm transition-colors"
-          >
-            Zoom Extent
-          </button>
-        </div>
-
-        {/* Sync flight areas to devices — DJI Cloud only */}
-        {DJI_CONFIG.USE_DJI_CLOUD && (
-          <div className="mb-4">
-            <button
-              onClick={() =>
-                syncGeofences({
-                  device_sn: boundDevices.map((d) => d.device_sn),
-                })
-              }
-              disabled={isSyncing || boundDevices.length === 0}
-              className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-3 rounded text-sm transition-colors"
-            >
-              {isSyncing ? 'Syncing...' : `Sync Geofences (${flightAreas.length})`}
-            </button>
-            {boundDevices.length === 0 && (
-              <p className="text-xs text-gray-500 mt-1 text-center">No bound devices</p>
-            )}
-          </div>
-        )}
-
-        {/* Drone List */}
-        <div className="h-full overflow-auto">
-          <h4 className="font-medium mb-2">
-            Active Asset ({dronePositionsArray.length})
-          </h4>
-          <div className="max-h-40 overflow-y-auto space-y-1">
-            {dronePositionsArray.map((drone) => {
-              const telemetry = getProcessedDroneData(drone.sn);
-
-              return (
-                <button
-                  key={drone.sn}
-                  onClick={() => flyToDrone(drone)}
-                  className="w-full text-left p-2 hover:bg-gray-600 rounded text-sm flex justify-between items-center transition-colors"
-                >
-                  <div className="flex-1 truncate">
-                    <div className="font-medium">{drone.nickname}</div>
-                    <div className="text-xs text-gray-400">
-                      SN: {drone.sn.slice(-8)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {telemetry?.isRecent && (
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    )}
-                    <span className="text-xs text-gray-500">→</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Pulse Animation & Popup Styles */}
+      {/* Global animation + popup styles */}
       <style jsx global>{`
         @keyframes markerPulse {
           0% {
@@ -458,13 +799,11 @@ function GeoMap() {
           }
         }
 
-        /* Dark theme popup styling */
         .drone-popup .maplibregl-popup-content {
           background-color: transparent !important;
           padding: 0 !important;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
         }
-
         .drone-popup .maplibregl-popup-close-button {
           color: #fff !important;
           font-size: 20px !important;
@@ -473,15 +812,12 @@ function GeoMap() {
           right: 4px !important;
           top: 4px !important;
         }
-
         .drone-popup .maplibregl-popup-close-button:hover {
           background-color: rgba(255, 255, 255, 0.1) !important;
           border-radius: 4px !important;
         }
-
         .drone-popup .maplibregl-popup-tip {
           border-top-color: #0f172a !important;
-          padding: 10px !important;
         }
       `}</style>
     </section>

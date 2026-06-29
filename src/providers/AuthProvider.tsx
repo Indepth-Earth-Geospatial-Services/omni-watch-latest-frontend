@@ -1,28 +1,25 @@
-"use client";
+'use client';
 
 // AuthProvider — wraps the entire app and answers one question from any component:
 // "Is there a logged-in user, and who are they?"
 //
 // Lifecycle:
-//   1. On mount → check localStorage for an existing valid token
-//   2. Token found → call GET /manage/api/v1/users/current to restore the session
-//   3. Token missing/expired → user = null → middleware redirects to /sign-in
-//   4. After login → user state set, proactive refresh timer scheduled
-//   5. Timer fires 60s before expiry → silently exchanges token → reschedules
+//   1. On mount → check in-memory token OR try to restore via refresh cookie
+//   2. Token in memory → call GET /api/auth/me (OmniWatch) to restore the session
+//   3. Token lost (page refresh) but session exists → refreshToken() → restore
+//   4. No session at all → user = null → middleware redirects to /sign-in
+//   5. After login → user state set, proactive refresh timer scheduled
+//   6. Timer fires 60s before expiry → silently exchanges token → reschedules
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
-import { loginDJI, logoutDJI, refreshDJIToken } from '@/lib/dji/auth-api';
-import { djiRequest } from '@/lib/dji/client';
-import { DJI_CONFIG } from '@/lib/dji/config';
-import { clearToken, getToken } from '@/lib/dji/token-store';
+import { authApi } from '@/services/authservice-layer/auth-api';
+import {
+  clearToken,
+  getToken,
+  getTokenExpiresInSeconds,
+  hasSession,
+} from '@/lib/config/token-store';
 import type { CurrentUser } from '@/lib/types';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
@@ -37,7 +34,7 @@ interface AuthContextValue {
   /** Error message from the last failed login attempt */
   loginError: string | null;
   /** Call this from the sign-in form — throws on bad credentials */
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, pin: string) => Promise<void>;
   /** Clears the token and resets all state — call from any Sign Out button */
   logout: () => void;
 }
@@ -51,20 +48,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // useRef for the timer so clearing/rescheduling it never triggers a re-render
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Fetch the current user profile from the DJI server ──────────────────
-  // Called on mount (to restore session) and after a successful login
+  // ── Fetch the current user profile via OmniWatch /me ────────────────────
+  // Uses the OmniWatch auth endpoint — never calls the DJI Cloud server.
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
     try {
-      const data = await djiRequest.get<CurrentUser>(
-        `${DJI_CONFIG.MANAGE}/users/current`
-      );
-      setUser(data);
+      const me = await authApi.me();
+      setUser({
+        user_id: me.principal_id,
+        username: '',
+        user_type: 0,
+        mqtt_username: '',
+        mqtt_password: '',
+        mqtt_client_id: '',
+        workspace_id: me.workspace_id,
+        workspace_name: '',
+        workspace_description: '',
+      });
       return true;
     } catch {
-      // Token was invalid or the server rejected it — clear everything
       clearToken();
       setUser(null);
       return false;
@@ -72,58 +75,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Schedule a proactive token refresh ──────────────────────────────────
-  // Fires 60 seconds before the token expires so the user never hits a 401
-  // mid-action. After a successful refresh it reschedules itself.
   const scheduleRefresh = useCallback((expiresInSeconds = 3600) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
-    const delay = Math.max((expiresInSeconds - 60) * 1000, 30_000); // minimum 30s
+    const delay = Math.max((expiresInSeconds - 60) * 1000, 30_000);
 
     refreshTimerRef.current = setTimeout(async () => {
       try {
-        await refreshDJIToken();
-        // DJI server doesn't always return expires_in on refresh — default to 1 hour
-        scheduleRefresh(3600);
+        await authApi.refreshToken();
+        scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
       } catch {
-        // Refresh failed (server offline, token already revoked) — force re-login
         setUser(null);
       }
     }, delay);
   }, []);
 
-  // ── On mount: restore session if a token already exists ─────────────────
+  // ── On mount: restore session ───────────────────────────────────────────
+  // The JWT is stored in memory (not localStorage), so after a page refresh
+  // it's gone. We detect this via hasSession() which checks if an expiry
+  // timestamp exists in localStorage. If it does, we call refreshToken()
+  // which uses the HttpOnly refresh cookie (from Django) to get a new
+  // access token transparently.
   useEffect(() => {
     const token = getToken();
+    const sessionExists = hasSession();
 
     if (token) {
       fetchCurrentUser().then((ok) => {
-        if (ok) scheduleRefresh();
+        if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
         setIsLoading(false);
       });
+    } else if (sessionExists) {
+      // Page was refreshed — token lost from memory but a session existed before.
+      // Try to restore it using the HttpOnly refresh cookie from Django.
+      authApi
+        .refreshToken()
+        .then(() => fetchCurrentUser())
+        .then((ok) => {
+          if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          clearToken();
+          setIsLoading(false);
+        });
     } else {
       setIsLoading(false);
     }
 
-    // Clean up the refresh timer when the provider unmounts
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
   }, [fetchCurrentUser, scheduleRefresh]);
 
   // ── login ────────────────────────────────────────────────────────────────
-  // Called by the sign-in form. loginDJI stores the token, then we fetch
-  // the current user so every component immediately has the full profile.
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (email: string, pin: string) => {
       setLoginError(null);
       try {
-        const response = await loginDJI(username, password);
+        await authApi.login(email, pin);
         await fetchCurrentUser();
-        scheduleRefresh(response.expires_in ?? 3600);
+        scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Login failed';
         setLoginError(message);
-        throw err; // re-throw so the form can also react (e.g. stop its loading spinner)
+        throw err;
       }
     },
     [fetchCurrentUser, scheduleRefresh]
@@ -131,7 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
-    logoutDJI();
+    clearToken(); // clear immediately so protected routes redirect without waiting for the API
+    authApi.logout().catch(() => {});
     setUser(null);
     setLoginError(null);
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -148,12 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-/**
- * Access the auth context from any client component.
- *
- * @example
- * const { user, isAuthenticated, login, logout } = useAuth();
- */
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {

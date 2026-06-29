@@ -1,124 +1,128 @@
-// hooks/useTelemetry.ts
-import { useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
+'use client';
 
-interface TelemetryData {
+// Telemetry hook — consumes device_online_update events from the DJI WebSocket.
+//
+// The DJI WebSocket (ws://<host>/api/v1/ws) fires device_online_update whenever
+// a device's connection state, battery, or flight mode changes. The event also
+// carries GPS fields (latitude, longitude, altitude) when the device has a fix.
+//
+// High-frequency GPS during active flight is delivered over MQTT (separate topic
+// per device SN). Hook that MQTT connection into this one once an MQTT library
+// is added to the project.
+
+import { useCallback, useMemo, useRef } from 'react';
+import { useDJIWebSocket, type DeviceOnlineUpdateData } from './useDJIWebSocket';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ProcessedDroneData {
+  battery: number;
   latitude: number;
   longitude: number;
-  height: number;
-  battery: {
-    capacity_percent: number;
-  };
-  "67-0-0": {
-    gimbal_yaw: number;
-  };
-}
-
-interface DroneUpdate {
-  sn: string;
-  data: TelemetryData;
+  altitude: number;
+  heading: number;
+  direction: string; // compass rose label derived from heading, e.g. "NE"
+  speed: number;
+  online: boolean;
+  modeCode: number; // 0 = standby/docked, 1 = in-flight
   lastUpdate: number;
+  isRecent: boolean;
+  hasOSD: boolean; // true once a device_osd event has been received
+  isGPSFixed: boolean; // position_state.is_fixed === 1
+  gpsNumber: number; // satellites visible (position_state.gps_number)
+  windSpeed: number;       // m/s from OSD wind_speed; 0 when unavailable
+  windDirection: number;   // degrees 0-360 from OSD wind_direction; 0 when unavailable
+  remainFlightTime: number; // seconds remaining from OSD battery.remain_flight_time; 0 when unavailable
 }
 
-export function useTelemetry(serverUrl = process.env.NEXT_PUBLIC_TELEMETRY_SOCKET_URL || "") {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [droneUpdates, setDroneUpdates] = useState<Map<string, DroneUpdate>>(
-    new Map()
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+function headingToCompass(deg: number): string {
+  return COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export function useTelemetry() {
+  const { isConnected, deviceStates, osdStates } = useDJIWebSocket();
+
+  // Sticky GPS cache — once a valid fix is received, we keep those coords even
+  // when subsequent OSD events arrive with lat=0/lng=0 (is_fixed=0).
+  const lastValidGPS = useRef<Map<string, { lat: number; lng: number }>>(new Map());
+
+  // Union of all SNs that have received any data — OSD or online_update.
+  // geo-map iterates this to know which drones to render / track.
+  const allDroneSns = useMemo(() => {
+    const merged = new Map<string, true>();
+    deviceStates.forEach((_, sn) => merged.set(sn, true));
+    osdStates.forEach((_, sn) => merged.set(sn, true));
+    return merged;
+  }, [deviceStates, osdStates]);
+
+  const getDroneTelemetry = useCallback(
+    (sn: string): DeviceOnlineUpdateData | undefined => deviceStates.get(sn),
+    [deviceStates]
   );
-  const [connectionStatus, setConnectionStatus] = useState<
-    "connecting" | "connected" | "disconnected"
-  >("connecting");
 
-  // Cardinal direction helper
-  const getCardinalDirection = (gimbalYaw: number): string => {
-    const normalizedAngle = (gimbalYaw + 360) % 360;
-    if (normalizedAngle >= 337.5 || normalizedAngle < 22.5) return "N";
-    if (normalizedAngle >= 22.5 && normalizedAngle < 67.5) return "NE";
-    if (normalizedAngle >= 67.5 && normalizedAngle < 112.5) return "E";
-    if (normalizedAngle >= 112.5 && normalizedAngle < 157.5) return "SE";
-    if (normalizedAngle >= 157.5 && normalizedAngle < 202.5) return "S";
-    if (normalizedAngle >= 202.5 && normalizedAngle < 247.5) return "SW";
-    if (normalizedAngle >= 247.5 && normalizedAngle < 292.5) return "W";
-    return "NW";
-  };
+  const getProcessedDroneData = useCallback(
+    (sn: string): ProcessedDroneData | null => {
+      const osd = osdStates.get(sn);
+      const state = deviceStates.get(sn);
+      if (!osd && !state) return null;
 
-  useEffect(() => {
-    // Connect to your Socket.IO server
-    const socketConnection = io(serverUrl);
-    setSocket(socketConnection);
+      const rawLat = osd ? Number(osd.host.latitude)  : (state?.latitude  ?? 0);
+      const rawLng = osd ? Number(osd.host.longitude) : (state?.longitude ?? 0);
 
-    socketConnection.on("connect", () => {
-      console.log("Connected to telemetry server");
-      setConnectionStatus("connected");
-    });
-
-    socketConnection.on("disconnect", () => {
-      console.log("Disconnected from telemetry server");
-      setConnectionStatus("disconnected");
-    });
-
-    // Listen for drone telemetry updates
-    socketConnection.on("droneDataUpdate", (telemetry: any, sn: string) => {
-      console.log("📨 Received droneDataUpdate:", { sn, telemetry });
-
-      if (!telemetry?.data || !sn) {
-        console.error("❌ Invalid telemetry data received - missing data or sn");
-        return;
+      // is_fixed=1 means RTK precision fix — NOT required for a valid GPS position.
+      // Cache any time we have actual non-zero coordinates.
+      const hasCoords = rawLat !== 0 || rawLng !== 0;
+      if (hasCoords) {
+        lastValidGPS.current.set(sn, { lat: rawLat, lng: rawLng });
       }
 
-      const data = telemetry.data;
-      console.log(`✅ Telemetry for ${sn}:`, {
-        lat: data.latitude,
-        lng: data.longitude,
-        battery: data.battery?.capacity_percent,
-        altitude: data.height
-      });
+      // Fall back to the last known valid position when current OSD has no coords.
+      const cached = lastValidGPS.current.get(sn);
+      const lat = hasCoords ? rawLat : (cached?.lat ?? 0);
+      const lng = hasCoords ? rawLng : (cached?.lng ?? 0);
 
-      setDroneUpdates((prev) => {
-        const updated = new Map(prev);
-        updated.set(sn, {
-          sn,
-          data,
-          lastUpdate: Date.now(),
-        });
-        console.log(`📊 Total drones tracked: ${updated.size}`);
-        return updated;
-      });
-    });
+      const isFixed = (osd?.host.position_state?.is_fixed ?? 0) === 1;
 
-    return () => {
-      socketConnection.disconnect();
-    };
-  }, [serverUrl]);
+      const altitude        = osd ? Number(osd.host.height)           : (state?.altitude         ?? 0);
+      const speed           = osd ? Number(osd.host.horizontal_speed) : (state?.horizontal_speed ?? 0);
+      const battery         = osd ? (osd.host.battery?.capacity_percent ?? 0) : (state?.battery_percent ?? 0);
+      const modeCode        = osd?.host.mode_code    ?? state?.mode_code ?? 0;
+      const heading         = osd?.host.attitude_head ?? state?.heading  ?? 0;
+      const windSpeed       = osd ? Number(osd.host.wind_speed      ?? 0) : 0;
+      const windDirection   = osd ? Number(osd.host.wind_direction  ?? 0) : 0;
+      const remainFlightTime = osd?.host.battery?.remain_flight_time ?? 0;
 
-  // Get telemetry for specific drone
-  const getDroneTelemetry = (sn: string) => {
-    return droneUpdates.get(sn);
-  };
-
-  // Get processed drone data for UI
-  const getProcessedDroneData = (sn: string) => {
-    const update = droneUpdates.get(sn);
-    if (!update) return null;
-
-    const { data } = update;
-    return {
-      battery: Math.round(data.battery?.capacity_percent || 0),
-      latitude: data.latitude || 0,
-      longitude: data.longitude || 0,
-      altitude: data.height || 0,
-      direction: getCardinalDirection(data["67-0-0"]?.gimbal_yaw || 0),
-      lastUpdate: update.lastUpdate,
-      isRecent: Date.now() - update.lastUpdate < 30000, // 30 seconds
-    };
-  };
+      return {
+        battery,
+        latitude: lat,
+        longitude: lng,
+        altitude,
+        heading,
+        direction: headingToCompass(heading),
+        speed,
+        online: state?.online_status ?? true,
+        modeCode,
+        lastUpdate: Date.now(),
+        isRecent: true,
+        hasOSD: !!osd,
+        isGPSFixed: isFixed,
+        gpsNumber: osd?.host.position_state?.gps_number ?? 0,
+        windSpeed,
+        windDirection,
+        remainFlightTime,
+      };
+    },
+    [deviceStates, osdStates]
+  );
 
   return {
-    socket,
-    connectionStatus,
-    droneUpdates,
+    connectionStatus: isConnected ? 'connected' : ('disconnected' as const),
+    droneUpdates: allDroneSns,
     getDroneTelemetry,
     getProcessedDroneData,
-    isTelemetrySocketConnected: connectionStatus === "connected",
+    isTelemetrySocketConnected: isConnected,
   };
 }

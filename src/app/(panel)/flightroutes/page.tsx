@@ -1,5 +1,5 @@
-import Navbar from '@/feature/components/layout/Navbar';
-import FlightRoutesPage from '@/feature/page/FlightRoutesPage';
+import Navbar from '@/feature-unbording/components/layout/Navbar';
+import FlightRoutesPage from '@/feature-unbording/page/FlightRoutesPage';
 
 export default function FeaturePage() {
   return (

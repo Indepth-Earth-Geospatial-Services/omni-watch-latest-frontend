@@ -220,11 +220,10 @@ html {
   object-fit: cover;
 }
 
-/* Focus states for accessibility */
+/* Focus states — outline suppressed app-wide */
 button:focus,
 a:focus {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* Landing page professional animations */

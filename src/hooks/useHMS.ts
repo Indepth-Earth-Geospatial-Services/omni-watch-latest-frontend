@@ -6,19 +6,19 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   getWorkspaceHMS,
   markHMSRead,
   getDeviceHMSUnread,
-} from '@/lib/dji/hms-api';
+} from '@/services/djiservice-layer/dji-service';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const hmsKeys = (workspaceId: string) => ({
-  all:        ['dji', 'hms', workspaceId] as const,
-  workspace:  ['dji', 'hms', workspaceId, 'workspace'] as const,
-  device:     (deviceSn: string) => ['dji', 'hms', workspaceId, 'device', deviceSn] as const,
+  all: ['dji', 'hms', workspaceId] as const,
+  workspace: ['dji', 'hms', workspaceId, 'workspace'] as const,
+  device: (deviceSn: string) => ['dji', 'hms', workspaceId, 'device', deviceSn] as const,
 });
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
@@ -36,11 +36,12 @@ export function useWorkspaceHMS() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
   return useQuery({
-    queryKey:        hmsKeys(workspaceId).workspace,
-    queryFn:         () => getWorkspaceHMS(workspaceId),
-    enabled:         !!workspaceId,
+    queryKey: hmsKeys(workspaceId).workspace,
+    queryFn: () => getWorkspaceHMS(workspaceId),
+    enabled: !!workspaceId,
+    retry: false,
     refetchInterval: 30_000,
-    staleTime:       15_000,
+    staleTime: 15_000,
   });
 }
 
@@ -57,11 +58,12 @@ export function useDeviceHMSUnread(deviceSn?: string) {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
   return useQuery({
-    queryKey:        hmsKeys(workspaceId).device(deviceSn ?? ''),
-    queryFn:         () => getDeviceHMSUnread(workspaceId, deviceSn!),
-    enabled:         !!workspaceId && !!deviceSn,
+    queryKey: hmsKeys(workspaceId).device(deviceSn ?? ''),
+    queryFn: () => getDeviceHMSUnread(workspaceId, deviceSn!),
+    enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     refetchInterval: 30_000,
-    staleTime:       15_000,
+    staleTime: 15_000,
   });
 }
 
@@ -80,8 +82,8 @@ export function useMarkHMSRead() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (deviceSn: string) => markHMSRead(workspaceId, deviceSn),
+  return useMutation<void, Error, string>({
+    mutationFn: (deviceSn) => markHMSRead(workspaceId, deviceSn),
     onSuccess: (_data, deviceSn) => {
       const keys = hmsKeys(workspaceId);
       queryClient.invalidateQueries({ queryKey: keys.workspace });

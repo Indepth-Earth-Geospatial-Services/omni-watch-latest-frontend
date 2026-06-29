@@ -6,98 +6,135 @@
 // This never collides with the old ['drones'] keys so both can coexist
 // during migration while NEXT_PUBLIC_USE_DJI_CLOUD=false.
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
-import { DJI_CONFIG } from '@/lib/dji/config';
+import { DJI_CONFIG } from '@/lib/config/config';
 import {
   bindDevice,
   getBoundDevices,
   getDJIDevice,
-  getDJIDevices,
   getDeviceTopologies,
   setDeviceProperty,
   unbindDevice,
-} from '@/lib/dji/device-api';
-import {
-  getLiveCapacity,
-  startStream,
-  stopStream,
-  updateStreamQuality,
-  switchStreamCamera,
-} from '@/lib/dji/livestream-api';
-import type { WebRTCStream } from '@/config/webrtc-streams';
+  updateDJIDevice,
+  deviceOTA,
+} from '@/services/djiservice-layer/dji-service';
 import type {
   BindDeviceRequest,
   DJIDevice,
   DJIDeviceProperty,
-  StartStreamRequest,
-  StopStreamRequest,
-  UpdateStreamRequest,
-  SwitchStreamRequest,
+  DeviceOTARequest,
 } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 // Takes workspaceId so keys are scoped per workspace — safe for multi-tenant use
 const deviceKeys = (workspaceId: string) => ({
-  all:        ['dji', 'devices', workspaceId] as const,
-  list:       ['dji', 'devices', workspaceId, 'list'] as const,
-  bound:      ['dji', 'devices', workspaceId, 'bound'] as const,
+  all: ['dji', 'devices', workspaceId] as const,
+  list: ['dji', 'devices', workspaceId, 'list'] as const,
+  bound: ['dji', 'devices', workspaceId, 'bound'] as const,
   topologies: ['dji', 'devices', workspaceId, 'topologies'] as const,
-  detail:     (sn: string) => ['dji', 'devices', workspaceId, 'detail', sn] as const,
+  detail: (sn: string) => ['dji', 'devices', workspaceId, 'detail', sn] as const,
 });
-
-const streamKeys = {
-  capacity: ['dji', 'live', 'capacity'] as const,
-};
 
 // ─── Transformer ──────────────────────────────────────────────────────────────
 
-// Maps a DJIDevice from the server into the WebRTCStream shape that all existing
-// stream cards and dashboard components already understand.
-function toWebRTCStream(device: DJIDevice): WebRTCStream {
-  const streamUrl = device.status
-    ? `${DJI_CONFIG.WEBRTC_BASE_URL}/${device.device_sn}`
-    : '';
+// The DJI API returns snake_case fields and domain/type as integers.
+// This raw shape matches the actual JSON; DJIDevice uses camelCase with domain as string.
+interface RawDJIDevice {
+  device_sn: string;
+  device_name: string;
+  workspace_id: string;
+  control_source?: string;
+  device_desc?: string;
+  child_device_sn?: string;
+  domain: number;
+  type: number;
+  sub_type: number;
+  status: boolean;
+  bound_status?: boolean;
+  login_time?: string;
+  bound_time?: string;
+  nickname: string;
+  firmware_version?: string;
+  workspace_name?: string;
+  firmware_status?: number;
+  thing_version?: string;
+  icon_url?: { normal_icon_url: string; selected_icon_url: string };
+}
 
+function transformDevice(raw: RawDJIDevice): DJIDevice {
   return {
-    id:        device.device_sn,
-    name:      device.device_name,
-    streamUrl,
-    isOnline:  device.status,
-    feedType:  'DRONE',
-    startai:   false,
-    metadata: {
-      alias:       device.nickname || device.device_name,
-      description: `${device.device_type} · FW ${device.firmware_version}`,
-      webRTCUrl:   streamUrl,
-    },
+    deviceSn: raw.device_sn,
+    deviceName: raw.device_name,
+    workspaceId: raw.workspace_id,
+    controlSource: raw.control_source,
+    deviceDesc: raw.device_desc,
+    childDeviceSn: raw.child_device_sn,
+    domain: String(raw.domain),   // "0"=drone "1"=dock "2"=RC
+    type: String(raw.type),
+    subType: String(raw.sub_type),
+    status: raw.status,
+    boundStatus: raw.bound_status,
+    loginTime: raw.login_time ?? '',
+    boundTime: raw.bound_time ?? '',
+    nickname: raw.nickname,
+    firmwareVersion: raw.firmware_version ?? '',
+    workspaceName: raw.workspace_name,
+    firmwareStatus: raw.firmware_status != null ? String(raw.firmware_status) : undefined,
+    thingVersion: raw.thing_version,
   };
 }
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
 
 /**
- * Fetches all workspace devices and maps them to the WebRTCStream shape.
+ * Fetches all workspace devices.
  * Refetches every 30 seconds so online/offline status stays current.
  *
  * @example
- * const { data: streams = [], isLoading } = useDJIDevices();
+ * const { data: devices = [], isLoading } = useDJIDevices();
  */
-export function useDJIDevices() {
+export function useDJIDevices(options?: { refetchInterval?: number }) {
   const { user } = useAuth();
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const keys = deviceKeys(workspaceId);
 
-  return useQuery({
-    queryKey: keys.list,
-    queryFn:  () => getDJIDevices(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     30_000,
-    refetchOnWindowFocus: true,
-    staleTime:           10_000,
-    select: (devices) => devices.map(toWebRTCStream),
+  // Domain values per DJI Cloud API: 0 = drone, 1 = dock, 2 = RC, 3 = dock (some deployments)
+  const DEVICE_DOMAINS = [0, 1, 2, 3];
+
+  const results = useQueries({
+    queries: DEVICE_DOMAINS.map((domain) => ({
+      queryKey: [...keys.bound, domain],
+      queryFn: () => getBoundDevices(workspaceId, { domain, page_size: 100 }),
+      enabled: !!workspaceId,
+      retry: false,
+      refetchInterval: options?.refetchInterval ?? 30_000,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    })),
   });
+
+  const seen = new Set<string>();
+  const data = results
+    .flatMap((r) => (r.data?.list ?? []) as unknown as RawDJIDevice[])
+    .map(transformDevice)
+    .filter((d) => {
+      if (!d.deviceSn || seen.has(d.deviceSn)) return false;
+      seen.add(d.deviceSn);
+      return true;
+    });
+
+  // Surface an error only if ALL domain queries failed (no data at all).
+  // A single domain failing (e.g. no docks) is a normal workspace state.
+  const allFailed = results.every((r) => r.isError);
+  const firstError = results.find((r) => r.error)?.error ?? null;
+
+  return {
+    data,
+    isLoading: results.some((r) => r.isLoading),
+    error: allFailed ? firstError : null,
+  };
 }
 
 /**
@@ -111,14 +148,15 @@ export function useDJIDevice(deviceSn: string | undefined) {
 
   return useQuery({
     queryKey: keys.detail(deviceSn ?? ''),
-    queryFn:  () => getDJIDevice(workspaceId, deviceSn!),
-    enabled:  !!workspaceId && !!deviceSn,
+    queryFn: () => getDJIDevice(workspaceId, deviceSn!),
+    enabled: !!workspaceId && !!deviceSn,
+    retry: false,
     staleTime: 10_000,
   });
 }
 
 /**
- * Fetches only devices that are bound to the workspace.
+ * Fetches only bound drones (domain 0) for the workspace.
  * Used in the Live Feed page to show which devices can stream.
  */
 export function useBoundDevices() {
@@ -128,12 +166,14 @@ export function useBoundDevices() {
 
   return useQuery({
     queryKey: keys.bound,
-    queryFn:  () => getBoundDevices(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     30_000,
+    queryFn: () => getBoundDevices(workspaceId, { domain: 1 }),
+    enabled: !!workspaceId,
+    retry: false,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    staleTime:           10_000,
-    select: (response) => response.list,
+    staleTime: 10_000,
+    select: (response) =>
+      ((response.list ?? []) as unknown as RawDJIDevice[]).map(transformDevice),
   });
 }
 
@@ -148,10 +188,11 @@ export function useDeviceTopologies() {
 
   return useQuery({
     queryKey: keys.topologies,
-    queryFn:  () => getDeviceTopologies(workspaceId),
-    enabled:  !!workspaceId,
-    refetchInterval:     60_000,
-    staleTime:           30_000,
+    queryFn: () => getDeviceTopologies(workspaceId),
+    enabled: !!workspaceId,
+    retry: false,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -170,10 +211,29 @@ export function useBindDevice() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (payload: BindDeviceRequest) => bindDevice(payload),
+  return useMutation<void, Error, BindDeviceRequest>({
+    mutationFn: (payload) => bindDevice(payload.deviceSn, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).all });
+    },
+  });
+}
+
+/**
+ * Updates basic device information (e.g. nickname).
+ */
+export function useUpdateDJIDevice() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { deviceSn: string; payload: Partial<DJIDevice> }>({
+    mutationFn: ({ deviceSn, payload }) => updateDJIDevice(workspaceId, deviceSn, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: deviceKeys(workspaceId).detail(variables.deviceSn),
+      });
+      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).list });
     },
   });
 }
@@ -191,8 +251,8 @@ export function useUnbindDevice() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (deviceSn: string) => unbindDevice(deviceSn),
+  return useMutation<void, Error, string>({
+    mutationFn: (deviceSn) => unbindDevice(deviceSn),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).all });
     },
@@ -212,74 +272,25 @@ export function useSetDeviceProperty() {
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ deviceSn, property }: { deviceSn: string; property: DJIDeviceProperty }) =>
-      setDeviceProperty(workspaceId, deviceSn, property),
+  return useMutation<void, Error, { deviceSn: string; property: DJIDeviceProperty }>({
+    mutationFn: ({ deviceSn, property }) => setDeviceProperty(workspaceId, deviceSn, property),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: deviceKeys(workspaceId).detail(variables.deviceSn) });
+      queryClient.invalidateQueries({
+        queryKey: deviceKeys(workspaceId).detail(variables.deviceSn),
+      });
     },
   });
 }
 
-// ─── Livestream hooks ─────────────────────────────────────────────────────────
-
 /**
- * Fetches which devices can stream and what camera/lens options they expose.
- * Returns a Map keyed by device_sn for O(1) lookups in stream cards.
- * Only runs when USE_DJI_CLOUD=true.
+ * Initiates an OTA firmware update.
  */
-export function useLiveCapacity() {
-  return useQuery({
-    queryKey: streamKeys.capacity,
-    queryFn:  getLiveCapacity,
-    enabled:  DJI_CONFIG.USE_DJI_CLOUD,
-    refetchInterval:     30_000,
-    staleTime:           10_000,
-    select: (capacities) => new Map(capacities.map((c) => [c.device_sn, c])),
+export function useDeviceOTA() {
+  const { user } = useAuth();
+  const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
+
+  return useMutation<void, Error, DeviceOTARequest[]>({
+    mutationFn: (payload) => deviceOTA(workspaceId, payload),
   });
 }
 
-/**
- * Tells a DJI drone to start pushing video to a WebRTC signalling server.
- * Call this before connecting useWebRTCStream — the drone won't push until asked.
- *
- * @example
- * const { mutate: start } = useStartStream();
- * start({ video_id, url_type: 2, url: streamUrl, video_quality: 0 });
- */
-export function useStartStream() {
-  return useMutation({
-    mutationFn: (payload: StartStreamRequest) => startStream(payload),
-  });
-}
-
-/**
- * Stops an active DJI video stream.
- * Always call on component unmount to avoid the drone streaming to a dead URL.
- */
-export function useStopStream() {
-  return useMutation({
-    mutationFn: (payload: StopStreamRequest) => stopStream(payload),
-  });
-}
-
-/**
- * Changes the video quality of an already-running stream without restarting it.
- * video_quality: 0 = auto, 1 = smooth, 2 = SD, 3 = HD, 4 = ultra-HD
- */
-export function useUpdateStreamQuality() {
-  return useMutation({
-    mutationFn: (payload: UpdateStreamRequest) => updateStreamQuality(payload),
-  });
-}
-
-/**
- * Switches the active camera lens (normal / wide / IR) on a running stream.
- * The stream must already be started — call useStartStream() first.
- * video_type: "normal" | "wide" | "IR"
- */
-export function useSwitchStreamCamera() {
-  return useMutation({
-    mutationFn: (payload: SwitchStreamRequest) => switchStreamCamera(payload),
-  });
-}

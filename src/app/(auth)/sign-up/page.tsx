@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -56,7 +57,7 @@ export default function SignUpPage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    void values;
     // TODO: Implement sign up logic
     alert("Sign up functionality will be implemented here");
   }
@@ -84,29 +85,6 @@ export default function SignUpPage() {
         {/* Vignette */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background"></div>
 
-        {/* Floating particles */}
-        <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${10 + Math.random() * 10}s`,
-              }}
-            ></div>
-          ))}
-        </div>
-      </div>
-
-      {/* Data Stream Effect */}
-      <div className="fixed top-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream"></div>
-      </div>
-      <div className="fixed top-0 left-0 w-px h-full bg-gradient-to-b from-transparent via-cyan-500/30 to-transparent pointer-events-none">
-        <div className="w-full h-20 bg-gradient-to-b from-cyan-400/50 to-transparent animate-data-stream" style={{ animationDelay: '3s' }}></div>
       </div>
 
       {/* Custom CSS animations */}
@@ -115,26 +93,8 @@ export default function SignUpPage() {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100%); }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          50% { transform: translateY(-100px) translateX(50px); }
-        }
-        @keyframes data-stream {
-          0% { transform: translateY(-100%); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
-        }
         .animate-scan {
           animation: scan 8s linear infinite;
-        }
-        .animate-float {
-          animation: float 15s ease-in-out infinite;
-        }
-        .animate-data-stream {
-          animation: data-stream 6s ease-in-out infinite;
         }
       `}</style>
 
@@ -143,7 +103,7 @@ export default function SignUpPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-3 mb-4">
             <div className="relative">
-              <i className="fas fa-shield-alt text-cyan-400 text-3xl"></i>
+              <ShieldAlert className="text-cyan-400 text-3xl" />
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             </div>
             <div>
@@ -164,11 +124,11 @@ export default function SignUpPage() {
           {/* Social Sign Up */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <Button variant="outline" type="button" className="w-full">
-              <i className="fab fa-google text-red-500 mr-2"></i>
+              <span className="text-red-500 mr-2 font-bold">G</span>
               Google
             </Button>
             <Button variant="outline" type="button" className="w-full">
-              <i className="fab fa-microsoft text-blue-400 mr-2"></i>
+              <span className="text-blue-400 mr-2 font-bold">M</span>
               Microsoft
             </Button>
           </div>
@@ -308,7 +268,7 @@ export default function SignUpPage() {
             href="/"
             className="text-sm text-gray-500 hover:text-gray-400 inline-flex items-center space-x-1"
           >
-            <i className="fas fa-arrow-left"></i>
+            <ArrowLeft />
             <span>Back to home</span>
           </Link>
         </div>

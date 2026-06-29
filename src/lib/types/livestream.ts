@@ -1,45 +1,47 @@
+import { DJIDevice } from "./device";
+
+// Unified stream structure for UI consistency across Dashboard and Live Feed
+export interface UnifiedStream {
+  id: string;
+  name: string;
+  type: string;
+  isOnline: boolean;
+  raw: DJIDevice | object;
+  metadata?: {
+    alias?: string;
+  };
+}
+
 // Livestream types — stream capacity, start/stop/switch/update
 
-export interface StreamCapacity {
-  device_sn: string;
-  camera_list: CameraCapacity[];
+export interface LiveCapacity {
+  sn: string;
+  name: string;
+  cameras_list: CameraCapacity[];
 }
 
 export interface CameraCapacity {
-  camera_index: string;           // e.g. "39-0-7" (payload_index format)
-  available_video_number: number; // how many concurrent streams this camera supports
-  coexist_video_number_max: number;
-  video_list: VideoCapacity[];
+  id: string;
+  name: string;
+  index: string;
+  videos_list: VideoCapacity[];
 }
 
 export interface VideoCapacity {
-  video_index: string;
-  video_type: string;             // "normal" | "IR" | "wide"
-  switch_result: boolean;         // whether this lens can be switched to
-  stream_quality_available: boolean;
+  id: string;
+  index: string;
+  type: string;
+  switch_video_types?: string[];
 }
 
-export interface StartStreamRequest {
-  video_id: string;               // combined identifier: "{device_sn}/{camera_index}/{video_index}"
-  url_type: number;               // 0 = RTMP, 2 = WebRTC
-  url: string;                    // destination stream URL
-  video_quality: number;          // 0 = auto, 1 = smooth, 2 = SD, 3 = HD, 4 = ultra-HD
-}
-
-export interface StopStreamRequest {
+export interface LiveStreamRequest {
+  url: string;
   video_id: string;
-}
-
-export interface UpdateStreamRequest {
-  video_id: string;
+  url_type: number;
   video_quality: number;
+  video_type?: string;
 }
 
-export interface SwitchStreamRequest {
-  video_id: string;
-  video_type: string; // "normal" | "wide" | "IR" — matches VideoCapacity.video_type
-}
-
-export interface StreamResponse {
-  result: number; // 0 = success
+export interface StartStreamResponse {
+  url: string;
 }

@@ -1,463 +1,215 @@
-"use client";
+'use client';
 
-import { WebRTCStreamCard } from "@/components/features/streams/webrtc-stream-card";
-import { WebRTCStreamCardFullScreen } from "@/components/features/streams/webrtc-stream-card-full-screen";
-import { MainLayout } from "@/components/layout/main-layout";
-import Modal from "@/components/Modal";
-import { WebRTCStream } from "@/config/webrtc-streams";
-import { useDronesWebSocket } from "@/hooks/useDronesWebSocket";
-import { useDJIDevices } from "@/hooks/useDJIDevices";
-import { DJI_CONFIG } from "@/lib/dji/config";
-import { RegisterDeviceModal } from "@/components/features/devices/RegisterDeviceModal";
-import { EditDeviceModal } from "@/components/features/devices/EditDeviceModal";
-import { DroneAPIResponse } from "@/services/api/drone-api";
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { PlaneTakeoff } from 'lucide-react';
 
-export const dynamic = "force-dynamic";
+import { MainLayout } from '@/components/layout/main-layout';
+import { useProject } from '@/providers/ProjectProvider';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
+import { DeviceSidebar } from '@/components/features/streams/DeviceSidebar';
+import { FeedToolbar } from '@/components/features/streams/FeedToolbar';
+import { SingleFeedView } from '@/components/features/streams/SingleFeedView';
+import { MultiFeedView } from '@/components/features/streams/MultiFeedView';
+import { EmptyPage } from '@/components/features/streams/EmptyPage';
+import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 
-export default function LiveFeedsPage() {
-  const [selectedStream, setSelectedStream] = useState<WebRTCStream | null>(
-    null
+export default function LiveFeedPage() {
+  const router = useRouter();
+  const { activeProject } = useProject();
+  const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({
+    refetchInterval: 5_000,
+  });
+
+  const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
+  const [selectedSn, setSelectedSn] = useState<string | null>(null);
+
+  const [streamingDevices, setStreamingDevices] = useState<Map<string, string>>(new Map());
+  const [mediaStreams, setMediaStreams] = useState<Map<string, MediaStream | null>>(new Map());
+  const [streamStates, setStreamStates] = useState<
+    Map<string, { state: StreamState; errorMsg?: string }>
+  >(new Map());
+  const [stopSignals, setStopSignals] = useState<Map<string, number>>(new Map());
+
+  const projectSnSet = useMemo(
+    () => new Set(activeProject?.devices.map((d) => d.device.device_sn) ?? []),
+    [activeProject]
   );
-  const [selectedMediaStream, setSelectedMediaStream] = useState<MediaStream | null>(
-    null
+
+  const projectDevices = useMemo(
+    () => djiDevices.filter((d) => projectSnSet.has(d.deviceSn)),
+    [djiDevices, projectSnSet]
   );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFeedType, setSelectedFeedType] = useState<
-    "ALL" | "DRONE" | "CCTV" | "BODY CAM"
-  >("ALL");
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [deviceToEdit, setDeviceToEdit] = useState<DroneAPIResponse | null>(null);
 
-  // Both hooks always called — Rules of Hooks forbids conditional hook calls.
-  // DJI_CONFIG.USE_DJI_CLOUD selects which result drives the UI.
-  const wsResult  = useDronesWebSocket();
-  const djiResult = useDJIDevices();
+  const selectedDevice =
+    projectDevices.find((d) => d.deviceSn === selectedSn) ?? projectDevices[0] ?? null;
 
-  const allStreams: WebRTCStream[] = DJI_CONFIG.USE_DJI_CLOUD
-    ? (djiResult.data ?? [])
-    : (wsResult.drones ?? []);
+  const handleSelectDevice = useCallback((sn: string, switchToSingle = false) => {
+    setSelectedSn(sn);
+    if (switchToSingle) setViewMode('single');
+  }, []);
 
-  const isLoading   = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.isLoading  : wsResult.isLoading;
-  const error       = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.error       : wsResult.error;
-  const isConnected = DJI_CONFIG.USE_DJI_CLOUD ? !djiResult.isError    : wsResult.isConnected;
-
-  // Refresh: React Query exposes refetch(); WebSocket hook exposes refresh()
-  const refresh = DJI_CONFIG.USE_DJI_CLOUD ? djiResult.refetch : wsResult.refresh;
-
-  // Edit device — only valid in the old API path (DroneAPIResponse shape).
-  // When DJI is active the Edit Device button is hidden; DJI device editing comes in a later phase.
-  const handleEditDevice = (streamId: string) => {
-    if (DJI_CONFIG.USE_DJI_CLOUD) return;
-    const droneData = wsResult.getRawDrone(streamId);
-    if (droneData) {
-      setDeviceToEdit(droneData);
-      setShowEditModal(true);
+  const handleStreamingChange = useCallback((sn: string, isStreaming: boolean, url?: string) => {
+    setStreamingDevices((prev) => {
+      const next = new Map(prev);
+      if (isStreaming && url) next.set(sn, url);
+      else next.delete(sn);
+      return next;
+    });
+    if (!isStreaming) {
+      setMediaStreams((prev) => {
+        const n = new Map(prev);
+        n.delete(sn);
+        return n;
+      });
+      setStreamStates((prev) => {
+        const n = new Map(prev);
+        n.delete(sn);
+        return n;
+      });
     }
-  };
+  }, []);
 
-  // Filter streams based on search and feed type
-  const filteredStreams = useMemo(() => {
-    let streams = allStreams;
+  const handleMediaStream = useCallback((sn: string, stream: MediaStream | null) => {
+    setMediaStreams((prev) => new Map(prev).set(sn, stream));
+  }, []);
 
-    // Filter by feed type
-    if (selectedFeedType !== "ALL") {
-      streams = streams.filter((stream: WebRTCStream) => stream.feedType === selectedFeedType);
-    }
+  const handleStreamState = useCallback((sn: string, state: StreamState, errorMsg?: string) => {
+    setStreamStates((prev) => new Map(prev).set(sn, { state, errorMsg }));
+  }, []);
 
-    // Apply search filter
-    if (searchTerm && searchTerm.trim() !== "") {
-      const searchLower = searchTerm.toLowerCase().trim();
-      streams = streams.filter(
-        (stream: WebRTCStream) =>
-          stream.name.toLowerCase().includes(searchLower) ||
-          stream.id.toLowerCase().includes(searchLower) ||
-          stream.feedType.toLowerCase().includes(searchLower) ||
-          stream.metadata?.location?.toLowerCase().includes(searchLower) ||
-          stream.metadata?.description?.toLowerCase().includes(searchLower)
-      );
-    }
+  const stopDevice = useCallback(
+    (sn: string) => setStopSignals((prev) => new Map(prev).set(sn, (prev.get(sn) ?? 0) + 1)),
+    []
+  );
 
-    console.log("Filtered streams:", streams);
-    console.log("Filtered streams length:", streams.length);
-    return streams;
-  }, [allStreams, searchTerm, selectedFeedType]);
+  const stopAll = useCallback(() => {
+    setStopSignals((prev) => {
+      const next = new Map(prev);
+      streamingDevices.forEach((_, sn) => next.set(sn, (next.get(sn) ?? 0) + 1));
+      return next;
+    });
+  }, [streamingDevices]);
 
-  // Calculate stream statistics
-  const activeStreams = allStreams.filter((s) => s.isOnline).length;
-  const totalStreams = allStreams.length;
+  if (!activeProject) {
+    return (
+      <div className='bg-background text-foreground min-h-screen'>
+        <MainLayout title='Live Feeds' subtitle=''>
+          <EmptyPage
+            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            title='No project open'
+            body='Open a project from the Projects page to begin monitoring.'
+            action={{ label: 'Go to Projects', onClick: () => router.push('/projects') }}
+          />
+        </MainLayout>
+      </div>
+    );
+  }
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleFeedTypeChange = (
-    feedType: "ALL" | "DRONE" | "CCTV" | "BODY CAM"
-  ) => {
-    setSelectedFeedType(feedType);
-  };
-
-  const handleStreamCardClick = (stream: WebRTCStream, mediaStream: MediaStream | null) => {
-    setSelectedStream(stream);
-    setSelectedMediaStream(mediaStream);
-  };
+  if (activeProject.devices.length === 0) {
+    return (
+      <div className='bg-background text-foreground min-h-screen'>
+        <MainLayout title='Live Feeds' subtitle={activeProject.name}>
+          <EmptyPage
+            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            title='No devices assigned'
+            body={
+              <>
+                Assign at least one device to{' '}
+                <span className='text-zinc-300 font-semibold'>{activeProject.name}</span> to start
+                monitoring live feeds.
+              </>
+            }
+            action={{ label: 'Assign Devices', onClick: () => router.push('/projects') }}
+          />
+        </MainLayout>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
-      <MainLayout title="Live Feeds" subtitle="">
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="text-gray-400 mt-4">
-              {DJI_CONFIG.USE_DJI_CLOUD ? 'Loading devices from DJI server…' : 'Loading streams from database…'}
-            </p>
-          </div>
-        )}
+    <div className='bg-background text-foreground min-h-screen'>
+      <div className='sr-only' aria-hidden>
+        {Array.from(streamingDevices.entries()).map(([sn, url]) => (
+          <WebRTCPlayer
+            key={sn}
+            url={url}
+            onMediaStream={(stream) => handleMediaStream(sn, stream)}
+            onStateChange={(state, errorMsg) => handleStreamState(sn, state, errorMsg)}
+          />
+        ))}
+      </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
-            <p className="text-red-400">Failed to load streams: {(error as Error)?.message}</p>
-            <button
-              onClick={() => refresh?.()}
-              className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm"
+      <MainLayout title='Live Feeds' subtitle={activeProject.name}>
+        <div className='flex gap-4 h-[calc(100vh-10rem)] font-poppins'>
+          {/* Sidebar — desktop only */}
+          <div className='hidden lg:flex h-full'>
+            <DeviceSidebar
+              projectDevices={projectDevices}
+              unboundDevices={activeProject.devices}
+              selectedSn={selectedSn}
+              viewMode={viewMode}
+              streamingDevices={streamingDevices}
+              onSelect={(sn) => handleSelectDevice(sn, true)}
+              onStop={stopDevice}
+              isLoading={devicesLoading}
+              isOpen={true}
+              onClose={() => {}}
+            />
+          </div>
+
+          <div className='flex-1 flex flex-col bg-[#0C0D10] border border-zinc-800 rounded-xl overflow-hidden min-w-0'>
+            <FeedToolbar
+              viewMode={viewMode}
+              selectedDevice={selectedDevice}
+              streamingDevices={streamingDevices}
+              onViewModeChange={setViewMode}
+              onStop={stopDevice}
+              onStopAll={stopAll}
+            />
+
+            <div
+              className={`flex-1 min-h-0 ${
+                viewMode === 'multi' ? 'overflow-y-auto' : 'overflow-hidden flex flex-col'
+              }`}
             >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* WebSocket Connection Status */}
-        {!isConnected && !isLoading && (
-          <div className="bg-yellow-900/20 border border-yellow-500 rounded-lg p-3 mb-6 flex items-center">
-            <i className="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
-            <p className="text-yellow-400 text-sm">
-              {DJI_CONFIG.USE_DJI_CLOUD
-                ? 'Cannot reach DJI server. Check that the backend is running.'
-                : 'Disconnected from real-time updates. Attempting to reconnect…'}
-            </p>
-          </div>
-        )}
-
-        {/* Search and Filters */}
-        {!isLoading && (
-          <div className="mb-6 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
-            {/* Search Input Section */}
-            <div className="flex-1 flex items-center p-3 space-x-2 bg-input rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search feeds..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="flex-1 text-sm text-gray-300 placeholder-gray-500 bg-transparent outline-none border-none"
-              />
-            </div>
-
-            {/* Feed Type Dropdown */}
-            <div className="relative w-full md:w-48 group">
-              <div className="flex items-center justify-between p-3 bg-input rounded-lg text-sm text-muted-foreground cursor-pointer hover:bg-accent transition">
-                <span>Feed Type - {selectedFeedType}</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-400 transform group-hover:rotate-180 transition-transform"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
+              {viewMode === 'single' ? (
+                selectedDevice ? (
+                  <SingleFeedView
+                    device={selectedDevice}
+                    allDevices={projectDevices}
+                    onSwitch={(sn) => handleSelectDevice(sn)}
+                    stopSignal={stopSignals.get(selectedDevice.deviceSn) ?? 0}
+                    onStreamingChange={(s, url) =>
+                      handleStreamingChange(selectedDevice.deviceSn, s, url)
+                    }
+                    activeStreamUrl={streamingDevices.get(selectedDevice.deviceSn) ?? null}
+                    mediaStream={mediaStreams.get(selectedDevice.deviceSn) ?? null}
+                    streamState={streamStates.get(selectedDevice.deviceSn) ?? null}
+                    onRetry={() => stopDevice(selectedDevice.deviceSn)}
                   />
-                </svg>
-              </div>
-              <div className="absolute mt-0.2 w-full md:w-48 bg-card border border-gray-700 rounded-lg shadow-xl z-10 hidden group-hover:block transition-opacity duration-300 ease-in-out opacity-0 group-hover:opacity-100">
-                <button
-                  onClick={() => handleFeedTypeChange("ALL")}
-                  className="block w-full text-left p-3 text-sm text-gray-300 hover:bg-black rounded-lg transition"
-                >
-                  ALL
-                </button>
-                <button
-                  onClick={() => handleFeedTypeChange("DRONE")}
-                  className="block w-full text-left p-3 text-sm text-gray-300 hover:bg-black rounded-lg transition"
-                >
-                  DRONE
-                </button>
-                <button
-                  onClick={() => handleFeedTypeChange("CCTV")}
-                  className="block w-full text-left p-3 text-sm text-gray-300 hover:bg-black rounded-lg transition"
-                >
-                  CCTV
-                </button>
-                <button
-                  onClick={() => handleFeedTypeChange("BODY CAM")}
-                  className="block w-full text-left p-3 text-sm text-gray-300 hover:bg-black rounded-lg transition"
-                >
-                  BODY CAM
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-400">
-                {activeStreams} / {totalStreams} Streams Online
-              </span>
-              {isConnected && (
-                <span className="flex items-center text-xs text-green-400">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                  Live
-                </span>
+                ) : (
+                  <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
+                    <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
+                    <p className='text-sm text-zinc-600'>Select a device from the panel.</p>
+                  </div>
+                )
+              ) : (
+                <MultiFeedView
+                  devices={projectDevices}
+                  onExpand={(sn) => handleSelectDevice(sn, true)}
+                  stopSignals={stopSignals}
+                  onStreamingChange={handleStreamingChange}
+                  streamingDevices={streamingDevices}
+                  mediaStreams={mediaStreams}
+                  streamStates={streamStates}
+                  onRetryDevice={stopDevice}
+                />
               )}
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-3 mt-4">
-            <button
-              onClick={() => refresh?.()}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
-            >
-              <i className="fas fa-sync mr-2"></i>
-              Refresh
-            </button>
-            {/* Edit Device is only available in the old API path — DJI device editing comes in a later phase */}
-            {!DJI_CONFIG.USE_DJI_CLOUD && (
-            <div className="relative">
-              <button
-                onClick={() => setShowDeviceSelector(!showDeviceSelector)}
-                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
-              >
-                <i className="fas fa-edit mr-2"></i>
-                Edit Device
-                <i className={`fas fa-chevron-down ml-2 transition-transform ${showDeviceSelector ? 'rotate-180' : ''}`}></i>
-              </button>
-
-              {/* Device Selector Dropdown */}
-              {showDeviceSelector && allStreams.length > 0 && (
-                <div className="absolute top-full right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
-                  <div className="p-2">
-                    <p className="text-xs text-gray-400 px-2 py-1 mb-2">Select a device to edit:</p>
-                    {allStreams.map((stream) => (
-                      <button
-                        key={stream.id}
-                        onClick={() => {
-                          handleEditDevice(stream.id);
-                          setShowDeviceSelector(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 transition-colors text-sm"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <i className={`fas ${
-                            stream.feedType === 'DRONE' ? 'fa-drone' :
-                            stream.feedType === 'BODY CAM' ? 'fa-video' :
-                            'fa-camera'
-                          } text-blue-400`}></i>
-                          <div className="flex-1">
-                            <p className="text-white font-medium">{stream.metadata?.alias || stream.name}</p>
-                            <p className="text-xs text-gray-400">{stream.id}</p>
-                          </div>
-                          {stream.isOnline && (
-                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            )}
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Register Device
-            </button>
-          </div>
         </div>
-        )}
-
-        {/* Main Content Area with Right Sidebar */}
-        {!isLoading && (
-        <div className="flex">
-          {/* Stream Grid */}
-          <main className="flex-1 pr-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-              <Modal>
-                {filteredStreams.length > 0 &&
-                  filteredStreams.map((stream) => (
-                    <React.Fragment key={stream.id}>
-                      <Modal.Open name={`Stream-${stream.id}`}>
-                        <div>
-                          <WebRTCStreamCard
-                            stream={stream}
-                            onStreamClick={handleStreamCardClick}
-                          />
-                        </div>
-                      </Modal.Open>
-                      <Modal.Window
-                        name={`Stream-${stream.id}`}
-                        buttonX={true}
-                      >
-                        <WebRTCStreamCardFullScreen
-                          stream={selectedStream || stream}
-                          sharedMediaStream={selectedMediaStream}
-                        />
-                      </Modal.Window>
-                    </React.Fragment>
-                  ))}
-              </Modal>
-
-              {filteredStreams.length === 0 && allStreams.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                    <i className="fas fa-video-slash text-gray-400 text-2xl"></i>
-                  </div>
-                  <p className="text-gray-400 text-lg font-medium">
-                    No Device Connected
-                  </p>
-                  <p className="text-gray-500 text-sm mt-2">
-                    {DJI_CONFIG.USE_DJI_CLOUD
-                      ? 'No devices found. Ensure devices are bound to the workspace.'
-                      : 'Register a device using the button above.'}
-                  </p>
-                </div>
-              )}
-
-              {filteredStreams.length === 0 && allStreams.length > 0 && (
-                <div className="col-span-full text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                    <i className="fas fa-search text-gray-400 text-2xl"></i>
-                  </div>
-                  <p className="text-gray-400 text-lg font-medium">
-                    No feeds match your search criteria
-                  </p>
-                  <p className="text-gray-500 text-sm mt-2">
-                    Try adjusting your search or filter
-                  </p>
-                </div>
-              )}
-            </div>
-          </main>
-
-          {/* Recent Incidents Sidebar */}
-          <aside className="w-80 p-6 pl-0">
-            <div className="bg-card p-5 shadow-md h-full overflow-y-auto scroll-thin">
-              <h3 className="font-bold mb-4 flex items-center">
-                <i className="fas fa-exclamation-circle text-red-400 mr-2"></i>{" "}
-                Recent Incidents
-              </h3>
-
-              <div className="p-4 mb-3 bg-black border-l-4 border-red-500">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-sm">
-                    Crowd formation detected
-                  </h4>
-                  <span className="bg-red-600 text-[10px] px-2 py-0.5 font-bold">
-                    OPEN
-                  </span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">
-                  Large crowd gathering in market area. AI shows rapid growth.
-                </p>
-                <div className="text-gray-500 text-xs flex items-center mt-2 gap-2">
-                  <i className="fas fa-clock"></i> 20d ago
-                  <i className="fas fa-map-marker-alt"></i> Kurmi Market, Kano
-                  <i className="fas fa-id-badge"></i> ID: ktxudzsv
-                </div>
-              </div>
-
-              <div className="p-4 mb-3 bg-black border-l-4 border-green-500">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-sm">
-                    Vehicle convoy anomaly
-                  </h4>
-                  <span className="bg-green-600 text-[10px] px-2 py-0.5 font-bold">
-                    RESOLVED
-                  </span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">
-                  Detected unusual convoy on Lagos-Ibadan highway.
-                </p>
-                <div className="text-gray-500 text-xs flex items-center mt-2 gap-2">
-                  <i className="fas fa-clock"></i> 20d ago
-                  <i className="fas fa-road"></i> Lagos-Ibadan Expressway
-                  <i className="fas fa-id-badge"></i> ID: zmdizjgn
-                </div>
-              </div>
-
-              <div className="p-4 mb-3 bg-black border-l-4 border-yellow-400">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-sm">
-                    Pipeline corridor intrusion
-                  </h4>
-                  <span className="bg-yellow-500 text-[10px] px-2 py-0.5 font-bold">
-                    IN PROGRESS
-                  </span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">
-                  Individuals walking close to restricted pipeline perimeter.
-                </p>
-                <div className="text-gray-500 text-xs flex items-center mt-2 gap-2">
-                  <i className="fas fa-clock"></i> 20d ago
-                  <i className="fas fa-map-marker-alt"></i> Lagos-Kano Pipeline
-                  <i className="fas fa-id-badge"></i> ID: alx0f0hb
-                </div>
-              </div>
-
-              <div className="p-4 mb-3 bg-black border-l-4 border-blue-500">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-sm">
-                    Unauthorized drone activity
-                  </h4>
-                  <span className="bg-blue-600 text-[10px] px-2 py-0.5 font-bold">
-                    MONITORING
-                  </span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">
-                  Unregistered drone detected in restricted airspace.
-                </p>
-                <div className="text-gray-500 text-xs flex items-center mt-2 gap-2">
-                  <i className="fas fa-clock"></i> 1h ago
-                  <i className="fas fa-map-marker-alt"></i> Port Harcourt
-                  Airport
-                  <i className="fas fa-id-badge"></i> ID: ph2024001
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-        )}
-
-        {/* Modals */}
-        <RegisterDeviceModal
-          isOpen={showRegisterModal}
-          onClose={() => setShowRegisterModal(false)}
-        />
-        <EditDeviceModal
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          device={deviceToEdit}
-        />
       </MainLayout>
     </div>
   );
