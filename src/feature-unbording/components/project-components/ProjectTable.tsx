@@ -99,7 +99,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
     setOpenMenuId(projectId);
   };
 
-  const allProjects = data?.list ?? [];
+  const allProjects = useMemo(() => data?.list ?? [], [data]);
 
   // Tab filtering — 'Online' shows projects where at least one device is currently online
   const tabFiltered = useMemo(() => allProjects.filter((p) => {

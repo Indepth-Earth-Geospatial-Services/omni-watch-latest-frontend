@@ -71,14 +71,15 @@ export const DebugCommandsPanel = ({
     drcActivate(dockSn).catch((err: Error) => {
       console.warn('[DRC] Auto-activate failed:', err.message);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dockSn, dockOnline]); // intentionally no cleanup
 
   // Disconnect only when the selected dock changes or this panel unmounts.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       drcDeactivate();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dockSn]);
 
   // Sync debug state from MQTT mode_code — skip while a toggle is in-flight
@@ -94,6 +95,7 @@ export const DebugCommandsPanel = ({
   // Auto-revoke flight authority when dock fires joystick_invalid_notify
   useEffect(() => {
     if (joystickInvalidState) setFlightAuth(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joystickInvalidState?.ts]);
 
   const { mutate: runJob, isPending } = useExecuteJob(dockSn);

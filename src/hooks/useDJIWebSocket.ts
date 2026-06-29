@@ -146,10 +146,8 @@ export function useDJIWebSocket() {
               : FlightAreaSyncData
       >
     ) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (handlersRef.current[bizCode] as any[]).push(handler);
       return () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const arr = handlersRef.current[bizCode] as any[];
         const idx = arr.indexOf(handler);
         if (idx !== -1) arr.splice(idx, 1);
@@ -198,7 +196,6 @@ export function useDJIWebSocket() {
 
           // Dispatch to registered handlers
           if (biz_code in handlersRef.current) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (handlersRef.current[biz_code as BizCode] as any[]).forEach((h) => h(data));
           }
 
