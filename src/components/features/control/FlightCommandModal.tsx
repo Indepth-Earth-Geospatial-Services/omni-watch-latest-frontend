@@ -183,6 +183,7 @@ export const FlightCommandModal = ({
     flyTo,
     onClose,
     onTakeoffSucceeded,
+    onFlyToSucceeded,
   ]);
 
   return (

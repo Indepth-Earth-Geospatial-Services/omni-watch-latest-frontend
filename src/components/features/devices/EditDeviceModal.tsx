@@ -26,9 +26,6 @@ interface EditDeviceModalProps {
 export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProps) {
   const queryClient = useQueryClient();
 
-  if (!isOpen || !device) return null;
-
-  // Form state
   const [formData, setFormData] = useState({
     deviceName: '',
     alias: '',
@@ -39,7 +36,6 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Load device data when modal opens
   useEffect(() => {
     if (device && isOpen) {
       setFormData({
@@ -52,7 +48,6 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
     }
   }, [device, isOpen]);
 
-  // Mutation for updating drone
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateDronePayload) => {
       if (!device) throw new Error('No device selected');
@@ -66,6 +61,8 @@ export function EditDeviceModal({ isOpen, onClose, device }: EditDeviceModalProp
       setErrors({ submit: error.message || 'Failed to update device' });
     },
   });
+
+  if (!isOpen || !device) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

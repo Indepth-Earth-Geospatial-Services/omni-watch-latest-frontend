@@ -140,7 +140,7 @@ export function RegisterDeviceModal({ isOpen, onClose }: RegisterDeviceModalProp
         description: `${deviceType} device registered on ${new Date().toLocaleDateString()}`,
       }));
     }
-  }, [deviceType]);
+  }, [deviceType, formData.deviceName]);
 
   const handleNext = () => {
     // Validate current step
@@ -551,7 +551,7 @@ function ConfirmStep({ formData, deviceType }: any) {
       <div className='p-4 bg-green-900/20 border border-green-500 rounded-lg'>
         <p className='text-green-400 text-sm flex items-center'>
           <Info className='w-4 h-4 mr-2 shrink-0' />
-          Click "Register Device" to add this device to your surveillance system
+          Click &quot;Register Device&quot; to add this device to your surveillance system
         </p>
       </div>
     </div>

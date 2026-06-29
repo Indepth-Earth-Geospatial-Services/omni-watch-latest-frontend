@@ -54,7 +54,7 @@ const DeleteConfirmModal = ({
         <div className='px-6 py-5 space-y-4'>
           <p className='text-sm text-zinc-400 leading-relaxed'>
             You are about to permanently delete{' '}
-            <span className='font-bold text-zinc-100 break-all'>"{project.name}"</span>.
+            <span className='font-bold text-zinc-100 break-all'>&quot;{project.name}&quot;</span>.
           </p>
 
           {/* Consequences */}
