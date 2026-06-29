@@ -19,7 +19,7 @@ const AssetManagement = ({ devices, isLoading, error }: AssetManagementProps) =>
   return (
     <div className='flex flex-col gap-6 w-full p-2'>
       <div className='flex justify-start'>
-        <AssetTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <AssetTabs activeTab={activeTab} onTabChange={setActiveTab} devices={devices} />
       </div>
 
       <AssetTable activeTab={activeTab} devices={devices} isLoading={isLoading} error={error} />

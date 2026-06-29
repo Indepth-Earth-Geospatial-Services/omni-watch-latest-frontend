@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/providers/Providers';
-import { Poppins } from 'next/font/google';
+import { Poppins, JetBrains_Mono } from 'next/font/google';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -9,8 +9,14 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-jetbrains',
+});
+
 export const metadata: Metadata = {
-  title: 'ISR Command & Control System',
+  title: 'OmniWatch OS',
   description:
     'Intelligence, Surveillance, and Reconnaissance Command & Control Dashboard',
 };
@@ -21,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='en' suppressHydrationWarning className={poppins.variable} data-scroll-behavior='smooth'>
-      <body style={{ fontFamily: 'Inter, sans-serif' }}>
+    <html lang='en' suppressHydrationWarning className={`${poppins.variable} ${jetbrainsMono.variable}`} data-scroll-behavior='smooth'>
+      <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, LogOut, User, ChevronDown, Building2, Loader2 } from 'lucide-react';
+import { Bell, Settings, LogOut, User, ChevronDown, Building2, Loader2, Menu, X } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface NavItem {
@@ -27,6 +27,18 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on desktop resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -52,7 +64,7 @@ const Navbar = () => {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <nav className='flex items-center justify-between w-full h-16 px-6 bg-black border-b border-zinc-800'>
+    <nav className='relative flex items-center justify-between w-full h-16 px-6 bg-black border-b border-zinc-800'>
       {/* 1. Brand Logo */}
       <div className='flex items-center flex-shrink-0'>
         <Link href='/' className='transition-opacity hover:opacity-80 focus:outline-none'>
@@ -87,11 +99,11 @@ const Navbar = () => {
       </div>
 
       {/* 3. Action Icons & Profile */}
-      <div className='flex items-center space-x-5 text-zinc-400'>
-        <button className='hover:text-white transition-colors focus:outline-none'>
+      <div className='flex items-center space-x-4 md:space-x-5 text-zinc-400'>
+        <button className='hidden md:block hover:text-white transition-colors focus:outline-none'>
           <Bell size={20} strokeWidth={1.5} />
         </button>
-        <button className='hover:text-white transition-colors focus:outline-none'>
+        <button className='hidden md:block hover:text-white transition-colors focus:outline-none'>
           <Settings size={20} strokeWidth={1.5} />
         </button>
 
@@ -107,6 +119,7 @@ const Navbar = () => {
                 src='/user-avatar.jpg'
                 alt='User Profile'
                 fill
+                sizes='32px'
                 className='object-cover'
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -133,6 +146,7 @@ const Navbar = () => {
                       src='/user-avatar.jpg'
                       alt='User Profile'
                       fill
+                      sizes='40px'
                       className='object-cover'
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -195,7 +209,78 @@ const Navbar = () => {
             </div>
           )}
         </div>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          className='md:hidden p-1.5 rounded-lg border border-zinc-800 bg-[#0C0E12]/80 hover:bg-zinc-900 hover:text-white transition-all duration-200 focus:outline-none'
+          aria-label='Toggle navigation menu'
+        >
+          {mobileMenuOpen ? (
+            <X size={20} strokeWidth={1.5} className="text-[#FF0000]" />
+          ) : (
+            <Menu size={20} strokeWidth={1.5} />
+          )}
+        </button>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className='absolute top-16 left-0 w-full bg-[#0C0E12]/95 backdrop-blur-md border-b border-zinc-800 shadow-2xl z-40 md:hidden flex flex-col transition-all duration-300 ease-in-out divide-y divide-zinc-900 animate-in slide-in-from-top-4 duration-300'>
+          {/* Navigation Links */}
+          <div className='flex flex-col py-4 px-6 space-y-1'>
+            {navConfig.map((item, idx) => {
+              const isActive = activePath === item.href;
+              const numStr = String(idx + 1).padStart(2, '0');
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between py-3 px-4 rounded-lg font-poppins tracking-widest text-sm font-semibold transition-all duration-200
+                    ${isActive 
+                      ? 'text-white bg-red-950/20 border-l-2 border-[#FF0000]' 
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50 border-l-2 border-transparent'
+                    }`}
+                >
+                  <span className='flex items-center gap-3'>
+                    <span className={`text-[10px] font-mono tracking-normal ${isActive ? 'text-[#FF0000]' : 'text-zinc-600'}`}>
+                      {numStr}
+                    </span>
+                    {item.label}
+                  </span>
+                  
+                  {isActive && (
+                    <span className='w-1.5 h-1.5 rounded-full bg-[#FF0000] shadow-[0_0_8px_#FF0000]' />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions (Bell and Settings for Mobile) */}
+          <div className='grid grid-cols-2 gap-4 p-6 bg-black/40'>
+            <button 
+              className='flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/60 hover:text-white text-zinc-400 transition-all text-xs font-semibold tracking-wider font-poppins'
+              onClick={() => {
+                setMobileMenuOpen(false);
+              }}
+            >
+              <Bell size={16} strokeWidth={1.5} className="text-zinc-500" />
+              NOTIFICATIONS
+            </button>
+            <button 
+              className='flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/60 hover:text-white text-zinc-400 transition-all text-xs font-semibold tracking-wider font-poppins'
+              onClick={() => {
+                setMobileMenuOpen(false);
+              }}
+            >
+              <Settings size={16} strokeWidth={1.5} className="text-zinc-500" />
+              SETTINGS
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

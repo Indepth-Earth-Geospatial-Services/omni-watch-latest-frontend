@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { Project } from '@/lib/types';
 import { useProjectDetail } from '@/hooks/useProjects';
+import { useAuth } from './AuthProvider';
 
 const STORAGE_KEY = 'active_project';
 
@@ -28,9 +29,12 @@ function ProjectProviderInner({
   setActiveProject,
   clearActiveProject,
 }: ProjectContextValue & { children: React.ReactNode }) {
-  // Fetch the latest version of the active project from the API.
-  // enabled: false when no project is selected → no unnecessary requests.
-  const { data: freshProject, isError: projectNotFound } = useProjectDetail(activeProject?.id ?? '');
+  const { isLoading: authLoading } = useAuth();
+
+  // Gate the query on auth being ready — prevents tokenless 403s during
+  // the async token refresh that runs on every page reload.
+  const projectId = !authLoading && activeProject ? activeProject.id : '';
+  const { data: freshProject, isError: projectNotFound } = useProjectDetail(projectId);
 
   // If the stored project no longer exists on the server (deleted, recreated, etc.),
   // clear it from storage so the user is sent back to project selection.

@@ -176,13 +176,11 @@ export function useDJIWebSocket() {
           ws.close();
           return;
         }
-        console.log('[DJI WS] Connected');
         setIsConnected(true);
       };
 
       ws.onclose = (e) => {
         if (cancelled) return;
-        console.log('[DJI WS] Disconnected — code:', e.code);
         setIsConnected(false);
         // Reconnect after 3 seconds unless deliberately closed
         if (e.code !== 1000) {
@@ -190,11 +188,7 @@ export function useDJIWebSocket() {
         }
       };
 
-      ws.onerror = () => {
-        if (!cancelled) {
-          console.error('[DJI WS] Connection error');
-        }
-      };
+      ws.onerror = () => {};
 
       ws.onmessage = (event) => {
         if (cancelled) return;
@@ -202,39 +196,37 @@ export function useDJIWebSocket() {
           const msg = JSON.parse(event.data as string) as DJIMessage;
           const { biz_code, data } = msg;
 
-          // Debug: log every incoming WS message so we can inspect live telemetry
-          console.log('[DJI WS ←]', biz_code, data);
-
           // Dispatch to registered handlers
           if (biz_code in handlersRef.current) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (handlersRef.current[biz_code as BizCode] as any[]).forEach((h) => h(data));
           }
 
-          // Wrap all state updates in startTransition so navigation takes priority
-          // over incoming telemetry re-renders.
+          // device_online_update and device_osd are real-time telemetry — apply
+          // immediately so FlightStatsBar and other live panels update without delay.
+          // startTransition would defer these updates and in high-frequency OSD
+          // scenarios React keeps restarting the deferred render, effectively freezing
+          // the UI while events keep streaming in.
+          if (biz_code === 'device_online_update') {
+            const update = data as DeviceOnlineUpdateData;
+            setDeviceStates((prev) => {
+              const next = new Map(prev);
+              next.set(update.sn, update);
+              return next;
+            });
+          }
+
+          if (biz_code === 'device_osd') {
+            const osd = data as DeviceOSDData;
+            setOsdStates((prev) => {
+              const next = new Map(prev);
+              next.set(osd.sn, osd);
+              return next;
+            });
+          }
+
+          // OTA progress is infrequent and non-critical — safe to defer
           startTransition(() => {
-            // Built-in: maintain device state map for device_online_update
-            if (biz_code === 'device_online_update') {
-              const update = data as DeviceOnlineUpdateData;
-              setDeviceStates((prev) => {
-                const next = new Map(prev);
-                next.set(update.sn, update);
-                return next;
-              });
-            }
-
-            // Built-in: maintain OSD map — primary source of GPS + telemetry
-            if (biz_code === 'device_osd') {
-              const osd = data as DeviceOSDData;
-              setOsdStates((prev) => {
-                const next = new Map(prev);
-                next.set(osd.sn, osd);
-                return next;
-              });
-            }
-
-            // Built-in: track OTA progress per device; remove entry once done/failed
             if (biz_code === 'device_upgrade_progress') {
               const upgrade = data as DeviceUpgradeProgressData;
               setUpgradeStates((prev) => {
@@ -249,8 +241,8 @@ export function useDJIWebSocket() {
               });
             }
           });
-        } catch (err) {
-          console.error('[DJI WS] Failed to parse message:', err);
+        } catch {
+          // ignore malformed messages
         }
       };
     }

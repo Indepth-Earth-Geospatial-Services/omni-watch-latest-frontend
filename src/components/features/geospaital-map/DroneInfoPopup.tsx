@@ -24,7 +24,7 @@ export const DroneInfoPopup = memo(({ drone, info, onClose }: DroneInfoPopupProp
       <div className='border-t border-gray-700 pt-2 space-y-1 text-sm'>
         <Row label='Lat' value={<span className='font-mono text-xs'>{info.latitude}</span>} />
         <Row label='Lng' value={<span className='font-mono text-xs'>{info.longitude}</span>} />
-        <Row label='Altitude' value={`${info.altitude.toFixed(1)} m`} />
+        <Row label='Altitude' value={info.altitude != null ? `${info.altitude.toFixed(1)} m` : '—'} />
         <Row label='Heading' value={`${info.direction} ${info.heading}°`} />
         <Row label='Speed' value={`${info.speed.toFixed(1)} m/s`} />
         <Row

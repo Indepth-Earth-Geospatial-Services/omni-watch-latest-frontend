@@ -2,15 +2,15 @@
 import { memo } from 'react';
 
 interface AltitudeIndicatorProps {
-  altitude: number;   // current altitude in metres
-  maxAlt?: number;    // scale ceiling in metres
+  altitude: number | null | undefined;
+  maxAlt?: number;
 }
 
 export const AltitudeIndicator = memo(
   ({ altitude, maxAlt = 400 }: AltitudeIndicatorProps) => {
-    const pct = Math.min((altitude / maxAlt) * 100, 100);
+    const hasData = altitude != null;
+    const pct     = hasData ? Math.min((altitude / maxAlt) * 100, 100) : 0;
 
-    // Colour gradient: green → yellow → red as altitude increases
     const fillColor =
       pct > 75 ? '#f87171' : pct > 40 ? '#facc15' : '#34d399';
 
@@ -28,16 +28,18 @@ export const AltitudeIndicator = memo(
               style={{ bottom: `${mark}%` }}
             />
           ))}
-          {/* Fill */}
-          <div
-            className='absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500'
-            style={{ height: `${pct}%`, backgroundColor: fillColor }}
-          />
+          {/* Fill — only rendered when real data is present */}
+          {hasData && (
+            <div
+              className='absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500'
+              style={{ height: `${pct}%`, backgroundColor: fillColor }}
+            />
+          )}
         </div>
 
         {/* Numeric value */}
         <span className='text-sm font-mono font-bold text-white leading-none'>
-          {altitude.toFixed(0)}
+          {hasData ? altitude.toFixed(0) : '—'}
         </span>
         <span className='text-[10px] text-gray-500'>m</span>
       </div>

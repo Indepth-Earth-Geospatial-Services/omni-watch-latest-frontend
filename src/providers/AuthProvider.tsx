@@ -4,16 +4,22 @@
 // "Is there a logged-in user, and who are they?"
 //
 // Lifecycle:
-//   1. On mount → check localStorage for an existing valid token
-//   2. Token found → call GET /api/auth/me (OmniWatch) to restore the session
-//   3. Token missing/expired → user = null → middleware redirects to /sign-in
-//   4. After login → user state set, proactive refresh timer scheduled
-//   5. Timer fires 60s before expiry → silently exchanges token → reschedules
+//   1. On mount → check in-memory token OR try to restore via refresh cookie
+//   2. Token in memory → call GET /api/auth/me (OmniWatch) to restore the session
+//   3. Token lost (page refresh) but session exists → refreshToken() → restore
+//   4. No session at all → user = null → middleware redirects to /sign-in
+//   5. After login → user state set, proactive refresh timer scheduled
+//   6. Timer fires 60s before expiry → silently exchanges token → reschedules
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { authApi } from '@/services/authservice-layer/auth-api';
-import { clearToken, getToken, getTokenExpiresInSeconds } from '@/lib/config/token-store';
+import {
+  clearToken,
+  getToken,
+  getTokenExpiresInSeconds,
+  hasSession,
+} from '@/lib/config/token-store';
 import type { CurrentUser } from '@/lib/types';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
@@ -47,10 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Fetch the current user profile via OmniWatch /me ────────────────────
   // Uses the OmniWatch auth endpoint — never calls the DJI Cloud server.
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
-    console.log('[AuthProvider] fetchCurrentUser → calling authApi.me()');
     try {
       const me = await authApi.me();
-      console.log('[AuthProvider] fetchCurrentUser ✓ — user restored:', me);
       setUser({
         user_id: me.principal_id,
         username: '',
@@ -63,8 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         workspace_description: '',
       });
       return true;
-    } catch (err) {
-      console.warn('[AuthProvider] fetchCurrentUser ✗ — clearing token. Error:', err);
+    } catch {
       clearToken();
       setUser(null);
       return false;
@@ -76,30 +79,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
     const delay = Math.max((expiresInSeconds - 60) * 1000, 30_000);
-    console.log(`[AuthProvider] scheduleRefresh — will refresh in ${Math.round(delay / 1000)}s`);
 
     refreshTimerRef.current = setTimeout(async () => {
-      console.log('[AuthProvider] proactive token refresh firing');
       try {
         await authApi.refreshToken();
         scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
-      } catch (err) {
-        console.warn('[AuthProvider] proactive refresh failed — logging out:', err);
+      } catch {
         setUser(null);
       }
     }, delay);
   }, []);
 
-  // ── On mount: restore session if a token already exists ─────────────────
+  // ── On mount: restore session ───────────────────────────────────────────
+  // The JWT is stored in memory (not localStorage), so after a page refresh
+  // it's gone. We detect this via hasSession() which checks if an expiry
+  // timestamp exists in localStorage. If it does, we call refreshToken()
+  // which uses the HttpOnly refresh cookie (from Django) to get a new
+  // access token transparently.
   useEffect(() => {
     const token = getToken();
-    console.log('[AuthProvider] mount — token in localStorage:', token ? '✓ present' : '✗ none');
+    const sessionExists = hasSession();
 
     if (token) {
       fetchCurrentUser().then((ok) => {
         if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
         setIsLoading(false);
       });
+    } else if (sessionExists) {
+      // Page was refreshed — token lost from memory but a session existed before.
+      // Try to restore it using the HttpOnly refresh cookie from Django.
+      authApi
+        .refreshToken()
+        .then(() => fetchCurrentUser())
+        .then((ok) => {
+          if (ok) scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          clearToken();
+          setIsLoading(false);
+        });
     } else {
       setIsLoading(false);
     }

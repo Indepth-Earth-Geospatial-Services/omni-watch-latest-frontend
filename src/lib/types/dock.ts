@@ -44,7 +44,7 @@ export interface JobActionRequest {
 // ─── Takeoff-to-point ─────────────────────────────────────────────────────────
 
 export interface TakeoffToPointRequest {
-  flightId: string;
+  flightId?: string; // stripped by service layer before sending to DJI
   targetLongitude: number;
   targetLatitude: number;
   targetHeight: number;
@@ -68,7 +68,7 @@ export interface DockFlyToPoint {
 }
 
 export interface DockFlyToPointRequest {
-  flyToId: string;
+  flyToId?: string; // stripped by service layer before sending to DJI
   maxSpeed: number;
   points: DockFlyToPoint[];
 }
@@ -89,3 +89,55 @@ export interface PayloadAuthorityRequest {
   controlType?: number;
   rotation?: GimbalRotation;
 }
+
+// ─── DRC (Drone Remote Control) ───────────────────────────────────────────────
+
+/** POST /control/api/v1/workspaces/{wid}/drc/connect — request body */
+export interface DRCConnectRequest {
+  client_id: string;
+  expire_sec: number;
+}
+
+/** Response from /drc/connect — MQTT broker credentials */
+export interface DRCConnectResponse {
+  address: string;       // e.g. "tcp://35.222.89.171:1883"
+  client_id: string;
+  username: string;
+  password: string;
+  expire_sec: number;
+}
+
+/** POST /control/api/v1/workspaces/{wid}/drc/enter — request body */
+export interface DRCEnterRequest {
+  client_id: string;
+  dock_sn: string;
+}
+
+/** Response from /drc/enter — MQTT pub/sub topics + optional embedded broker credentials.
+ *  Some servers (e.g. the DJI reference server) return the broker address/auth here
+ *  instead of requiring a separate /drc/connect call. */
+export interface DRCEnterResponse {
+  pub: string[];           // topics to publish drone_control / heart_beat / emergency_stop
+  sub: string[];           // topics to subscribe for DRC responses
+  address?: string;        // MQTT broker address if embedded (e.g. "tcp://host:1883")
+  username?: string;
+  password?: string;
+  client_id?: string;
+  expire_sec?: number;
+}
+
+/** POST /control/api/v1/workspaces/{wid}/drc/exit — request body */
+export interface DRCExitRequest {
+  client_id: string;
+  dock_sn: string;
+}
+
+/** Velocity command published over DRC MQTT at 50ms intervals */
+export interface DRCVelocityCommand {
+  x?: number;   // forward/backward speed (m/s), positive = forward
+  y?: number;   // left/right speed (m/s), positive = right
+  h?: number;   // altitude delta (m), positive = up
+  w?: number;   // yaw speed (deg/s), positive = clockwise
+  seq: number;  // monotonically increasing sequence number
+}
+

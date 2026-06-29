@@ -16,10 +16,12 @@ export interface DJIApiResponse<T> {
 }
 
 // Typed error so callers can branch on error.code (401 → re-login, 502 → offline, etc.)
+// data carries the raw envelope.data so callers can recover partial results (e.g. 513003 stream URL)
 export class DJIApiError extends Error {
   constructor(
     public readonly code: number,
-    message: string
+    message: string,
+    public readonly data?: unknown
   ) {
     super(message);
     this.name = 'DJIApiError';
@@ -27,6 +29,10 @@ export class DJIApiError extends Error {
 }
 
 const DJI_BASE_URL = process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '';
+
+// DJI "soft-success" codes — the request succeeded and data is usable, but code !== 0.
+// 513003: "stream already started" — the response still carries a valid WHEP URL in data.url.
+const SOFT_SUCCESS_CODES = new Set([513003]);
 
 /**
  * Core request function — attaches auth token, calls the DJI server directly, unwraps the envelope.
@@ -62,9 +68,10 @@ async function request<T>(
 
     const envelope = res.data;
 
-    // DJI signals errors via code !== 0 even on HTTP 200
-    if (envelope.code !== 0) {
-      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed');
+    // DJI signals errors via code !== 0 even on HTTP 200.
+    // Some codes are "soft-success" — the operation completed and data is valid.
+    if (envelope.code !== 0 && !SOFT_SUCCESS_CODES.has(envelope.code)) {
+      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed', envelope.data);
     }
 
     return envelope.data as T;

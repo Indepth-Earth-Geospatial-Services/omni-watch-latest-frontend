@@ -34,12 +34,12 @@ export const SingleFeedView = memo(function SingleFeedView({
   const drone = isDrone(device);
 
   return (
-    <div className='flex flex-col h-full p-5 gap-4'>
+    <div className='flex flex-col h-full p-3 sm:p-5 gap-3 sm:gap-4'>
       {/* Device header + switcher */}
-      <div className='flex items-center justify-between gap-4 flex-wrap flex-shrink-0'>
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 flex-shrink-0'>
         <div className='flex items-center gap-3'>
           <div
-            className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
+            className={`w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0 ${
               drone ? 'bg-blue-500/10 border-blue-500/20' : 'bg-cyan-500/10 border-cyan-500/20'
             }`}
           >
@@ -49,14 +49,14 @@ export const SingleFeedView = memo(function SingleFeedView({
               <Box size={15} className='text-cyan-400' />
             )}
           </div>
-          <div>
-            <p className='text-sm font-bold text-zinc-100'>
+          <div className='min-w-0'>
+            <p className='text-sm font-bold text-zinc-100 truncate'>
               {device.nickname || device.deviceName || device.deviceSn}
             </p>
-            <p className='text-[10px] font-mono text-zinc-600'>{device.deviceSn}</p>
+            <p className='text-[10px] font-mono text-zinc-600 truncate'>{device.deviceSn}</p>
           </div>
           <span
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border flex-shrink-0 ${
               device.status
                 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
                 : 'text-zinc-600 bg-zinc-800/60 border-zinc-700/50'
@@ -90,7 +90,7 @@ export const SingleFeedView = memo(function SingleFeedView({
         )}
       </div>
 
-      {/* Video — takes all remaining vertical space */}
+      {/* Video */}
       <div className='flex-1 min-h-0'>
         <VideoArea
           device={device}
@@ -102,7 +102,7 @@ export const SingleFeedView = memo(function SingleFeedView({
         />
       </div>
 
-      {/* Controls — fixed height, never scrolls off screen */}
+      {/* Controls */}
       <div className='flex-shrink-0'>
         {drone ? (
           <StreamControlPanel

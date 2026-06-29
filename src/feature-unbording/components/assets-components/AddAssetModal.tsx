@@ -68,13 +68,7 @@ const AddAssetModal = ({ open, onClose }: AddAssetModalProps) => {
       },
       {
         onSuccess: onClose,
-        onError: (err) => {
-          console.error('[AddAsset] POST /binding failed:', {
-            message: err.message,
-            code: (err as DJIApiError).code,
-            raw: err,
-          });
-        },
+        onError: () => {},
       }
     );
   };

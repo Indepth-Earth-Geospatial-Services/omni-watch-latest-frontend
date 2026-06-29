@@ -6,13 +6,21 @@ import {
   updateStreamQuality,
   switchStreamCamera,
 } from '@/services/djiservice-layer/dji-service';
-import type { LiveStreamRequest, StartStreamResponse } from '@/lib/types';
+import type { LiveCapacity, LiveStreamRequest, StartStreamResponse } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const streamKeys = {
   capacity: ['dji', 'live', 'capacity'] as const,
 };
+
+// Stable module-level reference so React Query only re-evaluates this when the
+// raw server data changes, not on every render. An inline arrow would be a new
+// function reference on every render, causing React Query to produce a new Map
+// each time and triggering an infinite re-render loop in any useEffect that
+// lists capacityMap as a dependency.
+const toCapacityMap = (capacities: LiveCapacity[]) =>
+  new Map(capacities.map((c) => [c.sn, c]));
 
 // ─── Livestream hooks ─────────────────────────────────────────────────────────
 
@@ -21,15 +29,16 @@ const streamKeys = {
  * Returns a Map keyed by device_sn (or sn) for O(1) lookups in stream cards.
  * Only runs when USE_DJI_CLOUD=true.
  */
-export function useLiveCapacity() {
+export function useLiveCapacity(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: streamKeys.capacity,
     queryFn: getLiveCapacity,
-    retry: false,
+    retry: 1,
+    retryDelay: 1500,
     refetchInterval: 30_000,
-    staleTime: 10_000,
-    // Map using 'sn' as per the new DJI documentation
-    select: (capacities) => new Map(capacities.map((c) => [c.sn, c])),
+    staleTime: 0,
+    select: toCapacityMap,
+    enabled: options?.enabled !== false,
   });
 }
 

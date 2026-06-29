@@ -18,6 +18,7 @@ module.exports = {
     extend: {
       fontFamily: {
         poppins: ['var(--font-poppins)', 'sans-serif'],
+        mono: ['var(--font-jetbrains)', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',

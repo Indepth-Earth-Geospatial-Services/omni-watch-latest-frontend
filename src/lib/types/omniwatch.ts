@@ -45,7 +45,14 @@ export interface CreateWorkspaceResponse {
 export interface ProjectDevice {
   id: string;
   project: string;
-  device_sn: string;
+  device: {
+    device_sn: string;
+    name: string;
+    targetClasses?: string[] | string;
+    isActive?: boolean;
+    created_at?: string;
+    updated_at?: string;
+  };
   created_at: string;
 }
 

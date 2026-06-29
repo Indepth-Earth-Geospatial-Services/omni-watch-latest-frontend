@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { getToken } from '@/lib/config/token-store';
 
 export type StreamState = 'connecting' | 'playing' | 'error';
 
@@ -25,25 +24,53 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
   useEffect(() => {
     let cancelled = false;
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+    console.log('[WebRTC] ▶ Starting WHEP session', { url });
+
+    const pc = new RTCPeerConnection();
 
     onStateChangeRef.current('connecting');
 
     pc.ontrack = (e) => {
       if (cancelled) return;
-      const [stream] = e.streams;
-      if (stream) {
-        onMediaStreamRef.current(stream);
-        onStateChangeRef.current('playing');
+      const stream = e.streams[0];
+      console.log('[WebRTC] ontrack fired', {
+        tracks: e.track.kind,
+        streamId: stream?.id,
+        trackReadyState: e.track.readyState,
+        trackEnabled: e.track.enabled,
+        trackMuted: e.track.muted,
+      });
+      if (stream) onMediaStreamRef.current(stream);
+    };
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        console.log('[WebRTC] ICE candidate (local):', e.candidate.candidate);
+      } else {
+        console.log('[WebRTC] ICE gathering complete (all local candidates sent)');
       }
+    };
+
+    pc.onicegatheringstatechange = () => {
+      console.log('[WebRTC] ICE gathering state →', pc.iceGatheringState);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('[WebRTC] ICE connection state →', pc.iceConnectionState);
     };
 
     pc.onconnectionstatechange = () => {
       if (cancelled) return;
       const s = pc.connectionState;
-      if (s === 'failed' || s === 'disconnected') {
+      console.log('[WebRTC] Connection state →', s);
+      if (s === 'connected') {
+        console.log('[WebRTC] ✅ ICE + DTLS connected — frames should be flowing');
+        onStateChangeRef.current('playing');
+      } else if (s === 'failed') {
+        console.error('[WebRTC] ❌ Connection failed — ICE could not connect');
+        onStateChangeRef.current('error', 'Stream connection failed');
+      } else if (s === 'disconnected') {
+        console.warn('[WebRTC] ⚠ Connection disconnected');
         onStateChangeRef.current('error', 'Stream connection lost');
       }
     };
@@ -54,48 +81,43 @@ export function WebRTCPlayer({ url, onStateChange, onMediaStream }: WebRTCPlayer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      await new Promise<void>((resolve) => {
-        if (pc.iceGatheringState === 'complete') {
-          resolve();
-          return;
-        }
-        const handler = () => {
-          if (pc.iceGatheringState === 'complete') {
-            pc.removeEventListener('icegatheringstatechange', handler);
-            resolve();
-          }
-        };
-        pc.addEventListener('icegatheringstatechange', handler);
+      console.log('[WebRTC] Offer created, sending to WHEP endpoint immediately (bare SDP, no candidates)');
+      console.log('[WebRTC] Offer SDP (first 3 lines):', offer.sdp?.split('\n').slice(0, 3).join(' | '));
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: offer.sdp,
       });
 
-      const token = getToken();
-      const headers: HeadersInit = { 'Content-Type': 'application/sdp' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-auth-token'] = token;
-      }
+      console.log('[WebRTC] WHEP response status:', res.status, res.statusText);
 
-      const res = await fetch(url, { method: 'POST', headers, body: pc.localDescription!.sdp });
-
-      if (res.status !== 201 && !res.ok) {
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error('[WebRTC] WHEP error response body:', body);
         throw new Error(`WHEP ${res.status} ${res.statusText}`);
       }
 
       const answerSdp = await res.text();
-      if (!answerSdp.trim().startsWith('v=')) {
-        throw new Error('Invalid SDP answer from server');
-      }
+      console.log('[WebRTC] Answer SDP received (first 5 lines):', answerSdp.split('\n').slice(0, 5).join(' | '));
+
+      // Log ICE candidates in the answer (server-side candidates the browser will try to reach)
+      const serverCandidates = answerSdp.split('\n').filter((l) => l.startsWith('a=candidate'));
+      console.log('[WebRTC] Server ICE candidates in answer:', serverCandidates.length, serverCandidates);
 
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+      console.log('[WebRTC] Remote description set — ICE checks starting');
     }
 
     negotiate().catch((err) => {
       if (cancelled) return;
+      console.error('[WebRTC] ❌ Negotiate failed:', err);
       onStateChangeRef.current('error', err?.message ?? 'Failed to connect to stream');
     });
 
     return () => {
       cancelled = true;
+      console.log('[WebRTC] ■ Closing peer connection');
       pc.close();
       onMediaStreamRef.current(null);
     };

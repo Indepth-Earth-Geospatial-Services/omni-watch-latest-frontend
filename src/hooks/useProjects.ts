@@ -36,7 +36,8 @@ export function useProjectDetail(id: string) {
     queryKey: projectKeys.detail(id),
     queryFn: () => projectsApi.get(id),
     staleTime: 30_000,
-    retry: false,
+    retry: 2,
+    retryDelay: 1000,
     enabled: !!id,
   });
 }

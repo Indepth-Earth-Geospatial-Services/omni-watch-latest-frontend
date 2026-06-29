@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone AI Surveillance</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 4px;
+            background: #2d2d2d;
+            color: white;
+            border: 1px solid #555;
+        }
+        
+        /* 3-Column Layout: [YOLO] [VIDEO] [LLM] */
+        .main-layout {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .feed-box {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex: 0 0 auto;
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: black;
+            width: 800px; 
+            height: 450px;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #4caf50;
+        }
+        
+        /* Alert Panels */
+        .side-panel {
+            width: 340px;
+            height: 520px; 
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .alerts-container {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-grow: 1;
+            overflow-y: auto;
+            border-top: 4px solid #666;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+
+        .panel-yolo .alerts-container { border-top-color: #ff9800; }
+        .panel-llm .alerts-container { border-top-color: #ff4444; }
+
+        .alert-item {
+            padding: 12px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease-out;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .alert-yolo {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid #ff9800;
+        }
+        .alert-yolo .title { color: #ff9800; font-weight: bold; }
+
+        .alert-llm {
+            background: rgba(255, 68, 68, 0.1);
+            border-left: 4px solid #ff4444;
+        }
+        .alert-llm .title { color: #ff4444; font-weight: bold; }
+
+        .alert-item .time { font-size: 0.7rem; color: #888; margin-bottom: 4px; }
+        .alert-item .details { color: #ccc; margin-top: 4px; }
+
+        /* Reasoning/Description with See More */
+        .reasoning-text {
+            font-size: 0.8rem;
+            color: #bbb;
+            margin-top: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .reasoning-text.expanded {
+            -webkit-line-clamp: unset;
+            overflow: visible;
+        }
+        .see-more {
+            color: #2196f3;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            display: inline-block;
+            text-decoration: underline;
+        }
+
+        .empty-msg {
+            color: #666;
+            font-style: italic;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Drone AI Surveillance</h1>
+        <p>Real-time Tactical Intelligence & Autonomous Verification</p>
+    </div>
+
+    <div class="controls">
+        <label for="streamSelect">Select Stream:</label>
+        <select id="streamSelect">
+            <option value="">Loading streams...</option>
+        </select>
+    </div>
+
+    <div class="main-layout">
+        
+        <!-- LEFT: YOLO PANEL (ORANGE) -->
+        <div class="side-panel panel-yolo">
+            <h2>AI Detection (YOLO)</h2>
+            <div id="yoloList" class="alerts-container">
+                <p class="empty-msg" id="noYoloMsg">Scanning airspace...</p>
+            </div>
+        </div>
+
+        <!-- CENTER: VIDEO FEED -->
+        <div class="feed-box">
+            <h2>Live Tactical Feed</h2>
+            <div class="video-wrapper">
+                <video id="aiVideo" autoplay muted playsinline></video>
+                <canvas id="overlayCanvas"></canvas>
+            </div>
+            <div id="aiStatus" class="status">Initializing Neural Engine...</div>
+        </div>
+
+        <!-- RIGHT: LLM PANEL (RED) -->
+        <div class="side-panel panel-llm">
+            <h2>Verified Threats (LLM)</h2>
+            <div id="llmList" class="alerts-container">
+                <p class="empty-msg" id="noLlmMsg">Waiting for confirmation...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentStreamId = '';
+        let currentPeerConnection = null;
+        let CONFIG = {};
+
+        const aiVideo = document.getElementById('aiVideo');
+        const canvas = document.getElementById('overlayCanvas');
+        const ctx = canvas.getContext('2d');
+        const aiStatus = document.getElementById('aiStatus');
+        const streamSelect = document.getElementById('streamSelect');
+
+        let socket;
+        let currentDetections = [];
+        
+        const yoloList = document.getElementById('yoloList');
+        const llmList = document.getElementById('llmList');
+        
+        // Load configuration and initialize
+        async function init() {
+            try {
+                const res = await fetch('/api/config');
+                CONFIG = await res.json();
+                
+                // Initialize socket with config
+                socket = io(CONFIG.SOCKET_URL);
+                setupSocketListeners();
+                
+                await loadStreams();
+                drawLoop();
+            } catch (e) {
+                console.error('Failed to initialize', e);
+                aiStatus.innerText = 'Initialization Failed';
+            }
+        }
+
+        // Populate stream list
+        async function loadStreams() {
+            try {
+                const res = await fetch('/api/streams');
+                const streams = await res.json();
+                streamSelect.innerHTML = '<option value="">Select a stream</option>';
+                streams.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    streamSelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load streams', e);
+            }
+        }
+
+        streamSelect.addEventListener('change', (e) => {
+            if (e.target.value) switchStream(e.target.value);
+        });
+
+        function setupSocketListeners() {
+            socket.on('connect', () => {
+                console.log('Connected to Backend');
+                aiStatus.innerText = 'Connected';
+            });
+            
+            // Live Overlays
+            socket.on('DETECTIONS', (data) => {
+                if (data.streamId === currentStreamId) {
+                    currentDetections = data.detections;
+                }
+            });
+
+            // YOLO Detections
+            socket.on('YOLO_DETECTION', (data) => {
+                if (data.streamId === currentStreamId) {
+                    const noYoloMsg = document.getElementById('noYoloMsg');
+                    if (noYoloMsg) noYoloMsg.style.display = 'none';
+                    data.detections.forEach(det => {
+                        addAlert(yoloList, det, 'yolo', data.timestamp);
+                    });
+                }
+            });
+
+            // LLM Verification
+            socket.on('TRACK_CONFIRMED', (data) => {
+                if (data.streamId === currentStreamId) {
+                    const noLlmMsg = document.getElementById('noLlmMsg');
+                    if (noLlmMsg) noLlmMsg.style.display = 'none';
+                    data.detections.forEach(det => {
+                        addAlert(llmList, det, 'llm', data.timestamp);
+                    });
+                }
+            });
+        }
+
+        async function switchStream(streamId) {
+            if (currentStreamId === streamId) return;
+            currentStreamId = streamId;
+            
+            // Clean up previous
+            if (currentPeerConnection) currentPeerConnection.close();
+            yoloList.innerHTML = '<p class="empty-msg" id="noYoloMsg">Scanning airspace...</p>';
+            llmList.innerHTML = '<p class="empty-msg" id="noLlmMsg">Waiting for confirmation...</p>';
+            
+            startWhep(streamId);
+        }
+
+        function addAlert(container, det, type, timestamp) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert-item alert-${type}`;
+            
+            const time = new Date(timestamp).toLocaleTimeString();
+            const confidence = (det.score * 100).toFixed(0);
+            const prefix = type === 'llm' ? '🚨 VERIFIED' : '🔍 DETECTED';
+            
+            let html = `
+                <div class="time">${time}</div>
+                <div class="title">${prefix}: ${det.class.toUpperCase()}</div>
+                <div class="details">
+                    Track: #${det.trackId} | Confidence: ${confidence}%
+                </div>
+            `;
+
+            if (type === 'llm' && det.reasoning) {
+                html += `
+                    <div class="reasoning-text" id="reasoning-${det.trackId}-${timestamp}">${det.reasoning}</div>
+                    <div class="see-more" onclick="toggleReasoning('reasoning-${det.trackId}-${timestamp}', this)">See More</div>
+                `;
+            }
+            
+            alertDiv.innerHTML = html;
+            container.appendChild(alertDiv); 
+            container.scrollTop = container.scrollHeight;
+            if (container.children.length > 31) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function toggleReasoning(id, btn) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('expanded')) {
+                el.classList.remove('expanded');
+                btn.innerText = 'See More';
+            } else {
+                el.classList.add('expanded');
+                btn.innerText = 'See Less';
+            }
+        }
+
+        async function startWhep(streamId) {
+            const WHEP_URL = `${CONFIG.SRS_WHEP_URL}/rtc/v1/whep/?app=live&stream=${streamId}`;
+            currentPeerConnection = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            currentPeerConnection.ontrack = (e) => { aiVideo.srcObject = e.streams[0]; aiStatus.innerText = "Feed Active"; };
+            currentPeerConnection.addTransceiver("video", { direction: "recvonly" });
+            try {
+                const offer = await currentPeerConnection.createOffer();
+                await currentPeerConnection.setLocalDescription(offer);
+                const res = await fetch(WHEP_URL, { method: 'POST', headers: { 'Content-Type': 'application/sdp' }, body: offer.sdp });
+                const answer = await res.text();
+                await currentPeerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: answer }));
+            } catch (e) { aiStatus.innerText = "Connection Failed"; }
+        }
+
+        function drawLoop() {
+            if (canvas.width !== aiVideo.clientWidth || canvas.height !== aiVideo.clientHeight) {
+                canvas.width = aiVideo.clientWidth;
+                canvas.height = aiVideo.clientHeight;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            currentDetections.forEach(det => {
+                const x = det.x * canvas.width, y = det.y * canvas.height;
+                const w = det.width * canvas.width, h = det.height * canvas.height;
+                ctx.strokeStyle = '#00FF00'; ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, w, h);
+                ctx.fillStyle = '#00FF00'; ctx.font = '14px Arial';
+                ctx.fillText(`${det.class} ${(det.score * 100).toFixed(0)}%`, x, y > 20 ? y - 5 : y + 20);
+            });
+            requestAnimationFrame(drawLoop);
+        }
+
+        init();
+    </script>
+</body>
+</html>
