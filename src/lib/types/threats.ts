@@ -13,25 +13,25 @@ export interface YoloDetection {
   height: number;
 
   // Detection metadata
-  score: number;           // YOLO confidence [0,1]
-  class: string;           // e.g. 'person', 'vehicle'
-  trackId: number;         // IoU tracking ID
-  objectKey?: string;      // MinIO crop key (relative path)
+  score: number; // YOLO confidence [0,1]
+  class: string; // e.g. 'person', 'vehicle'
+  trackId: number; // IoU tracking ID
+  objectKey?: string; // MinIO crop key (relative path)
 
   // Media
   imageUrl: string | null; // Presigned MinIO URL (24h expiry), null if failed
 
   // Dual GPS coordinates
-  latitude: number | null;        // Drone GPS lat (where drone was when detection occurred)
-  longitude: number | null;       // Drone GPS lon
-  objectLatitude: number | null;  // Detected object's GPS lat (if resolvable)
+  latitude: number | null; // Drone GPS lat (where drone was when detection occurred)
+  longitude: number | null; // Drone GPS lon
+  objectLatitude: number | null; // Detected object's GPS lat (if resolvable)
   objectLongitude: number | null; // Detected object's GPS lon (if resolvable)
 }
 
 export interface YoloDetectionEvent {
   streamId: string;
   detections: YoloDetection[];
-  timestamp: number;         // Date.now()
+  timestamp: number; // Date.now()
 }
 
 /**
@@ -51,15 +51,15 @@ export interface TrackConfirmedDetection {
   score: number;
 
   // LLM verification
-  reasoning: string;       // Gemini LLM explanation
+  reasoning: string; // Gemini LLM explanation
 
   // Media
   imageUrl: string | null;
 
   // Dual GPS coordinates
-  latitude: number | null;        // Drone GPS lat
-  longitude: number | null;       // Drone GPS lon
-  objectLatitude: number | null;  // Object GPS lat
+  latitude: number | null; // Drone GPS lat
+  longitude: number | null; // Drone GPS lon
+  objectLatitude: number | null; // Object GPS lat
   objectLongitude: number | null; // Object GPS lon
 }
 
@@ -79,14 +79,14 @@ export type DetectionStatus = 'pending' | 'approved' | 'dismissed';
  * Combines both YOLO_DETECTION and TRACK_CONFIRMED events
  */
 export interface ThreatDetection {
-  id: string;                    // `${streamId}-${trackId}-${timestamp}`
+  id: string; // `${streamId}-${trackId}-${timestamp}`
   streamId: string;
   trackId: number;
-  type: string;                  // class name (person, vehicle, etc.)
-  confidence: number;            // score
-  isVerified: boolean;           // true if TRACK_CONFIRMED
-  reasoning?: string;            // LLM reasoning (only for verified threats)
-  status?: DetectionStatus;      // operator action status (pending/approved/dismissed)
+  type: string; // class name (person, vehicle, etc.)
+  confidence: number; // score
+  isVerified: boolean; // true if TRACK_CONFIRMED
+  reasoning?: string; // LLM reasoning (only for verified threats)
+  status?: DetectionStatus; // operator action status (pending/approved/dismissed)
 
   // Bounding box (for video overlay)
   boundingBox: {
@@ -108,7 +108,7 @@ export interface ThreatDetection {
 
   // Timestamps
   detectedAt: Date;
-  receivedAt: Date;              // When frontend received the event
+  receivedAt: Date; // When frontend received the event
 }
 
 /**
@@ -123,4 +123,9 @@ export interface DetectionAlert {
 /**
  * WebSocket connection status
  */
-export type ThreatSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+export type ThreatSocketStatus =
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'reconnecting'
+  | 'error';
