@@ -16,12 +16,15 @@ import {
   AlertTriangle,
   RefreshCw,
   Download,
+  Brain,
 } from 'lucide-react';
 import { TabType } from './AssetManagement';
 import { useUnbindDevice, useDeviceOTA } from '@/hooks/useDJIDevices';
 import { useDJIWebSocket } from '@/hooks/useDJIWebSocket';
 import { useProjects, useUnassignDevice } from '@/hooks/useProjects';
+import { useDeviceConfigs } from '@/hooks/useDeviceConfig';
 const AssignProjectModal = lazy(() => import('./AssignProjectModal'));
+const AIDeviceConfigModal = lazy(() => import('@/components/settings/AIDeviceConfigModal'));
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import type { DJIDevice } from '@/lib/types';
@@ -39,6 +42,7 @@ interface AssetTableProps {
 
 const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devicesError, searchQuery = '' }: AssetTableProps) => {
   const { data: projectsPage } = useProjects();
+  const { data: deviceConfigs = [] } = useDeviceConfigs();
   const { mutate: unassign, isPending: isUnassigning } = useUnassignDevice();
   const { mutate: unbind, isPending: isUnbinding } = useUnbindDevice();
   const { mutate: triggerOTA, isPending: isOTAPending } = useDeviceOTA();
@@ -47,6 +51,7 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
   const [assignTarget, setAssignTarget] = useState<{ sn: string; name: string } | null>(null);
   const [pendingUnbind, setPendingUnbind] = useState<{ sn: string; name: string } | null>(null);
   const [pendingOTA, setPendingOTA] = useState<DJIDevice | null>(null);
+  const [aiConfigTarget, setAiConfigTarget] = useState<{ sn: string; name: string } | null>(null);
   const [openMenuSn, setOpenMenuSn] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -510,6 +515,22 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
             </button>
           </div>
 
+          <div className='p-1.5 border-b border-border'>
+            <button
+              onClick={() => {
+                setOpenMenuSn(null);
+                setAiConfigTarget({
+                  sn: activeMenuDevice.deviceSn,
+                  name: activeMenuDevice.nickname || activeMenuDevice.deviceName || activeMenuDevice.deviceSn,
+                });
+              }}
+              className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-violet-400 hover:bg-violet-500/10 transition-colors text-left'
+            >
+              <Brain size={13} className='flex-shrink-0' />
+              AI Settings
+            </button>
+          </div>
+
           <div className='p-1.5'>
             <button
               onClick={() => {
@@ -666,6 +687,30 @@ const AssetTable = ({ activeTab, devices, isLoading: devicesLoading, error: devi
             deviceName={assignTarget.name}
             onClose={() => setAssignTarget(null)}
           />
+        </Suspense>
+      )}
+
+      {/* AI device config modal */}
+      {aiConfigTarget && (
+        <Suspense fallback={null}>
+          {(() => {
+            const deviceConfig = deviceConfigs.find((c) => c.device_sn === aiConfigTarget.sn);
+            return (
+              <AIDeviceConfigModal
+                open={!!aiConfigTarget}
+                onClose={() => setAiConfigTarget(null)}
+                device={deviceConfig ?? {
+                  device_sn: aiConfigTarget.sn,
+                  name: aiConfigTarget.name,
+                  targetClasses: '[]',
+                  isActive: true,
+                  ai_enabled: false,
+                  created_at: '',
+                  updated_at: '',
+                }}
+              />
+            );
+          })()}
         </Suspense>
       )}
     </>

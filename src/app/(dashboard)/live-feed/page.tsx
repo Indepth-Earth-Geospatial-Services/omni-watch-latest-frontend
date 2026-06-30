@@ -7,6 +7,7 @@ import { PlaneTakeoff } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { useDeviceConfigs, useUpdateDeviceConfig } from '@/hooks/useDeviceConfig';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import { DeviceSidebar } from '@/components/features/streams/DeviceSidebar';
 import { FeedToolbar } from '@/components/features/streams/FeedToolbar';
@@ -21,6 +22,8 @@ export default function LiveFeedPage() {
   const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({
     refetchInterval: 5_000,
   });
+  const { data: deviceConfigs = [] } = useDeviceConfigs();
+  const { mutate: updateDeviceConfig } = useUpdateDeviceConfig();
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
@@ -82,6 +85,27 @@ export default function LiveFeedPage() {
   const stopDevice = useCallback(
     (sn: string) => setStopSignals((prev) => new Map(prev).set(sn, (prev.get(sn) ?? 0) + 1)),
     []
+  );
+
+  const handleAIToggle = useCallback(
+    (sn: string, enabled: boolean) => {
+      const config = deviceConfigs.find((c) => c.device_sn === sn);
+      let parsedClasses: string[] = [];
+      if (config) {
+        try {
+          const parsed = JSON.parse(config.targetClasses.replace(/'/g, '"'));
+          if (Array.isArray(parsed)) parsedClasses = parsed;
+        } catch {
+          // keep empty
+        }
+      }
+      updateDeviceConfig({
+        deviceSn: sn,
+        targetClasses: JSON.stringify(parsedClasses).replace(/"/g, "'"),
+        ai_enabled: enabled,
+      });
+    },
+    [deviceConfigs, updateDeviceConfig]
   );
 
   const stopAll = useCallback(() => {
@@ -156,6 +180,8 @@ export default function LiveFeedPage() {
               isLoading={devicesLoading}
               isOpen={true}
               onClose={() => {}}
+              deviceConfigs={deviceConfigs}
+              onAIToggle={handleAIToggle}
             />
           </div>
 

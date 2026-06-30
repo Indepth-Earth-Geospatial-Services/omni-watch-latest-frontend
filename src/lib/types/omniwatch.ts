@@ -40,6 +40,30 @@ export interface CreateWorkspaceResponse {
   platform_name: string;
 }
 
+// ─── Device AI Configuration ─────────────────────────────────────────────────
+
+export interface DeviceConfig {
+  device_sn: string;
+  name: string;
+  targetClasses: string;
+  isActive: boolean;
+  ai_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIClass {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface StreamUrlResponse {
+  url: string;
+  sn: string;
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export interface ProjectDevice {

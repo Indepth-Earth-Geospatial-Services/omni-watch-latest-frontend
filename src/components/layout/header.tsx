@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Menu, Bell, Settings, ChevronDown, LogOut, Loader2 } from 'lucide-react'
 import { useAuth } from '@/providers/AuthProvider'
 import { useRouter } from 'next/navigation'
-import ThemeSettingsModal from '@/components/settings/ThemeSettingsModal'
+import SettingsModal from '@/components/settings/SettingsModal'
 
 interface HeaderProps {
   title: string
@@ -120,7 +120,7 @@ export function Header({ title, subtitle, onToggleSidebar }: HeaderProps) {
         </div>
       </header>
 
-      <ThemeSettingsModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+      <SettingsModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     </>
   )
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff, X } from 'lucide-react';
+import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff, X, Sparkles } from 'lucide-react';
 import { isDrone } from './stream-utils';
-import type { DJIDevice } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
+import type { DJIDevice, DeviceConfig } from '@/lib/types';
 
 interface DeviceSidebarProps {
   projectDevices: DJIDevice[];
@@ -14,9 +15,10 @@ interface DeviceSidebarProps {
   onSelect: (sn: string) => void;
   onStop: (sn: string) => void;
   isLoading?: boolean;
-  // Mobile drawer controls
   isOpen: boolean;
   onClose: () => void;
+  deviceConfigs?: DeviceConfig[];
+  onAIToggle?: (sn: string, enabled: boolean) => void;
 }
 
 export const DeviceSidebar = memo(function DeviceSidebar({
@@ -30,6 +32,8 @@ export const DeviceSidebar = memo(function DeviceSidebar({
   isLoading = false,
   isOpen,
   onClose,
+  deviceConfigs = [],
+  onAIToggle,
 }: DeviceSidebarProps) {
   const onlineCount = projectDevices.filter((d) => d.status).length;
   const effectiveSn = selectedSn ?? projectDevices[0]?.deviceSn;
@@ -131,6 +135,23 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                     </button>
 
                     <div className='flex items-center gap-1 flex-shrink-0'>
+                      {(() => {
+                        const deviceConfig = deviceConfigs.find((c) => c.device_sn === device.deviceSn);
+                        const aiEnabled = deviceConfig?.ai_enabled ?? false;
+                        return (
+                          <div className='flex items-center gap-1'>
+                            {aiEnabled && (
+                              <Sparkles size={9} className='text-violet-400' title='AI enabled' />
+                            )}
+                            <Switch
+                              checked={aiEnabled}
+                              onCheckedChange={(checked) => onAIToggle?.(device.deviceSn, checked)}
+                              disabled={!onAIToggle}
+                              className='scale-75 origin-center'
+                            />
+                          </div>
+                        );
+                      })()}
                       {isStreaming ? (
                         <>
                           <span
