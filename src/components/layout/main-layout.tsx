@@ -18,7 +18,7 @@ export function MainLayout({ children, title, subtitle }: MainLayoutProps) {
   const { collapsed } = useSidebar();
 
   return (
-    <div className="bg-background text-foreground min-h-dvh">
+    <div className="bg-background text-foreground min-h-dvh font-ui">
       {/* Sidebar */}
       <Sidebar
         className={cn(

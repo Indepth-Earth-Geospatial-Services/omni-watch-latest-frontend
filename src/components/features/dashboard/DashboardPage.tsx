@@ -17,6 +17,8 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { EmptyPage } from '@/components/features/streams/EmptyPage';
 import { StatCard } from '@/components/features/metrics/stat-card';
 import { TaskStatusBadge } from '@/components/features/tasks/TaskStatusBadge';
+import { WaylineOverview } from '@/components/features/dashboard/WaylineOverview';
+import { AIStreamsOverview } from '@/components/features/dashboard/AIStreamsOverview';
 import { useProject } from '@/providers/ProjectProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
@@ -294,6 +296,14 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Wayline + AI Streams Row */}
+            {!isLoading && (
+              <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4'>
+                <WaylineOverview />
+                <AIStreamsOverview />
               </div>
             )}
           </div>

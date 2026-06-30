@@ -16,6 +16,7 @@ import {
   Film,
   Calendar,
   MapPin,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const navGroups = [
     label: 'Monitoring',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: Gauge },
+      { name: 'Analytics', href: '/analytics', icon: BarChart3 },
       { name: 'Live Feeds', href: '/live-feed', icon: Video },
       { name: 'Geospatial Map', href: '/geospatial', icon: Globe },
     ],
@@ -66,7 +68,7 @@ export function Sidebar({ className }: SidebarProps) {
     <aside
       className={cn(
         'fixed inset-y-0 left-0 bg-card border-r border-border flex flex-col',
-        'transition-all duration-300 z-[100]',
+        'transition-all duration-300 z-[100] font-ui',
         collapsed ? 'w-16' : 'w-50 lg:w-64',
         className
       )}
@@ -76,9 +78,9 @@ export function Sidebar({ className }: SidebarProps) {
         collapsed ? 'justify-center px-2' : 'justify-between px-4'
       )}>
         <Link href='/' className='flex items-center'>
-          <Satellite className={cn('h-5 w-5 text-sky-400', collapsed ? '' : 'mr-2')} />
+          <Satellite className={cn('h-5 w-5 text-muted-foreground', collapsed ? '' : 'mr-2')} />
           {!collapsed && (
-            <h1 className='text-lg font-bold text-sky-400'>OMNIWATCH</h1>
+            <h1 className='text-lg font-bold text-muted-foreground'>OMNIWATCH</h1>
           )}
         </Link>
       </div>
