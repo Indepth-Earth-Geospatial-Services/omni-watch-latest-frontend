@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Activity, Cpu, Send, Home, Camera, Monitor } from 'lucide-react';
 import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
 import type { DJIDevice } from '@/lib/types';
+import type { DRCStatus } from '@/hooks/useDRC';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { DebugCommandsPanel } from './DebugCommandsPanel';
 
@@ -18,6 +19,12 @@ export interface SystemStatusFooterProps {
   droneAltitude?: number;
   onTakeoffSucceeded?: (lat: number, lng: number) => void;
   onOpenFlightCommand?: (lat: number | null, lng: number | null) => void;
+  drcStatus: DRCStatus;
+  drcActivate: (dockSn: string) => Promise<void>;
+  drcDeactivate: () => void;
+  sendEmergencyStop: () => boolean;
+  isManualFlightActive: boolean;
+  onManualFlightToggle: (on: boolean) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,6 +91,12 @@ const SystemStatusFooter = ({
   droneAltitude = 0,
   onTakeoffSucceeded,
   onOpenFlightCommand,
+  drcStatus,
+  drcActivate,
+  drcDeactivate,
+  sendEmergencyStop,
+  isManualFlightActive,
+  onManualFlightToggle,
 }: SystemStatusFooterProps) => {
   const [expanded, setExpanded] = useState(false);
   const toggle = () => setExpanded((p) => !p);
@@ -158,6 +171,12 @@ const SystemStatusFooter = ({
                 droneAltitude={droneAltitude}
                 onTakeoffSucceeded={onTakeoffSucceeded}
                 onOpenFlightCommand={onOpenFlightCommand}
+                drcStatus={drcStatus}
+                drcActivate={drcActivate}
+                drcDeactivate={drcDeactivate}
+                sendEmergencyStop={sendEmergencyStop}
+                isManualFlightActive={isManualFlightActive}
+                onManualFlightToggle={onManualFlightToggle}
               />
             </div>
 

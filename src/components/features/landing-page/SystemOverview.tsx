@@ -10,7 +10,7 @@ interface SystemOverviewProps {
   visibleSections: Set<string>;
 }
 
-export default function SystemOverview({ visibleSections }: SystemOverviewProps) {
+export default function SystemOverview({ visibleSections: _visibleSections }: SystemOverviewProps) {
   return (
     <section
       id='system-overview'
@@ -20,13 +20,7 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
       <div className='container mx-auto relative z-10'>
         <div className='max-w-6xl mx-auto'>
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center'>
-            <div
-              className={`transition-all duration-1000 ${
-                visibleSections.has('system-overview')
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 -translate-x-20'
-              }`}
-            >
+            <div>
               <div className='inline-block px-4 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full mb-6 md:mb-8'>
                 <span className='text-xs md:text-sm font-mono text-cyan-400 uppercase tracking-wider'>
                   Command Hub
@@ -54,20 +48,12 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
                   'Customizable alert systems',
                   'End-to-end encryption',
                   'Role-based access control',
-                ].map((item, index) => (
-                  <div
-                    key={item}
-                    className={`flex items-start space-x-4 group transition-all duration-500 ${
-                      visibleSections.has('system-overview')
-                        ? 'opacity-100 translate-x-0'
-                        : 'opacity-0 -translate-x-10'
-                    }`}
-                    style={{ transitionDelay: `${400 + index * 100}ms` }}
-                  >
-                    <div className='flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mt-0.5 group-hover:scale-110 transition-transform'>
+                ].map((item) => (
+                  <div key={item} className='flex items-start space-x-4 group'>
+                    <div className='flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mt-0.5'>
                       <Check className='text-cyan-400 text-xs' />
                     </div>
-                    <span className='text-gray-300 text-lg group-hover:text-cyan-400 transition-colors'>
+                    <span className='text-gray-300 text-lg group-hover:text-cyan-400'>
                       {item}
                     </span>
                   </div>
@@ -76,13 +62,7 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
             </div>
 
             {/* System Modules */}
-            <div
-              className={`relative transition-all duration-1000 delay-300 ${
-                visibleSections.has('system-overview')
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-20'
-              }`}
-            >
+            <div className='relative'>
               <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl blur-2xl'></div>
               <div className='relative bg-card/50 backdrop-blur-sm p-8 rounded-2xl border border-cyan-500/20'>
                 <div className='space-y-4'>
@@ -111,9 +91,8 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
                       desc: 'Secure access control',
                       color: 'purple',
                     },
-                  ].map((module, index) => {
+                  ].map((module) => {
                     const Icon = module.icon;
-                    // Predefined mappings to avoid dynamic string interpolation issues in Tailwind
                     const bgColors: Record<string, string> = {
                       cyan: 'from-cyan-500/10 to-cyan-500/5',
                       red: 'from-red-500/10 to-red-500/5',
@@ -129,12 +108,7 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
                     return (
                       <div
                         key={module.title}
-                        className={`group relative flex items-center space-x-4 p-5 bg-card/80 backdrop-blur-sm rounded-xl border border-cyan-500/20 hover:border-cyan-500/50 transition-all duration-500 hover:translate-x-2 ${
-                          visibleSections.has('system-overview')
-                            ? 'opacity-100 scale-100'
-                            : 'opacity-0 scale-95'
-                        }`}
-                        style={{ transitionDelay: `${600 + index * 100}ms` }}
+                        className='group relative flex items-center space-x-4 p-5 bg-card/80 backdrop-blur-sm rounded-xl border border-cyan-500/20 hover:border-cyan-500/50'
                       >
                         <div
                           className={`flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br ${bgColors[module.color]} flex items-center justify-center`}
@@ -142,13 +116,13 @@ export default function SystemOverview({ visibleSections }: SystemOverviewProps)
                           <Icon className={`${textColors[module.color]} text-2xl`} />
                         </div>
                         <div className='flex-1'>
-                          <div className='font-bold text-gray-100 mb-1 group-hover:text-cyan-400 transition-colors'>
+                          <div className='font-bold text-gray-100 mb-1 group-hover:text-cyan-400'>
                             {module.title}
                           </div>
                           <div className='text-sm text-gray-400 font-mono'>{module.desc}</div>
                         </div>
                         <div className='flex items-center space-x-1'>
-                          <div className='w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse'></div>
+                          <div className='w-1.5 h-1.5 bg-green-500 rounded-full'></div>
                           <span className='text-xs text-green-500 font-mono'>ONLINE</span>
                         </div>
                       </div>

@@ -13,6 +13,7 @@ import {
   Wifi,
   WifiOff,
   XCircle,
+  Gamepad2,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ import type { JoystickInvalidState } from '@/hooks/useDockMQTT';
 import type { DRCStatus } from '@/hooks/useDRC';
 import { cancelAllJobs } from '@/services/djiservice-layer/dji-service';
 import { CmdButton, SectionHeader, JOYSTICK_INVALID_REASONS } from './ControlShared';
+import { ManualFlightActivateModal } from './ManualFlightActivateModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,9 @@ export interface FlightAuthorityTabProps {
   drcActivate: (dockSn: string) => Promise<void>;
   drcDeactivate: () => void;
   sendEmergencyStop: () => boolean;
+  // Manual flight
+  isManualFlightActive: boolean;
+  onManualFlightToggle: (on: boolean) => void;
 }
 
 // ─── Accordion header ─────────────────────────────────────────────────────────
@@ -106,8 +111,11 @@ export const FlightAuthorityTab = ({
   drcActivate,
   drcDeactivate,
   sendEmergencyStop,
+  isManualFlightActive,
+  onManualFlightToggle,
 }: FlightAuthorityTabProps) => {
   const [expanded, setExpanded] = useState<'flyto' | 'takeoff' | 'stop' | null>(null);
+  const [showManualModal, setShowManualModal] = useState(false);
   const toggle = (section: 'flyto' | 'takeoff' | 'stop') =>
     setExpanded((prev) => (prev === section ? null : section));
 
@@ -190,6 +198,45 @@ export const FlightAuthorityTab = ({
               aria-label='Toggle flight authority'
             />
           </div>
+        </div>
+
+        {/* ── Manual Flight Mode toggle card ── */}
+        <div
+          className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
+            isManualFlightActive
+              ? 'bg-amber-500/10 border-amber-500/40'
+              : 'bg-[#13151A] border-zinc-800/50'
+          }`}
+        >
+          <div className='flex-1 min-w-0 mr-3'>
+            <div className='flex items-center gap-1.5'>
+              <Gamepad2 size={10} className={isManualFlightActive ? 'text-amber-400' : 'text-zinc-600'} />
+              <p className='text-[11px] font-black text-zinc-200 uppercase tracking-wide'>
+                Manual Flight
+              </p>
+            </div>
+            <p className='text-[9px] text-zinc-600 mt-0.5'>
+              {isManualFlightActive
+                ? 'Active — keyboard/mouse controls enabled'
+                : !flightAuth
+                  ? 'Requires flight authority'
+                  : drcStatus !== 'active'
+                    ? 'Requires active DRC channel'
+                    : 'Activate to take direct control via DRC'}
+            </p>
+          </div>
+          <Switch
+            checked={isManualFlightActive}
+            onCheckedChange={(on) => {
+              if (on) {
+                setShowManualModal(true);
+              } else {
+                onManualFlightToggle(false);
+              }
+            }}
+            disabled={!flightAuth || !dockOnline || drcStatus !== 'active'}
+            aria-label='Toggle manual flight mode'
+          />
         </div>
 
         {/* ── Fly-To Point accordion ── */}
@@ -405,7 +452,18 @@ export const FlightAuthorityTab = ({
           </div>
         </div>
       </div>
+
+      {/* ── Manual flight confirmation modal ── */}
+      <ManualFlightActivateModal
+        isOpen={showManualModal}
+        onCancel={() => setShowManualModal(false)}
+        onConfirm={() => {
+          setShowManualModal(false);
+          onManualFlightToggle(true);
+        }}
+      />
     </>
   );
 };
 //4.84194, 6.97565, 4.83356, 6.97606
+// 4.838386, 6.976387

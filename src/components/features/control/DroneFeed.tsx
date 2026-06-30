@@ -3,8 +3,10 @@
 import React, { useRef, useEffect } from 'react';
 import { AlertTriangle, ChevronDown, Crosshair, Navigation, RefreshCw } from 'lucide-react';
 import GimbalControls from './GimbalControls';
+import { ManualFlightControls } from './ManualFlightControls';
 import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
+import type { DRCStatus } from '@/hooks/useDRC';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -31,8 +33,15 @@ interface DroneFeedProps {
   onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
+  latitude?: number;
+  longitude?: number;
   className?: string;
   isMini?: boolean;
+  // Manual flight — only rendered when not mini
+  isManualActive?: boolean;
+  drcStatus?: DRCStatus;
+  sendJoystick?: (x: number, y: number, h: number, w: number) => boolean;
+  onManualDeactivate?: () => void;
 }
 
 const QUALITY_LABELS: Record<string, string> = {
@@ -70,10 +79,27 @@ const DroneFeed = ({
   onQualityChange,
   onStart,
   onStop,
+  latitude,
+  longitude,
   className,
   isMini = false,
+  isManualActive = false,
+  drcStatus = 'idle',
+  sendJoystick,
+  onManualDeactivate,
 }: DroneFeedProps) => {
   const heading = 247;
+
+  const fmtLat = (v?: number) => {
+    if (v == null || v === 0) return '—';
+    const dir = v >= 0 ? 'N' : 'S';
+    return `${Math.abs(v).toFixed(5)}° ${dir}`;
+  };
+  const fmtLng = (v?: number) => {
+    if (v == null || v === 0) return '—';
+    const dir = v >= 0 ? 'E' : 'W';
+    return `${Math.abs(v).toFixed(5)}° ${dir}`;
+  };
   const canStart = !!selectedVideoId && !isStreaming;
   const canStop = !!selectedVideoId && isStreaming;
 
@@ -134,11 +160,13 @@ const DroneFeed = ({
                 disabled={!selectedVideoId}
                 className={selectCls}
               >
-                {videoTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </option>
-                ))}
+                {videoTypes
+                  .filter((t) => t.toLowerCase() !== 'normal')
+                  .map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
               </select>
               <ChevronDown
                 size={11}
@@ -240,10 +268,20 @@ const DroneFeed = ({
           </div>
         </div>
 
+        {/* Manual flight controls — full viewport only, positions itself absolutely */}
+        {!isMini && (
+          <ManualFlightControls
+            isActive={isManualActive}
+            drcStatus={drcStatus}
+            sendJoystick={sendJoystick ?? (() => false)}
+            onDeactivate={onManualDeactivate ?? (() => {})}
+          />
+        )}
+
         {/* Compass inset */}
         <div
           className={`absolute rounded-full border border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl flex items-center justify-center overflow-hidden ${
-            isMini ? 'bottom-3 left-3 w-20 h-20' : 'bottom-6 left-6 w-40 h-40'
+            isMini ? 'bottom-3 left-3 w-16 h-16' : 'bottom-6 left-6 w-20 h-20'
           }`}
         >
           <div
@@ -272,7 +310,7 @@ const DroneFeed = ({
             <div className='flex flex-col items-center'>
               <Navigation
                 className='text-emerald-400 fill-emerald-400/20'
-                size={isMini ? 14 : 24}
+                size={isMini ? 14 : 18}
               />
               <div
                 className={`absolute font-mono font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
@@ -318,12 +356,12 @@ const DroneFeed = ({
             <span
               className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
-              Lat: 6.5244° N
+              Lat: {fmtLat(latitude)}
             </span>
             <span
               className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
-              Lon: 3.3792° E
+              Lon: {fmtLng(longitude)}
             </span>
           </div>
         </div>
