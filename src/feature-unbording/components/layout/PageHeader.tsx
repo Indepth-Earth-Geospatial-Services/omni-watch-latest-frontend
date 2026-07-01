@@ -49,14 +49,14 @@ const PageHeader = ({
       {/* Search */}
       <div className='relative w-full sm:max-w-sm'>
         <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
-          <Search className='w-4 h-4 text-zinc-500' />
+          <Search className='w-4 h-4 text-muted-foreground' />
         </div>
         <input
           type='text'
           value={searchQuery}
           onChange={handleSearch}
           placeholder={searchPlaceholder}
-          className='block w-full py-2.5 pl-10 pr-3 text-sm text-zinc-200 bg-[#32353C] border border-[#6B7280] rounded-md focus:outline-none focus:ring-1 focus:ring-[#adafaf] focus:border-transparent placeholder-[#CFC2D680]/50 transition-all'
+          className='block w-full py-2.5 pl-10 pr-3 text-sm text-foreground bg-secondary border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-[#adafaf] focus:border-transparent placeholder-[#CFC2D680]/50 transition-all'
         />
       </div>
 

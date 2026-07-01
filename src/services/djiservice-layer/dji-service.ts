@@ -47,6 +47,8 @@ import type {
   DeviceFlightAreaStatus,
   WaylineListResponse,
   WaylineJobListResponse,
+  MediaListResponse,
+  CreateFlightTask,
 } from '@/lib/types';
 import type {
   PayloadCommandRequest,
@@ -490,4 +492,69 @@ export function drcExit(workspaceId: string, clientId: string, dockSn: string): 
     client_id: clientId,
     dock_sn: dockSn,
   });
+}
+
+// ─── Media ──────────────────────────────────────────────────────────────────
+
+/** Lists media files captured by devices in the workspace. Supports pagination. */
+export function getMediaFiles(
+  workspaceId: string,
+  params?: { page?: number; page_size?: number }
+): Promise<MediaListResponse> {
+  return djiRequest.get<MediaListResponse>(DJI_URLS.media.files(workspaceId, params));
+}
+
+/** Downloads a media file as an ArrayBuffer. The endpoint streams binary directly. */
+export function downloadMediaFile(workspaceId: string, fileId: string): Promise<ArrayBuffer> {
+  return djiRequest.getBinary(DJI_URLS.media.fileUrl(workspaceId, fileId));
+}
+
+// ─── Flight Tasks ───────────────────────────────────────────────────────────
+
+/** Creates a new flight task (immediate, timed, or conditional). */
+export function createFlightTask(
+  workspaceId: string,
+  body: CreateFlightTask
+): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.waylines.createTask(workspaceId), body);
+}
+
+/** Deletes a flight task by job_id. */
+export function deleteFlightTask(
+  workspaceId: string,
+  jobId: string
+): Promise<void> {
+  return djiRequest.delete<void>(DJI_URLS.waylines.deleteTask(workspaceId), {
+    params: { job_id: jobId },
+  });
+}
+
+/** Suspends (0) or resumes (1) a flight task. */
+export function updateFlightTaskStatus(
+  workspaceId: string,
+  jobId: string,
+  status: number
+): Promise<void> {
+  return djiRequest.put<void>(DJI_URLS.waylines.updateTaskStatus(workspaceId, jobId), {
+    status,
+  });
+}
+
+/** Triggers immediate media upload for a completed flight task. */
+export function uploadMediaNow(workspaceId: string, jobId: string): Promise<void> {
+  return djiRequest.post<void>(DJI_URLS.waylines.uploadMedia(workspaceId, jobId));
+}
+
+// ─── Waylines ───────────────────────────────────────────────────────────────
+
+/** Deletes a wayline file from the workspace. */
+export function deleteWaylineFile(workspaceId: string, waylineId: string): Promise<void> {
+  return djiRequest.delete<void>(DJI_URLS.waylines.deleteWayline(workspaceId, waylineId));
+}
+
+/** Uploads a KMZ wayline file to the workspace via multipart/form-data. */
+export function uploadWaylineKmz(workspaceId: string, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  return djiRequest.postForm<void>(DJI_URLS.waylines.upload(workspaceId), formData);
 }

@@ -98,7 +98,7 @@ const FlightControlActions = ({
 
   return (
     <div
-      className='flex items-center gap-[8px] bg-[#333539E5] border-t border-[#42475426] w-full p-4 rounded-b-lg'
+      className='flex items-center gap-[8px] bg-muted border-t border-border/15 w-full p-4 rounded-b-lg'
       style={{ height: '65px' }}
     >
       {/* ── Pause / Resume ──────────────────────────────────────────── */}
@@ -114,8 +114,8 @@ const FlightControlActions = ({
             focus:outline-none focus:ring-0 disabled:opacity-40 disabled:cursor-not-allowed
             ${
               isPaused && canAct
-                ? 'bg-[#1E2024] text-white border-zinc-400 shadow-inner'
-                : 'bg-[#1E2024]/60 border-zinc-700/50 text-white hover:text-zinc-300 hover:border-zinc-600'
+                ? 'bg-secondary text-white border-border shadow-inner'
+                : 'bg-secondary/60 border-border/50 text-white hover:text-foreground hover:border-border'
             }`}
         >
           {isWaylinePending ? (

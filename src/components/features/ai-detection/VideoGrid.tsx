@@ -65,7 +65,7 @@ export const VideoGrid = memo(function VideoGrid({
     const isError = connectionStatus === 'error';
 
     return (
-      <div className='relative flex flex-col bg-[#0C0E12] overflow-hidden rounded-xl border border-zinc-800/50 flex-1 min-h-0'>
+      <div className='relative flex flex-col bg-background overflow-hidden rounded-xl border border-border/50 flex-1 min-h-0'>
         <div className='absolute inset-0 flex flex-col items-center justify-center'>
           <div
             className='absolute inset-0 opacity-5'
@@ -76,18 +76,18 @@ export const VideoGrid = memo(function VideoGrid({
           />
           {isConnecting ? (
             <>
-              <Loader2 className='w-8 h-8 text-zinc-600 animate-spin mb-2' />
-              <p className='text-xs font-poppins text-zinc-600'>
+              <Loader2 className='w-8 h-8 text-muted-foreground animate-spin mb-2' />
+              <p className='text-xs font-ui text-muted-foreground'>
                 {connectionStatus === 'connecting' ? 'Connecting to AI server...' : 'Reconnecting...'}
               </p>
             </>
           ) : isError ? (
             <>
               <AlertTriangle className='w-8 h-8 text-red-500/60 mb-2' />
-              <p className='text-xs font-poppins text-red-400/60'>Connection failed</p>
+              <p className='text-xs font-ui text-red-400/60'>Connection failed</p>
               <button
                 onClick={() => window.location.reload()}
-                className='mt-2 flex items-center gap-1 text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+                className='mt-2 flex items-center gap-1 text-[10px] font-ui text-muted-foreground hover:text-muted-foreground transition-colors'
               >
                 <RefreshCw size={10} /> Retry
               </button>
@@ -95,7 +95,7 @@ export const VideoGrid = memo(function VideoGrid({
           ) : (
             <>
               <Video className='w-8 h-8 text-zinc-700 mb-2' />
-              <p className='text-xs font-poppins text-zinc-600'>Select streams to begin monitoring</p>
+              <p className='text-xs font-ui text-muted-foreground'>Select streams to begin monitoring</p>
             </>
           )}
         </div>

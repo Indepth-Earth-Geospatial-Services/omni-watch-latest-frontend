@@ -33,7 +33,7 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
   const windDir     = isAirborne ? droneData?.windDirection : undefined;
 
   const batteryColor =
-    battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-[#45F0CF]';
+    battery < 20 ? 'text-red-400' : battery < 40 ? 'text-amber-400' : 'text-theme-accent';
 
   const stats = [
     {
@@ -45,23 +45,23 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
     {
       label: 'Altitude',
       value: altitude != null ? `${altitude.toFixed(1)} m` : '—',
-      icon: <ArrowUp size={18} className='text-[#AFC6FF]' />,
+      icon: <ArrowUp size={18} className='text-theme-accent' />,
     },
     {
       label: 'Airspeed',
       value: speedMs != null ? `${(speedMs * 3.6).toFixed(1)} km/h` : '—',
-      icon: <Wind size={18} className='text-[#AFC6FF]' />,
+      icon: <Wind size={18} className='text-theme-accent' />,
     },
     {
       label: 'Heading',
       value: heading != null ? `${heading.toFixed(0)}° ${direction ?? ''}`.trim() : '—',
-      icon: <Compass size={18} className='text-[#AFC6FF]' />,
+      icon: <Compass size={18} className='text-theme-accent' />,
     },
     {
       label: 'Signal',
       value: droneData ? (online ? 'Online' : 'Offline') : '—',
-      icon: <Wifi size={18} className={droneData && online ? 'text-[#45F0CF]' : 'text-zinc-500'} />,
-      colorClass: droneData ? (online ? 'text-[#2CAC73]' : 'text-red-400') : '',
+      icon: <Wifi size={18} className={droneData && online ? 'text-theme-accent' : 'text-muted-foreground'} />,
+      colorClass: droneData ? (online ? 'text-theme-accent' : 'text-red-400') : '',
     },
     {
       label: 'GPS',
@@ -72,13 +72,13 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
             ? `${gpsNumber} Sats`
             : 'No Fix'
         : '—',
-      icon: <Target size={18} className={isGPSFixed ? 'text-[#45F0CF]' : 'text-[#AFC6FF]'} />,
-      colorClass: isGPSFixed ? 'text-[#45F0CF]' : gpsNumber > 0 ? 'text-amber-400' : '',
+      icon: <Target size={18} className={isGPSFixed ? 'text-theme-accent' : 'text-theme-accent'} />,
+      colorClass: isGPSFixed ? 'text-theme-accent' : gpsNumber > 0 ? 'text-amber-400' : '',
     },
     {
       label: 'Flight Time',
       value: elapsedTime ?? '—',
-      icon: <Clock size={18} className='text-[#AFC6FF]' />,
+      icon: <Clock size={18} className='text-theme-accent' />,
     },
     {
       label: 'Wind',
@@ -86,22 +86,22 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
         windSpeedMs != null && windSpeedMs > 0
           ? `${(windSpeedMs * 3.6).toFixed(1)} km/h ${windDir != null ? degToCompass(windDir) : ''}`.trim()
           : '—',
-      icon: <Navigation size={18} className='text-[#AFC6FF]' />,
+      icon: <Navigation size={18} className='text-theme-accent' />,
     },
   ];
 
   return (
-    <div className='relative flex items-center w-full h-24 bg-[#12151C] border border-[#1E2330] rounded-lg overflow-hidden'>
+    <div className='relative flex items-center w-full h-24 bg-card border border-border rounded-lg overflow-hidden'>
       {/* Live status dot */}
       <div className='absolute top-3 left-4 flex items-center gap-2'>
         <div
           className={`w-2 h-2 rounded-full ${
-            droneData?.online ? 'bg-[#2CAC73] shadow-[0px_0px_5px_0px_#45F0CF]' : 'bg-zinc-600'
+            droneData?.online ? 'bg-theme-accent shadow-[0px_0px_5px_0px_var(--theme-accent)]' : 'bg-muted'
           }`}
         />
         <span
-          className={`text-[10px] font-semibold font-poppins uppercase tracking-tighter ${
-            droneData?.online ? 'text-[#2CAC73]' : 'text-zinc-600'
+          className={`text-[10px] font-semibold font-ui uppercase tracking-tighter ${
+            droneData?.online ? 'text-theme-accent' : 'text-muted-foreground'
           }`}
         >
           {droneData?.online ? 'Live' : droneData ? 'Offline' : 'No Drone'}
@@ -113,16 +113,16 @@ const FlightStatsBar = ({ droneData, elapsedTime }: FlightStatsBarProps) => {
           <div
             key={stat.label}
             className={`flex flex-col items-center justify-center flex-1 gap-1 ${
-              index !== stats.length - 1 ? 'border-r border-zinc-800/40' : ''
+              index !== stats.length - 1 ? 'border-r border-border/40' : ''
             }`}
           >
             <div className='mb-1'>{stat.icon}</div>
             <span
-              className={`text-sm font-semibold font-poppins leading-none text-white ${stat.colorClass ?? ''}`}
+              className={`text-sm font-semibold font-ui leading-none text-white ${stat.colorClass ?? ''}`}
             >
               {stat.value}
             </span>
-            <span className='text-[10px] font-normal font-poppins text-[#8C90A0] uppercase tracking-wide'>
+            <span className='text-[10px] font-normal font-ui text-muted-foreground uppercase tracking-wide'>
               {stat.label}
             </span>
           </div>

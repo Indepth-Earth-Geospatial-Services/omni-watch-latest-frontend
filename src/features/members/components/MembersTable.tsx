@@ -41,10 +41,10 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
 
   if (error) {
     return (
-      <div className='w-full bg-[#1D2026] rounded-lg border border-zinc-800/50 p-8 text-center font-poppins'>
+      <div className='w-full bg-secondary rounded-lg border border-border/50 p-8 text-center font-ui'>
         <div className='flex flex-col items-center gap-2'>
           <AlertCircle className='w-7 h-7 text-red-400' />
-          <span className='text-sm text-zinc-400'>Failed to load members</span>
+          <span className='text-sm text-muted-foreground'>Failed to load members</span>
           <span className='text-xs text-red-400/80 font-mono max-w-[380px]'>{error.message}</span>
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
   }
 
   return (
-    <div className='flex flex-col w-[calc(100%-2rem)] mx-4 font-poppins'>
+    <div className='flex flex-col w-[calc(100%-2rem)] mx-4 font-ui'>
       {/* Desktop view */}
       <div className='hidden md:block'>
         <DataTable
@@ -64,11 +64,11 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
           emptyTableText='No members found. Add one to get started.'
           itemLable='member'
           pageSize={10}
-          className='bg-[#1D2026] border border-zinc-800/50 rounded-lg shadow-none'
-          classNameHeader='bg-[#191C22] text-muted-foreground'
-          classNameTableHead='text-[10px] font-bold tracking-widest text-zinc-500 uppercase'
+          className='bg-secondary border border-border/50 rounded-lg shadow-none'
+          classNameHeader='bg-card text-muted-foreground'
+          classNameTableHead='text-[10px] font-bold tracking-widest text-muted-foreground uppercase'
           classNameRow='hover:bg-white/[0.02]'
-          classNameCell='text-zinc-200'
+          classNameCell='text-foreground'
         />
       </div>
 
@@ -76,24 +76,24 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
       <div className='md:hidden flex flex-col gap-3'>
         {isLoading ? (
           Array.from({ length: pageSize }).map((_, i) => (
-            <div key={i} className='bg-[#1D2026] rounded-lg border border-zinc-800/50 p-4 space-y-3 animate-pulse'>
+            <div key={i} className='bg-secondary rounded-lg border border-border/50 p-4 space-y-3 animate-pulse'>
               <div className='flex items-center gap-3'>
-                <div className='w-9 h-9 rounded-full bg-zinc-800' />
+                <div className='w-9 h-9 rounded-full bg-secondary' />
                 <div className='flex-1 space-y-2'>
-                  <div className='h-4 w-28 bg-zinc-800 rounded' />
-                  <div className='h-3 w-40 bg-zinc-800/70 rounded' />
+                  <div className='h-4 w-28 bg-secondary rounded' />
+                  <div className='h-3 w-40 bg-secondary/70 rounded' />
                 </div>
               </div>
-              <div className='grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800/30'>
-                <div className='h-4 bg-zinc-800 rounded' />
-                <div className='h-4 bg-zinc-800 rounded' />
+              <div className='grid grid-cols-2 gap-3 pt-3 border-t border-border/30'>
+                <div className='h-4 bg-secondary rounded' />
+                <div className='h-4 bg-secondary rounded' />
               </div>
             </div>
           ))
         ) : filtered.length === 0 ? (
-          <div className='bg-[#1D2026] rounded-lg border border-[#424754] p-8 text-center'>
+          <div className='bg-secondary rounded-lg border border-border p-8 text-center'>
             <Users className='w-8 h-8 text-zinc-700 mx-auto mb-2' />
-            <p className='text-sm text-zinc-600'>
+            <p className='text-sm text-muted-foreground'>
               {searchTerm ? 'No members match your search.' : 'No members found. Add one to get started.'}
             </p>
           </div>
@@ -107,7 +107,7 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
               return (
                 <div
                   key={member.id}
-                  className='bg-[#1D2026] rounded-lg border border-[#424754] p-4 space-y-3 font-poppins relative'
+                  className='bg-secondary rounded-lg border border-border p-4 space-y-3 font-ui relative'
                 >
                   {/* Header */}
                   <div className='flex items-center justify-between'>
@@ -116,10 +116,10 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
                         <span className='text-xs font-bold text-white'>{initials}</span>
                       </div>
                       <div className='min-w-0'>
-                        <p className='text-sm font-bold text-zinc-100 truncate'>
+                        <p className='text-sm font-bold text-foreground truncate'>
                           {member.full_name}
                         </p>
-                        <p className='text-xs text-zinc-500 truncate'>
+                        <p className='text-xs text-muted-foreground truncate'>
                           {member.email}
                         </p>
                       </div>
@@ -127,7 +127,7 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
 
                     <button
                       onClick={() => onEdit(member)}
-                      className='p-1.5 rounded-md border border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors'
+                      className='p-1.5 rounded-md border border-border bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors'
                       title='Edit member'
                     >
                       <Pencil size={14} />
@@ -135,14 +135,14 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
                   </div>
 
                   {/* Details Grid */}
-                  <div className='grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800/30 text-xs'>
+                  <div className='grid grid-cols-2 gap-3 pt-3 border-t border-border/30 text-xs'>
                     <div>
-                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Role</span>
-                      <span className='text-zinc-300 block mt-0.5'>Member</span>
+                      <span className='text-[9px] font-bold text-muted-foreground uppercase tracking-wider block'>Role</span>
+                      <span className='text-muted-foreground block mt-0.5'>Member</span>
                     </div>
 
                     <div>
-                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Status</span>
+                      <span className='text-[9px] font-bold text-muted-foreground uppercase tracking-wider block'>Status</span>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider mt-0.5 ${
                           active
@@ -155,15 +155,15 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
                     </div>
 
                     <div className='col-span-2'>
-                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Last Login</span>
-                      <span className='font-mono text-zinc-400 block mt-0.5'>
+                      <span className='text-[9px] font-bold text-muted-foreground uppercase tracking-wider block'>Last Login</span>
+                      <span className='font-mono text-muted-foreground block mt-0.5'>
                         {member.last_login ? formatDate(member.last_login) : '\u2014'}
                       </span>
                     </div>
 
                     <div className='col-span-2'>
-                      <span className='text-[9px] font-bold text-zinc-500 uppercase tracking-wider block'>Joined</span>
-                      <span className='font-mono text-zinc-400 block mt-0.5'>
+                      <span className='text-[9px] font-bold text-muted-foreground uppercase tracking-wider block'>Joined</span>
+                      <span className='font-mono text-muted-foreground block mt-0.5'>
                         {formatDate(member.created_at)}
                       </span>
                     </div>
@@ -174,16 +174,16 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
 
             {/* Pagination for mobile */}
             {totalPages > 1 && (
-              <div className='flex items-center justify-between px-4 py-3 border border-zinc-800/50 bg-[#1D2026] rounded-lg mt-1'>
-                <span className='text-[10px] text-zinc-500'>
-                  Showing <span className='text-zinc-300 font-semibold'>{paginated.length}</span> of{' '}
-                  <span className='text-zinc-300 font-semibold'>{filtered.length}</span>
+              <div className='flex items-center justify-between px-4 py-3 border border-border/50 bg-secondary rounded-lg mt-1'>
+                <span className='text-[10px] text-muted-foreground'>
+                  Showing <span className='text-muted-foreground font-semibold'>{paginated.length}</span> of{' '}
+                  <span className='text-muted-foreground font-semibold'>{filtered.length}</span>
                 </span>
                 <div className='flex items-center gap-1'>
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className='p-1.5 rounded border border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
+                    className='p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
                   >
                     <ChevronLeft size={13} />
                   </button>
@@ -194,8 +194,8 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
                       className={`w-7 h-7 rounded text-[11px] font-bold border transition-colors
                         ${
                           page === n
-                            ? 'bg-[#1C93FF] border-[#1C93FF] text-white'
-                            : 'border-zinc-800 text-zinc-500 bg-zinc-900/50'
+                            ? 'bg-theme-accent border-theme-accent text-white'
+                            : 'border-border text-muted-foreground bg-zinc-900/50'
                         }`}
                     >
                       {n}
@@ -204,7 +204,7 @@ export default function MembersTable({ members, isLoading, error, searchTerm = '
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className='p-1.5 rounded border border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
+                    className='p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-zinc-900/50'
                   >
                     <ChevronRight size={13} />
                   </button>

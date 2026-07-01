@@ -122,7 +122,7 @@ export function DetectionMap({
           <select
             value={selectedStyle}
             onChange={(e) => setSelectedStyle(e.target.value)}
-            className="bg-transparent text-[10px] font-poppins text-gray-300 outline-none cursor-pointer"
+            className="bg-transparent text-[10px] font-ui text-gray-300 outline-none cursor-pointer"
           >
             <option value="dark">Dark</option>
             <option value="positron">Positron</option>
@@ -234,7 +234,7 @@ export function DetectionMap({
 
               {/* Type + status */}
               <div className='flex items-center justify-between mb-1'>
-                <h3 className='font-semibold text-xs font-poppins capitalize'>{focusDetection.type}</h3>
+                <h3 className='font-semibold text-xs font-ui capitalize'>{focusDetection.type}</h3>
                 <span className={`text-[8px] font-bold uppercase px-1 py-0.5 rounded ${focusDetection.isVerified ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
                   {focusDetection.isVerified ? 'Verified' : 'Pending'}
                 </span>

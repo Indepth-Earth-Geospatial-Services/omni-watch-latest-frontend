@@ -1,9 +1,10 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff, X } from 'lucide-react';
+import { Activity, Box, PlaneTakeoff, Square, Wifi, WifiOff, X, Sparkles } from 'lucide-react';
 import { isDrone } from './stream-utils';
-import type { DJIDevice } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
+import type { DJIDevice, DeviceConfig } from '@/lib/types';
 
 interface DeviceSidebarProps {
   projectDevices: DJIDevice[];
@@ -14,9 +15,10 @@ interface DeviceSidebarProps {
   onSelect: (sn: string) => void;
   onStop: (sn: string) => void;
   isLoading?: boolean;
-  // Mobile drawer controls
   isOpen: boolean;
   onClose: () => void;
+  deviceConfigs?: DeviceConfig[];
+  onAIToggle?: (sn: string, enabled: boolean) => void;
 }
 
 export const DeviceSidebar = memo(function DeviceSidebar({
@@ -30,14 +32,16 @@ export const DeviceSidebar = memo(function DeviceSidebar({
   isLoading = false,
   isOpen,
   onClose,
+  deviceConfigs = [],
+  onAIToggle,
 }: DeviceSidebarProps) {
   const onlineCount = projectDevices.filter((d) => d.status).length;
   const effectiveSn = selectedSn ?? projectDevices[0]?.deviceSn;
 
   const sidebarContent = (
-    <aside className='w-60 flex-shrink-0 bg-[#0C0D10] border border-zinc-800 rounded-xl flex flex-col overflow-hidden h-full'>
-      <div className='flex items-center justify-between px-4 py-[22px] border-b border-zinc-800 flex-shrink-0'>
-        <p className='text-[9px] font-black tracking-[0.16em] uppercase text-zinc-600'>Devices</p>
+    <aside className='w-60 flex-shrink-0 bg-background border border-border rounded-xl flex flex-col overflow-hidden h-full'>
+      <div className='flex items-center justify-between px-4 py-[22px] border-b border-border flex-shrink-0'>
+        <p className='text-[9px] font-black tracking-[0.16em] uppercase text-muted-foreground'>Devices</p>
         <div className='flex items-center gap-1.5'>
           <span className='w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse' />
           <span className='text-[10px] font-semibold text-emerald-400'>{onlineCount}</span>
@@ -45,7 +49,7 @@ export const DeviceSidebar = memo(function DeviceSidebar({
           {/* Close button — mobile only */}
           <button
             onClick={onClose}
-            className='ml-2 p-1 rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors lg:hidden'
+            className='ml-2 p-1 rounded text-muted-foreground hover:text-muted-foreground hover:bg-secondary transition-colors lg:hidden'
           >
             <X size={13} />
           </button>
@@ -59,12 +63,12 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                 key={i}
                 className='flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-zinc-900/30 border border-zinc-800/30'
               >
-                <div className='w-7 h-7 bg-zinc-800 rounded-md animate-pulse flex-shrink-0' />
+                <div className='w-7 h-7 bg-secondary rounded-md animate-pulse flex-shrink-0' />
                 <div className='flex-1 flex flex-col gap-1.5'>
-                  <div className='h-2.5 w-24 bg-zinc-800 rounded animate-pulse' />
+                  <div className='h-2.5 w-24 bg-secondary rounded animate-pulse' />
                   <div className='h-2 w-16 bg-zinc-800/60 rounded animate-pulse' />
                 </div>
-                <div className='w-2.5 h-2.5 bg-zinc-800 rounded-full animate-pulse' />
+                <div className='w-2.5 h-2.5 bg-secondary rounded-full animate-pulse' />
               </div>
             ))
           : projectDevices.length === 0
@@ -73,11 +77,11 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                   key={d.id}
                   className='flex items-center gap-3 px-3 py-3 rounded-lg bg-zinc-900/40 border border-zinc-800/40'
                 >
-                  <div className='w-7 h-7 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0'>
-                    <PlaneTakeoff size={12} className='text-zinc-600' />
+                  <div className='w-7 h-7 rounded-md bg-secondary border border-border flex items-center justify-center flex-shrink-0'>
+                    <PlaneTakeoff size={12} className='text-muted-foreground' />
                   </div>
                   <div className='min-w-0'>
-                    <p className='text-[10px] font-mono text-zinc-500 truncate'>
+                    <p className='text-[10px] font-logs text-muted-foreground truncate'>
                       {d.device.device_sn}
                     </p>
                     <p className='text-[9px] text-zinc-700'>Not bound</p>
@@ -94,8 +98,8 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                     key={device.deviceSn}
                     className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors group/row ${
                       isActive
-                        ? 'bg-[#1C93FF]/10 border-[#1C93FF]/30'
-                        : 'bg-zinc-900/30 border-zinc-800/30 hover:bg-zinc-800/50 hover:border-zinc-700/60'
+                        ? 'bg-theme-accent/10 border-theme-accent/30'
+                        : 'bg-zinc-900/30 border-zinc-800/30 hover:bg-secondary/50 hover:border-zinc-700/60'
                     }`}
                   >
                     <button
@@ -120,17 +124,34 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                       </div>
                       <div className='min-w-0 flex-1'>
                         <p
-                          className={`text-xs font-bold truncate ${isActive ? 'text-[#1C93FF]' : 'text-zinc-300'}`}
+                          className={`text-xs font-bold truncate ${isActive ? 'text-theme-accent' : 'text-muted-foreground'}`}
                         >
                           {device.nickname || device.deviceName || device.deviceSn}
                         </p>
-                        <p className='text-[9px] font-mono text-zinc-600 truncate'>
+                        <p className='text-[9px] font-logs text-muted-foreground truncate'>
                           {device.deviceSn}
                         </p>
                       </div>
                     </button>
 
                     <div className='flex items-center gap-1 flex-shrink-0'>
+                      {(() => {
+                        const deviceConfig = deviceConfigs.find((c) => c.device_sn === device.deviceSn);
+                        const aiEnabled = deviceConfig?.ai_enabled ?? false;
+                        return (
+                          <div className='flex items-center gap-1'>
+                            {aiEnabled && (
+                              <Sparkles size={9} className='text-violet-400' title='AI enabled' />
+                            )}
+                            <Switch
+                              checked={aiEnabled}
+                              onCheckedChange={(checked) => onAIToggle?.(device.deviceSn, checked)}
+                              disabled={!onAIToggle}
+                              className='scale-75 origin-center'
+                            />
+                          </div>
+                        );
+                      })()}
                       {isStreaming ? (
                         <>
                           <span

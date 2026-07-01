@@ -49,22 +49,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loginDataRef = useRef<{ role: string; username: string; user_id: string; user_type: number; mqtt_username: string; mqtt_password: string } | null>(null);
 
   // ── Fetch the current user profile via OmniWatch /me ────────────────────
   // Uses the OmniWatch auth endpoint — never calls the DJI Cloud server.
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
     try {
       const me = await authApi.me();
+      const ld = loginDataRef.current;
       setUser({
-        user_id: me.principal_id,
-        username: '',
-        user_type: 0,
-        mqtt_username: '',
-        mqtt_password: '',
+        user_id: ld?.user_id || me.principal_id,
+        username: ld?.username || '',
+        user_type: ld?.user_type ?? 0,
+        mqtt_username: ld?.mqtt_username || '',
+        mqtt_password: ld?.mqtt_password || '',
         mqtt_client_id: '',
         workspace_id: me.workspace_id,
         workspace_name: '',
         workspace_description: '',
+        role: ld?.role || 'operator',
       });
       return true;
     } catch {
@@ -133,7 +136,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, pin: string) => {
       setLoginError(null);
       try {
-        await authApi.login(email, pin);
+        const loginResponse = await authApi.login(email, pin);
+        loginDataRef.current = {
+          role: loginResponse.role,
+          username: loginResponse.username,
+          user_id: loginResponse.user_id,
+          user_type: loginResponse.user_type,
+          mqtt_username: loginResponse.mqtt_username,
+          mqtt_password: loginResponse.mqtt_password,
+        };
         await fetchCurrentUser();
         scheduleRefresh(getTokenExpiresInSeconds() ?? 3600);
       } catch (err) {
@@ -151,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authApi.logout().catch(() => {});
     setUser(null);
     setLoginError(null);
+    loginDataRef.current = null;
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
   }, []);
 

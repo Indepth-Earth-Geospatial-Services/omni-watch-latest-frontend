@@ -223,7 +223,7 @@ export const DebugCommandsPanel = ({
   return (
     <div className='flex flex-col gap-0 pb-2'>
       {/* ── Tab bar ── */}
-      <div className='flex gap-1 mb-3 bg-[#0D0F14] rounded-lg p-1 flex-shrink-0'>
+      <div className='flex gap-1 mb-3 bg-secondary rounded-lg p-1 flex-shrink-0'>
         <button
           onClick={() => setActiveTab('debug')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all duration-150 ${

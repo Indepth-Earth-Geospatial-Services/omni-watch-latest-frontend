@@ -54,7 +54,7 @@ export const FeedCard = memo(function FeedCard({
             <p className='text-xs font-bold text-zinc-200 truncate'>
               {device.nickname || device.deviceName || device.deviceSn}
             </p>
-            <p className='text-[9px] font-mono text-zinc-600 truncate'>{device.deviceSn}</p>
+            <p className='text-[9px] font-logs text-zinc-600 truncate'>{device.deviceSn}</p>
           </div>
         </div>
         <div className='flex items-center gap-2 flex-shrink-0'>

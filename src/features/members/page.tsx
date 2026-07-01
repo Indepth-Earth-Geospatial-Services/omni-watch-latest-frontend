@@ -1,39 +1,43 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import MembersHeader from '@/features/members/components/MembersHeader';
-import MembersTable from '@/features/members/components/MembersTable';
+import PilotUsersTab from '@/features/members/components/PilotUsersTab';
+import WebUsersTab from '@/features/members/components/WebUsersTab';
 import InviteMemberModal from '@/features/members/components/InviteMemberModal';
-import EditMemberModal from '@/features/members/components/EditMemberModal';
-import { useMembers, useAddMember, useUpdateMember, useInviteMember } from '@/features/members/hooks/useMembers';
-import type { OrgUser, UpdateOrgUserRequest, AddOrgUserRequest, TeamInviteRequest } from '@/lib/types';
+import { useDjiWorkspaceUsers, useUpdateDjiWorkspaceUser, useInviteMember } from '@/features/members/hooks/useMembers';
+import { useAuth } from '@/providers/AuthProvider';
+import type { UpdateDJIWorkspaceUserRequest, DJIWorkspaceUser } from '@/lib/types';
+
+type MemberTab = 'pilot' | 'web';
 
 export default function MembersPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<OrgUser | null>(null);
+  const [activeTab, setActiveTab] = useState<MemberTab>('web');
 
-  const { data: members = [], isLoading, error } = useMembers();
-  const { mutate: addMember, isPending: isAdding } = useAddMember();
-  const { mutate: updateMember, isPending: isUpdating } = useUpdateMember();
+  const { data: djiUsers = [], isLoading, error } = useDjiWorkspaceUsers();
+  const { mutate: updateDjiUser, isPending: isDjiUpdating } = useUpdateDjiWorkspaceUser();
   const { mutate: inviteMember, isPending: isInviting } = useInviteMember();
 
+  const isAdmin = user?.role === 'admin';
+
   useEffect(() => {
-    if (error) toast.error(error.message, { id: 'members-load-error' });
+    if (error) toast.error(error.message, { id: 'dji-users-load-error' });
   }, [error]);
 
-  const handleAddMember = useCallback((body: AddOrgUserRequest) => {
-    addMember(body, {
+  const handleDjiUpdate = useCallback((userId: string, body: UpdateDJIWorkspaceUserRequest) => {
+    updateDjiUser({ userId, body }, {
       onSuccess: () => {
-        toast.success('Member added successfully');
-        setInviteOpen(false);
+        toast.success('MQTT credentials updated');
       },
       onError: (err) => toast.error(err.message),
     });
-  }, [addMember]);
+  }, [updateDjiUser]);
 
-  const handleInvite = useCallback((body: TeamInviteRequest) => {
+  const handleInvite = useCallback((body: { email: string; workspace_id: string; role: string }) => {
     inviteMember(body, {
       onSuccess: () => {
         toast.success('Invitation sent');
@@ -43,49 +47,105 @@ export default function MembersPage() {
     });
   }, [inviteMember]);
 
-  const handleSaveEdit = useCallback((userId: string, payload: UpdateOrgUserRequest) => {
-    updateMember({ userId, payload }, {
-      onSuccess: () => {
-        toast.success('Member updated');
-        setEditTarget(null);
-      },
-      onError: (err) => toast.error(err.message),
-    });
-  }, [updateMember]);
+  const pilotUsers = djiUsers.filter((u: DJIWorkspaceUser) => u.user_type === 'Pilot');
+  const webUsers = djiUsers.filter((u: DJIWorkspaceUser) => u.user_type === 'Web');
+
+  const filteredPilotUsers = pilotUsers.filter((u: DJIWorkspaceUser) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      u.username.toLowerCase().includes(q) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      u.workspace_name.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredWebUsers = webUsers.filter((u: DJIWorkspaceUser) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      u.username.toLowerCase().includes(q) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      u.workspace_name.toLowerCase().includes(q)
+    );
+  });
 
   return (
-    <>
-      <div className='mt-10'>
-        <MembersHeader
-          onSearch={setSearch}
-          onInviteClick={() => setInviteOpen(true)}
-        />
+    <div className='font-ui space-y-4 px-4 pt-8 pb-4'>
+      {/* Filter bar */}
+      <div className='flex items-center gap-3 flex-wrap'>
+        <div className='relative flex-1 max-w-sm'>
+          <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
+            <Search size={12} className='text-zinc-500' />
+          </div>
+          <input
+            type='text'
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder='Search members...'
+            className='w-full text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-zinc-600'
+          />
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className='flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-[#1C93FF] rounded-lg hover:bg-[#1C93FF]/80 transition-colors'
+          >
+            <UserPlus size={13} />
+            Invite Member
+          </button>
+        )}
       </div>
-      <main className='p-4'>
-        <MembersTable
-          members={members}
+
+      {/* Tabs */}
+      <div className='flex items-center gap-1 border-b border-zinc-800/50'>
+        {([
+          { key: 'web' as MemberTab, label: 'Web Users', count: webUsers.length },
+          { key: 'pilot' as MemberTab, label: 'Pilot Users', count: pilotUsers.length },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`relative px-4 py-2.5 text-xs font-semibold font-ui transition-colors ${
+              activeTab === tab.key
+                ? 'text-[#1C93FF]'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            {tab.label}
+            <span className='ml-1.5 text-[10px] text-zinc-600'>({tab.count})</span>
+            {activeTab === tab.key && (
+              <span className='absolute bottom-0 left-0 w-full h-[2px] bg-[#1C93FF]' />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'pilot' ? (
+        <PilotUsersTab
+          users={filteredPilotUsers}
           isLoading={isLoading}
-          error={error}
-          searchTerm={search}
-          onEdit={setEditTarget}
+          onUpdate={handleDjiUpdate}
+          isUpdating={isDjiUpdating}
         />
-      </main>
+      ) : (
+        <WebUsersTab
+          users={filteredWebUsers}
+          isLoading={isLoading}
+        />
+      )}
 
-      <InviteMemberModal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        onAddMember={handleAddMember}
-        onInvite={handleInvite}
-        isAdding={isAdding}
-        isInviting={isInviting}
-      />
-
-      <EditMemberModal
-        member={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSave={handleSaveEdit}
-        isSaving={isUpdating}
-      />
-    </>
+      {isAdmin && (
+        <InviteMemberModal
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          onInvite={handleInvite}
+          isInviting={isInviting}
+          workspaceId={user?.workspace_id ?? ''}
+        />
+      )}
+    </div>
   );
 }

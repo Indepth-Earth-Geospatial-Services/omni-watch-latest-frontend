@@ -463,7 +463,7 @@ export default function ControlPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className='bg-black text-zinc-100 flex flex-col font-sans selection:bg-blue-500/30'>
+    <div className='bg-background text-foreground flex flex-col font-sans selection:bg-blue-500/30'>
       <main className='flex-1 flex flex-col items-center py-4 px-6 pb-[80px] overflow-y-auto overflow-x-hidden'>
         <div className='w-full space-y-4'>
           {/* ── Header section ── */}

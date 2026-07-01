@@ -40,6 +40,8 @@ import type {
   UpdateOrgUserRequest,
   OmniWatchPage,
   PageParams,
+  DJIWorkspaceUserListResponse,
+  UpdateDJIWorkspaceUserRequest,
 } from '@/lib/types';
 
 // ─── Core axios wrapper ───────────────────────────────────────────────────────
@@ -350,4 +352,35 @@ export const organizationApi = {
    */
   updateUser: (userId: string, body: UpdateOrgUserRequest): Promise<OrgUser> =>
     request<OrgUser>('PATCH', API_URLS.organization.user(userId), body),
+};
+
+// ─── DJI Workspace Users API ────────────────────────────────────────────────
+
+/**
+ * DJI workspace user management — manages MQTT credentials and membership.
+ * These endpoints proxy through the OmniWatch backend to the DJI manage API.
+ */
+export const djiUsersApi = {
+  /**
+   * List all DJI workspace users with optional pagination.
+   *
+   * @param workspaceId - DJI workspace ID.
+   * @param params       - Optional page / page_size for pagination.
+   */
+  list: (workspaceId: string, params?: PageParams): Promise<DJIWorkspaceUserListResponse> =>
+    request<DJIWorkspaceUserListResponse>('GET', API_URLS.djiUsers.list(workspaceId, params)),
+
+  /**
+   * Update a DJI workspace user's MQTT credentials.
+   *
+   * @param workspaceId - DJI workspace ID.
+   * @param userId       - The user's ID.
+   * @param body         - Fields to update: mqtt_username, mqtt_password.
+   */
+  update: (
+    workspaceId: string,
+    userId: string,
+    body: UpdateDJIWorkspaceUserRequest
+  ): Promise<void> =>
+    request<void>('PUT', API_URLS.djiUsers.update(workspaceId, userId), body),
 };

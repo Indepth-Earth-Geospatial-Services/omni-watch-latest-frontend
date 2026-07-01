@@ -5,7 +5,7 @@ node_modules/
 # Build output
 dist/
 build/
-
+Cloud-API-Demo-Web/
 .agents/
 # Logs
 npm-debug.log*

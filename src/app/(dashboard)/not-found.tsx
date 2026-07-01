@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { MainLayout } from "@/components/layout/main-layout";
-import { MapPin, Video, Gauge, Brain, ShieldAlert, TrendingUp, FileText } from "lucide-react";
+import { MapPin, Video, Gauge, Brain } from "lucide-react";
 
 export default function DashboardNotFound() {
   return (
@@ -41,27 +41,6 @@ export default function DashboardNotFound() {
               >
                 <Brain className="text-purple-500 w-5 h-5" />
                 <span className="text-sm">AI Detection</span>
-              </Link>
-              <Link
-                href="/threats"
-                className="px-4 py-3 bg-graybg border border-gray-700 rounded-md hover:border-blue-500 hover:bg-gray-700 transition-colors flex flex-col items-center space-y-2"
-              >
-                <ShieldAlert className="text-red-500 w-5 h-5" />
-                <span className="text-sm">Threats</span>
-              </Link>
-              <Link
-                href="/analytics"
-                className="px-4 py-3 bg-graybg border border-gray-700 rounded-md hover:border-blue-500 hover:bg-gray-700 transition-colors flex flex-col items-center space-y-2"
-              >
-                <TrendingUp className="text-cyan-500 w-5 h-5" />
-                <span className="text-sm">Analytics</span>
-              </Link>
-              <Link
-                href="/reports"
-                className="px-4 py-3 bg-graybg border border-gray-700 rounded-md hover:border-blue-500 hover:bg-gray-700 transition-colors flex flex-col items-center space-y-2"
-              >
-                <FileText className="text-orange-500 w-5 h-5" />
-                <span className="text-sm">Reports</span>
               </Link>
             </div>
           </div>

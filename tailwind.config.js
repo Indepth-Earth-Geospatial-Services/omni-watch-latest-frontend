@@ -17,8 +17,20 @@ module.exports = {
     },
     extend: {
       fontFamily: {
+        ui: ['var(--theme-font-ui)', 'sans-serif'],
+        logs: ['var(--theme-font-logs)', 'monospace'],
         poppins: ['var(--font-poppins)', 'sans-serif'],
         mono: ['var(--font-jetbrains)', 'monospace'],
+        inter: ['var(--font-inter)', 'sans-serif'],
+        'share-tech': ['var(--font-share-tech)', 'monospace'],
+        'roboto-flex': ['var(--font-roboto-flex)', 'sans-serif'],
+        'space-grotesk': ['var(--font-space-grotesk)', 'sans-serif'],
+        'space-mono': ['var(--font-space-mono)', 'monospace'],
+        'plus-jakarta': ['var(--font-plus-jakarta)', 'sans-serif'],
+        'ibm-plex': ['var(--font-ibm-plex)', 'monospace'],
+        'dm-sans': ['var(--font-dm-sans)', 'sans-serif'],
+        'geist-mono': ['var(--font-geist-mono)', 'monospace'],
+        rajdhani: ['var(--font-rajdhani)', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -54,9 +66,9 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        darkbg: '#0a0a0a',
-        graybg: '#1f1f1f',
-        cardAlt: '#262626',
+        'theme-accent': 'hsl(var(--theme-accent))',
+        'theme-ai': 'hsl(var(--theme-ai))',
+        'theme-alert': 'hsl(var(--theme-alert))',
       },
       borderRadius: {
         lg: 'var(--radius)',

@@ -7,6 +7,7 @@ import { PlaneTakeoff } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { useDeviceConfigs, useUpdateDeviceConfig } from '@/hooks/useDeviceConfig';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import { DeviceSidebar } from '@/components/features/streams/DeviceSidebar';
 import { FeedToolbar } from '@/components/features/streams/FeedToolbar';
@@ -21,6 +22,8 @@ export default function LiveFeedPage() {
   const { data: djiDevices = [], isLoading: devicesLoading } = useDJIDevices({
     refetchInterval: 5_000,
   });
+  const { data: deviceConfigs = [] } = useDeviceConfigs();
+  const { mutate: updateDeviceConfig } = useUpdateDeviceConfig();
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
@@ -84,6 +87,27 @@ export default function LiveFeedPage() {
     []
   );
 
+  const handleAIToggle = useCallback(
+    (sn: string, enabled: boolean) => {
+      const config = deviceConfigs.find((c) => c.device_sn === sn);
+      let parsedClasses: string[] = [];
+      if (config) {
+        try {
+          const parsed = JSON.parse(config.targetClasses.replace(/'/g, '"'));
+          if (Array.isArray(parsed)) parsedClasses = parsed;
+        } catch {
+          // keep empty
+        }
+      }
+      updateDeviceConfig({
+        deviceSn: sn,
+        targetClasses: JSON.stringify(parsedClasses).replace(/"/g, "'"),
+        ai_enabled: enabled,
+      });
+    },
+    [deviceConfigs, updateDeviceConfig]
+  );
+
   const stopAll = useCallback(() => {
     setStopSignals((prev) => {
       const next = new Map(prev);
@@ -97,7 +121,7 @@ export default function LiveFeedPage() {
       <div className='bg-background text-foreground min-h-screen'>
         <MainLayout title='Live Feeds' subtitle=''>
           <EmptyPage
-            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            icon={<PlaneTakeoff className='w-8 h-8 text-muted-foreground' />}
             title='No project open'
             body='Open a project from the Projects page to begin monitoring.'
             action={{ label: 'Go to Projects', onClick: () => router.push('/projects') }}
@@ -112,12 +136,12 @@ export default function LiveFeedPage() {
       <div className='bg-background text-foreground min-h-screen'>
         <MainLayout title='Live Feeds' subtitle={activeProject.name}>
           <EmptyPage
-            icon={<PlaneTakeoff className='w-8 h-8 text-zinc-600' />}
+            icon={<PlaneTakeoff className='w-8 h-8 text-muted-foreground' />}
             title='No devices assigned'
             body={
               <>
                 Assign at least one device to{' '}
-                <span className='text-zinc-300 font-semibold'>{activeProject.name}</span> to start
+                <span className='text-muted-foreground font-semibold'>{activeProject.name}</span> to start
                 monitoring live feeds.
               </>
             }
@@ -142,7 +166,7 @@ export default function LiveFeedPage() {
       </div>
 
       <MainLayout title='Live Feeds' subtitle={activeProject.name}>
-        <div className='flex gap-4 h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex gap-4 h-[calc(100vh-10rem)] font-ui'>
           {/* Sidebar — desktop only */}
           <div className='hidden lg:flex h-full'>
             <DeviceSidebar
@@ -156,10 +180,12 @@ export default function LiveFeedPage() {
               isLoading={devicesLoading}
               isOpen={true}
               onClose={() => {}}
+              deviceConfigs={deviceConfigs}
+              onAIToggle={handleAIToggle}
             />
           </div>
 
-          <div className='flex-1 flex flex-col bg-[#0C0D10] border border-zinc-800 rounded-xl overflow-hidden min-w-0'>
+          <div className='flex-1 flex flex-col bg-background border border-border rounded-xl overflow-hidden min-w-0'>
             <FeedToolbar
               viewMode={viewMode}
               selectedDevice={selectedDevice}
@@ -191,8 +217,8 @@ export default function LiveFeedPage() {
                   />
                 ) : (
                   <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
-                    <PlaneTakeoff className='w-8 h-8 text-zinc-700' />
-                    <p className='text-sm text-zinc-600'>Select a device from the panel.</p>
+                    <PlaneTakeoff className='w-8 h-8 text-muted-foreground' />
+                    <p className='text-sm text-muted-foreground'>Select a device from the panel.</p>
                   </div>
                 )
               ) : (
