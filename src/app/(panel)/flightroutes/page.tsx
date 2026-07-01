@@ -3,7 +3,7 @@ import FlightRoutesPage from '@/feature-unbording/page/FlightRoutesPage';
 
 export default function FeaturePage() {
   return (
-    <div className='min-h-screen bg-black'>
+    <div className='min-h-screen bg-background'>
       <Navbar />
       <FlightRoutesPage />
     </div>

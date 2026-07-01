@@ -204,7 +204,7 @@
 
 /* Panel pages: force dark theme variables regardless of active theme */
 .panel-fixed-dark {
-  --background: 240 10% 3.9%;
+  --background: 240 5% 8%;
   --foreground: 0 0% 98%;
   --card: 240 10% 3.9%;
   --card-foreground: 0 0% 98%;

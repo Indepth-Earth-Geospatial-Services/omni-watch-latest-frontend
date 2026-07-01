@@ -27,6 +27,7 @@ import type {
   HMSMessage,
   HMSListResponse,
   HMSQueryParams,
+  ActiveStream,
   LiveCapacity,
   LiveStreamRequest,
   StartStreamResponse,
@@ -138,6 +139,11 @@ export function getDeviceHMSUnread(workspaceId: string, deviceSn: string): Promi
 }
 
 // ─── Livestream ───────────────────────────────────────────────────────────────
+
+/** Returns all currently active live streams in the workspace. */
+export function getActiveStreams(): Promise<ActiveStream[]> {
+  return djiRequest.get<ActiveStream[]>(DJI_URLS.live.activeStreams);
+}
 
 /** Returns which devices can stream and what camera/lens options they expose. */
 export function getLiveCapacity(): Promise<LiveCapacity[]> {

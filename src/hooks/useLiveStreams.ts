@@ -1,17 +1,19 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  getActiveStreams,
   getLiveCapacity,
   startStream,
   stopStream,
   updateStreamQuality,
   switchStreamCamera,
 } from '@/services/djiservice-layer/dji-service';
-import type { LiveCapacity, LiveStreamRequest, StartStreamResponse } from '@/lib/types';
+import type { ActiveStream, LiveCapacity, LiveStreamRequest, StartStreamResponse } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const streamKeys = {
   capacity: ['dji', 'live', 'capacity'] as const,
+  activeStreams: ['dji', 'live', 'activeStreams'] as const,
 };
 
 // Stable module-level reference so React Query only re-evaluates this when the
@@ -23,6 +25,20 @@ const toCapacityMap = (capacities: LiveCapacity[]) =>
   new Map(capacities.map((c) => [c.sn, c]));
 
 // ─── Livestream hooks ─────────────────────────────────────────────────────────
+
+/**
+ * Fetches all currently active live streams in the workspace.
+ * Returns an array of { url, sn } objects. Components filter by project
+ * devices and auto-connect WebRTC players to the WHEP urls.
+ */
+export function useActiveStreams() {
+  return useQuery({
+    queryKey: streamKeys.activeStreams,
+    queryFn: getActiveStreams,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+}
 
 /**
  * Fetches which devices can stream and what camera/lens options they expose.

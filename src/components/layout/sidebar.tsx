@@ -67,8 +67,8 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 bg-card border-r border-border flex flex-col',
-        'transition-all duration-300 z-[100] font-ui',
+        'fixed inset-y-0 left-0 bg-card border-r border-border flex flex-col font-ui',
+        'transition-all duration-300 z-[100]',
         collapsed ? 'w-16' : 'w-50 lg:w-64',
         className
       )}

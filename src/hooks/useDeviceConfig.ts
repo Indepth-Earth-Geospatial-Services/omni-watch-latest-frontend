@@ -4,6 +4,8 @@ import {
   fetchDeviceConfigs,
   fetchDeviceConfig,
   updateDeviceConfig,
+  startAIPipeline,
+  stopAIPipeline,
 } from '@/lib/api/device-config';
 import type { DeviceConfig } from '@/lib/types';
 
@@ -44,6 +46,24 @@ export function useUpdateDeviceConfig() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to update device configuration');
+    },
+  });
+}
+
+export function useStartAI() {
+  return useMutation<void, Error, { streamId: string }>({
+    mutationFn: ({ streamId }) => startAIPipeline(streamId),
+    onError: (error) => {
+      toast.error(error.message || 'Failed to start AI pipeline');
+    },
+  });
+}
+
+export function useStopAI() {
+  return useMutation<void, Error, { streamId: string }>({
+    mutationFn: ({ streamId }) => stopAIPipeline(streamId),
+    onError: (error) => {
+      toast.error(error.message || 'Failed to stop AI pipeline');
     },
   });
 }

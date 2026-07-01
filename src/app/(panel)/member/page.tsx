@@ -3,7 +3,7 @@ import MembersPage from '@/features/members/page';
 
 export default function TeamPage() {
   return (
-    <div className='min-h-screen bg-black'>
+    <div className='min-h-screen bg-background'>
       <Navbar />
       <MembersPage />
     </div>

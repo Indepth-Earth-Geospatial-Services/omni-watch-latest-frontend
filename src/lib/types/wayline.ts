@@ -133,6 +133,7 @@ export interface CreateFlightTask {
   out_of_control_action: number; // 0 = return home, 1 = hover, 2 = land
   rth_altitude: number;          // 20-500m
   device_sn: string;
+  dock_sn: string;
   wayline_type: number;          // from wayline.template_types[0]
   execute_time?: number;         // Unix timestamp ms — for timed/conditional
   task_days?: number[];          // for conditional tasks

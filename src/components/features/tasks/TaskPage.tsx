@@ -17,6 +17,7 @@ import {
   useUploadMediaNow,
 } from '@/hooks/useFlightTasks';
 import { useWaylines } from '@/hooks/useWaylines';
+import { useDJIDevices } from '@/hooks/useDJIDevices';
 import { useProject } from '@/providers/ProjectProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
@@ -54,6 +55,19 @@ export function TaskPage() {
 
   // Project devices
   const projectDevices = activeProject?.devices ?? [];
+
+  // All workspace devices (drones + docks) to resolve dock_sn
+  const { data: allDevices = [] } = useDJIDevices();
+  const droneToDockMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const docks = allDevices.filter((d) => d.domain === '1' || d.domain === '3');
+    for (const dock of docks) {
+      if (dock.childDeviceSn) {
+        map.set(dock.childDeviceSn, dock.deviceSn);
+      }
+    }
+    return map;
+  }, [allDevices]);
 
   // Mutations
   const createMutation = useCreateFlightTask();
@@ -219,6 +233,7 @@ export function TaskPage() {
                 isPending={createMutation.isPending}
                 projectWaylines={projectWaylines}
                 projectDevices={projectDevices}
+                droneToDockMap={droneToDockMap}
               />
             )}
           </div>
