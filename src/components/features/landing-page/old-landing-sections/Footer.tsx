@@ -12,7 +12,7 @@ export default function Footer() {
             </div>
             <div>
               <span className='font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent text-lg'>
-                OmniWatch
+                Loctiva
               </span>
               <div className='text-[10px] text-gray-500 font-mono tracking-wider'>
                 OS COMMAND & CONTROL

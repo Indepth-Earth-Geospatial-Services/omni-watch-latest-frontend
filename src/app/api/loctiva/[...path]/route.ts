@@ -1,10 +1,10 @@
-// OmniWatch General Proxy — forwards non-auth OmniWatch traffic (projects, teams, workspaces)
+// LOCTIVA General Proxy — forwards non-auth LOCTIVA traffic (projects, teams, workspaces)
 // to the backend at /api/v1/<path>.  The /api/auth proxy handles auth endpoints separately.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { DJI_CONFIG } from '@/lib/config/config';
 
-const BASE_URL = DJI_CONFIG.OMNIWATCH_API_URL;
+const BASE_URL = DJI_CONFIG.LOCTIVA_API_URL;
 
 const HOP_BY_HOP = new Set(['host', 'connection', 'transfer-encoding', 'keep-alive', 'upgrade']);
 
@@ -55,7 +55,7 @@ async function forwardRequest(
 
     return new NextResponse(text, { status: res.status, headers: responseHeaders });
   } catch (error) {
-    return NextResponse.json({ detail: 'Failed to reach OmniWatch server.' }, { status: 503 });
+    return NextResponse.json({ detail: 'Failed to reach loctiva server.' }, { status: 503 });
   }
 }
 

@@ -1,18 +1,24 @@
-// React Query hooks for OmniWatch project management.
-// Routes through /api/omniwatch/ proxy (OmniWatch port 8002).
+// React Query hooks for Loctiva project management.
+// Routes through /api/loctiva/ proxy (Loctiva port 8002).
 //
-// Query key convention: ['omniwatch', 'projects', ...]
+// Query key convention: ['Loctiva', 'projects', ...]
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/services/authservice-layer/auth-service';
-import type { Project, ProjectBody, ProjectDevice, ProjectFlightArea, PageParams } from '@/lib/types';
+import type {
+  Project,
+  ProjectBody,
+  ProjectDevice,
+  ProjectFlightArea,
+  PageParams,
+} from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const projectKeys = {
-  all: ['omniwatch', 'projects'] as const,
-  list: (params?: PageParams) => ['omniwatch', 'projects', 'list', params ?? {}] as const,
-  detail: (id: string) => ['omniwatch', 'projects', id] as const,
+  all: ['loctiva', 'projects'] as const,
+  list: (params?: PageParams) => ['loctiva', 'projects', 'list', params ?? {}] as const,
+  detail: (id: string) => ['loctiva', 'projects', id] as const,
 };
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────

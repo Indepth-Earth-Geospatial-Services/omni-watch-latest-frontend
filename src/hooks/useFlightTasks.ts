@@ -11,10 +11,10 @@ import type { WaylineJobListResponse, CreateFlightTask } from '@/lib/types';
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 export const flightTaskKeys = {
-  all: ['omniwatch', 'flightTasks'] as const,
+  all: ['loctiva', 'flightTasks'] as const,
   list: (workspaceId: string, params?: { page?: number; page_size?: number }) =>
-    ['omniwatch', 'flightTasks', 'list', workspaceId, params ?? {}] as const,
-  detail: (jobId: string) => ['omniwatch', 'flightTasks', 'detail', jobId] as const,
+    ['loctiva', 'flightTasks', 'list', workspaceId, params ?? {}] as const,
+  detail: (jobId: string) => ['loctiva', 'flightTasks', 'detail', jobId] as const,
 };
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────

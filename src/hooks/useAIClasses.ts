@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchAIClasses } from '@/lib/api/device-config';
 
 const aiClassKeys = {
-  all: ['omniwatch', 'ai-classes'] as const,
+  all: ['loctiva', 'ai-classes'] as const,
 };
 
 export function useAIClasses() {

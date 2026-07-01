@@ -98,7 +98,6 @@ function SignInForm() {
 
         {/* Vignette */}
         <div className='absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background' />
-
       </div>
 
       {/* Animation keyframes — scoped to this page */}
@@ -127,16 +126,14 @@ function SignInForm() {
             </div>
             <div>
               <span className='text-5xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent'>
-                OmniWatch
+                Loctiva
               </span>
               <div className='text-[10px] text-gray-500 font-mono tracking-wider'>
                 OS COMMAND & CONTROL
               </div>
             </div>
           </Link>
-          <h1 className='font-bold'>
-            Welcome Back
-          </h1>
+          <h1 className='font-bold'>Welcome Back</h1>
           <p className='text-gray-400'>Sign in to access your command center</p>
         </div>
 

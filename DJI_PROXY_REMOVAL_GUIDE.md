@@ -13,6 +13,7 @@ The proxy was implemented as a **temporary solution** to fix Mixed Content error
 ### Update `.env`
 
 **Remove or set to `false`:**
+
 ```env
 # BEFORE (current)
 NEXT_PUBLIC_USE_DJI_PROXY=true
@@ -28,6 +29,7 @@ Or simply delete the line entirely since the default is `false`.
 ## Step 2: Delete the Proxy File
 
 **Delete this entire file and folder:**
+
 ```
 src/app/api/dji/[...path]/route.ts
 ```
@@ -35,6 +37,7 @@ src/app/api/dji/[...path]/route.ts
 This file contains the HTTP proxy that routes requests through Next.js server-side.
 
 ### Command to delete:
+
 ```bash
 rm -r src/app/api/dji
 ```
@@ -46,6 +49,7 @@ rm -r src/app/api/dji
 ### Replace the following code:
 
 **CURRENT CODE (lines 1-36):**
+
 ```typescript
 // Typed HTTP client for all DJI Cloud API calls.
 //
@@ -86,12 +90,14 @@ export class DJIApiError extends Error {
 // Detect if we should use the proxy (on HTTPS, unless explicitly disabled)
 const isSecureDeployment = typeof window !== 'undefined' && window.location.protocol === 'https:';
 const useProxy = process.env.NEXT_PUBLIC_USE_DJI_PROXY !== 'false';
-const DJI_BASE_URL = isSecureDeployment && useProxy 
-  ? '/api/dji'
-  : process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '';
+const DJI_BASE_URL =
+  isSecureDeployment && useProxy
+    ? '/api/dji'
+    : (process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '');
 ```
 
 **REPLACE WITH:**
+
 ```typescript
 // Typed HTTP client for all DJI Cloud API calls.
 // Requests go directly from the browser to the DJI server (CORS is open on that server).
@@ -133,8 +139,9 @@ const DJI_BASE_URL = process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? 
 ### Replace the following code:
 
 **CURRENT CODE (lines 1-20):**
+
 ```typescript
-// Single source of truth for all OmniWatch & DJI Cloud configuration.
+// Single source of truth for all LOCTIVA & DJI Cloud configuration.
 // No other file should call process.env directly for these variables.
 
 // Helper to convert HTTP URL to WS/WSS URL
@@ -143,15 +150,15 @@ const toWsUrl = (url: string) => {
   return url.replace(/^https?/, isSecure ? 'wss' : 'ws');
 };
 
-const OMNIWATCH_API_URL = process.env.NEXT_PUBLIC_OMNIWATCH_API_URL ?? 'http://34.35.12.123:8000';
+const LOCTIVA_API_URL = process.env.NEXT_PUBLIC_LOCTIVA_API_URL ?? 'http://34.35.12.123:8000';
 const DJI_API_URL = process.env.NEXT_PUBLIC_DJI_API_URL ?? 'http://35.222.89.171:6789';
 
 export const DJI_CONFIG = {
   // DJI Cloud API Base
   BASE_URL: DJI_API_URL,
 
-  // OmniWatch API Base (REST)
-  OMNIWATCH_API_URL,
+  // LOCTIVA API Base (REST)
+  LOCTIVA_API_URL,
 
   // WebSocket Endpoint
   // On HTTPS deployments: converts to wss:// (requires backend to support WSS or add WSS proxy)
@@ -160,30 +167,32 @@ export const DJI_CONFIG = {
 ```
 
 **REPLACE WITH:**
+
 ```typescript
-// Single source of truth for all OmniWatch & DJI Cloud configuration.
+// Single source of truth for all LOCTIVA & DJI Cloud configuration.
 // No other file should call process.env directly for these variables.
 
 // Helper to convert an HTTP URL to a WS URL
 const toWsUrl = (url: string) => url.replace(/^http/, 'ws');
 
-const OMNIWATCH_API_URL = process.env.NEXT_PUBLIC_OMNIWATCH_API_URL ?? 'http://34.35.12.123:8000';
+const LOCTIVA_API_URL = process.env.NEXT_PUBLIC_LOCTIVA_API_URL ?? 'http://34.35.12.123:8000';
 const DJI_API_URL = process.env.NEXT_PUBLIC_DJI_API_URL ?? 'http://35.222.89.171:6789';
 
 export const DJI_CONFIG = {
   // DJI Cloud API Base
   BASE_URL: DJI_API_URL,
 
-  // OmniWatch API Base (REST)
-  OMNIWATCH_API_URL,
+  // LOCTIVA API Base (REST)
+  LOCTIVA_API_URL,
 
-  // OmniWatch WebSocket Endpoint (Unified endpoint derived strictly from docs)
+  // LOCTIVA WebSocket Endpoint (Unified endpoint derived strictly from docs)
   WS_URL: `${toWsUrl(DJI_API_URL)}/api/v1/ws`,
 ```
 
 ### Also remove this line from the config object (around line 40):
 
 **REMOVE:**
+
 ```typescript
   // TEMPORARY: Use /api/dji HTTP proxy on HTTPS deployments
   // When backend implements HTTPS, set NEXT_PUBLIC_USE_DJI_PROXY=false
@@ -213,11 +222,13 @@ NEXT_PUBLIC_TELEMETRY_SOCKET_URL=https://35.222.89.171:6789
 ## Step 6: Test the Changes
 
 1. **Build the application:**
+
    ```bash
    pnpm build
    ```
 
 2. **Run development server:**
+
    ```bash
    pnpm dev
    ```
@@ -246,6 +257,7 @@ NEXT_PUBLIC_TELEMETRY_SOCKET_URL=https://35.222.89.171:6789
 ## Files Modified
 
 This guide covers reverting changes made to:
+
 - `.env`
 - `src/lib/config/client.ts`
 - `src/lib/config/config.ts`
@@ -256,8 +268,8 @@ This guide covers reverting changes made to:
 ## Need Help?
 
 If you encounter any issues after removing the proxy:
+
 1. Check browser console for CORS or connection errors
 2. Verify the backend is accessible at the new HTTPS/WSS URLs
 3. Ensure auth tokens are being transmitted correctly
 4. Check that WebSocket connections are using `wss://` protocol
-

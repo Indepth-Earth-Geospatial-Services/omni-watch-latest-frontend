@@ -326,7 +326,10 @@ export function getWaylineJobs(
  * can't fetch it directly (djiRequest.getBinary would follow the redirect client-side
  * and get blocked by CORS) — the proxy follows the redirect server-side instead.
  */
-export async function downloadWaylineKmz(workspaceId: string, waylineId: string): Promise<ArrayBuffer> {
+export async function downloadWaylineKmz(
+  workspaceId: string,
+  waylineId: string
+): Promise<ArrayBuffer> {
   const token = getToken() ?? '';
   const params = new URLSearchParams({ workspaceId, waylineId });
 
@@ -530,18 +533,12 @@ export function downloadMediaFile(workspaceId: string, fileId: string): Promise<
 // ─── Flight Tasks ───────────────────────────────────────────────────────────
 
 /** Creates a new flight task (immediate, timed, or conditional). */
-export function createFlightTask(
-  workspaceId: string,
-  body: CreateFlightTask
-): Promise<void> {
+export function createFlightTask(workspaceId: string, body: CreateFlightTask): Promise<void> {
   return djiRequest.post<void>(DJI_URLS.waylines.createTask(workspaceId), body);
 }
 
 /** Deletes a flight task by job_id. */
-export function deleteFlightTask(
-  workspaceId: string,
-  jobId: string
-): Promise<void> {
+export function deleteFlightTask(workspaceId: string, jobId: string): Promise<void> {
   return djiRequest.delete<void>(DJI_URLS.waylines.deleteTask(workspaceId), {
     params: { job_id: jobId },
   });

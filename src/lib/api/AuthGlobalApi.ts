@@ -1,15 +1,15 @@
 /**
  * @file AuthGlobalApi.ts
- * @description Centralised URL registry for all OmniWatch backend endpoints.
+ * @description Centralised URL registry for all Loctiva backend endpoints.
  *
  * This file is a **pure URL registry** — it contains only URL strings and
  * URL builder functions. No fetch logic, no side-effects.
  *
- * Fetch calls that consume these URLs live in `omniwatch-service.ts`.
+ * Fetch calls that consume these URLs live in `Loctiva-service.ts`.
  *
- * Proxy routing (Next.js → OmniWatch backend at http://34.35.12.123:8002):
+ * Proxy routing (Next.js → Loctiva backend at http://34.35.12.123:8002):
  *   /api/auth/*      → /api/v1/auth/<path>   (authentication endpoints)
- *   /api/omniwatch/* → /api/v1/<path>        (all other endpoints)
+ *   /api/loctiva/* → /api/v1/<path>        (all other endpoints)
  *
  * Usage:
  *   import { API_URLS } from '@/lib/api';
@@ -19,13 +19,13 @@
 import type { PageParams } from '@/lib/types';
 
 const AUTH_PROXY = '/api/auth';
-const OMNI_PROXY = '/api/omniwatch';
+const OMNI_PROXY = '/api/loctiva';
 const AI_DETECTION_PROXY = '/api/ai-detection';
 
 export const API_URLS = {
   /**
    * Authentication endpoints — proxied through /api/auth.
-   * Credentials flow: browser → Next.js proxy → OmniWatch /api/v1/auth/*
+   * Credentials flow: browser → Next.js proxy → Loctiva /api/v1/auth/*
    */
   auth: {
     /** POST — exchange email + PIN for access & refresh tokens */
@@ -43,7 +43,7 @@ export const API_URLS = {
   },
 
   /**
-   * GET — verify that the OmniWatch server and both databases are reachable.
+   * GET — verify that the Loctiva server and both databases are reachable.
    * Returns a map of service names to their current status strings.
    */
   health: `${OMNI_PROXY}/health`,
@@ -53,7 +53,7 @@ export const API_URLS = {
    * These endpoints are not exposed to regular users.
    */
   workspace: {
-    /** POST — create a new DJI workspace on the OmniWatch backend */
+    /** POST — create a new DJI workspace on the Loctiva backend */
     create: `${OMNI_PROXY}/internal/workspaces/`,
   },
 
@@ -146,7 +146,7 @@ export const API_URLS = {
   },
 
   /**
-   * DJI workspace user management — proxied through OmniWatch backend.
+   * DJI workspace user management — proxied through LOCTIVA backend.
    * These endpoints manage MQTT credentials and workspace membership.
    */
   djiUsers: {

@@ -45,7 +45,9 @@ export interface JoystickInvalidState {
 export function useDockMQTT() {
   const [isConnected, setIsConnected] = useState(false);
   const [dockStates, setDockStates] = useState<Map<string, DockOSDState>>(new Map());
-  const [joystickStates, setJoystickStates] = useState<Map<string, JoystickInvalidState>>(new Map());
+  const [joystickStates, setJoystickStates] = useState<Map<string, JoystickInvalidState>>(
+    new Map()
+  );
   const clientRef = useRef<ReturnType<typeof mqtt.connect> | null>(null);
   const cancelledRef = useRef(false);
 
@@ -59,7 +61,7 @@ export function useDockMQTT() {
       if (cancelledRef.current) return;
 
       const client = mqtt.connect(BROKER_URL, {
-        clientId: 'omniwatch_' + Math.random().toString(16).substring(2, 10),
+        clientId: 'loctiva_' + Math.random().toString(16).substring(2, 10),
         clean: true,
         reconnectPeriod: 2000,
         keepalive: 30,
@@ -173,5 +175,12 @@ export function useDockMQTT() {
     [dockStates]
   );
 
-  return { isConnected, dockStates, getDockModeCode, isDockOnlineMQTT, getJoystickInvalidState, getDockCoverState };
+  return {
+    isConnected,
+    dockStates,
+    getDockModeCode,
+    isDockOnlineMQTT,
+    getJoystickInvalidState,
+    getDockCoverState,
+  };
 }
