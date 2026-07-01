@@ -19,6 +19,7 @@ interface DeviceSidebarProps {
   onClose: () => void;
   deviceConfigs?: DeviceConfig[];
   onAIToggle?: (sn: string, enabled: boolean) => void;
+  aiPending?: boolean;
 }
 
 export const DeviceSidebar = memo(function DeviceSidebar({
@@ -34,6 +35,7 @@ export const DeviceSidebar = memo(function DeviceSidebar({
   onClose,
   deviceConfigs = [],
   onAIToggle,
+  aiPending = false,
 }: DeviceSidebarProps) {
   const onlineCount = projectDevices.filter((d) => d.status).length;
   const effectiveSn = selectedSn ?? projectDevices[0]?.deviceSn;
@@ -148,7 +150,7 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                             <Switch
                               checked={aiEnabled}
                               onCheckedChange={(checked) => onAIToggle?.(device.deviceSn, checked)}
-                              disabled={!onAIToggle}
+                              disabled={!onAIToggle || aiPending}
                               className='scale-75 origin-center'
                             />
                           </div>

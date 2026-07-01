@@ -39,6 +39,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const djiContentType = djiRes.headers.get('content-type') ?? '';
+
+    // If DJI returns binary data directly, stream it straight through
+    if (djiContentType.startsWith('image/') || djiContentType === 'application/octet-stream') {
+      const fileName = searchParams.get('fileName') || 'download';
+      const responseHeaders = new Headers();
+      responseHeaders.set('Content-Type', djiContentType);
+      responseHeaders.set('Content-Disposition', `attachment; filename="${fileName}"`);
+
+      return new NextResponse(djiRes.body, {
+        status: 200,
+        headers: responseHeaders,
+      });
+    }
+
     const envelope = await djiRes.json();
 
     // DJI wraps responses in { code, message, data }

@@ -95,6 +95,7 @@ export const DJI_URLS = {
   // ── Livestream ──────────────────────────────────────────────────────────────
   live: {
     capacity: `${MANAGE}/live/capacity`,
+    activeStreams: `${MANAGE}/live/streams/workspace/active`,
     start: `${MANAGE}/live/streams/start`,
     stop: `${MANAGE}/live/streams/stop`,
     update: `${MANAGE}/live/streams/update`,

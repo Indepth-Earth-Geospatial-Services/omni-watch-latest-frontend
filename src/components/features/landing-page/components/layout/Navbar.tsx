@@ -55,7 +55,9 @@ export function Navbar() {
         </div>
 
         {/* Desktop CTA — hidden on mobile per the original layout */}
-        <Button className='flex-none max-[860px]:hidden'>Get Started</Button>
+        <Link href='/sign-in'>
+          <Button className='flex-none max-[860px]:hidden'>Get Started</Button>
+        </Link>
 
         {/* Mobile hamburger */}
         <button

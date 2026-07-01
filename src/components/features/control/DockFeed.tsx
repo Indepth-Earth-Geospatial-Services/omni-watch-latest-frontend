@@ -18,7 +18,7 @@ import { executeJob } from '@/services/djiservice-layer/dji-service';
 import { toast } from 'sonner';
 import type { DJIDevice, LiveCapacity } from '@/lib/types';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
-import { useStartStream, useStopStream } from '@/hooks/useLiveStreams';
+import { useActiveStreams, useStartStream, useStopStream } from '@/hooks/useLiveStreams';
 import { WebRTCPlayer, type StreamState } from '@/components/features/streams/WebRTCPlayer';
 
 export interface DockMonitorProps {
@@ -67,6 +67,7 @@ const DockMonitor = ({
   });
   const { mutate: startDockStream, isPending: isStarting } = useStartStream();
   const { mutate: stopDockStream } = useStopStream();
+  const { data: activeStreams = [] } = useActiveStreams();
 
   const isPending = isOpening || isClosing;
   const dockOnline = dockDevice?.status ?? false;
@@ -93,6 +94,17 @@ const DockMonitor = ({
   // Auto-start dock camera when online and capacity is available
   useEffect(() => {
     if (!dockCompositeId || !dockOnline || isStreaming || isStarting || streamUrl) return;
+
+    // Check if the dock already has an active stream — connect to it directly
+    const existing = activeStreams.find((s) => s.sn === dockSn);
+    if (existing?.url) {
+      console.log(`[DockMonitor] found active stream for ${dockSn} → ${existing.url}`);
+      activeIdRef.current = dockCompositeId;
+      setStreamUrl(existing.url);
+      setIsStreaming(true);
+      return;
+    }
+
     startDockStream(
       { url: '', video_id: dockCompositeId, url_type: 4, video_quality: 0, video_type: 'wide' },
       {
@@ -108,7 +120,7 @@ const DockMonitor = ({
         },
       }
     );
-  }, [dockCompositeId, dockOnline, isStreaming, isStarting, streamUrl, startDockStream]);
+  }, [dockCompositeId, dockOnline, dockSn, isStreaming, isStarting, streamUrl, activeStreams, startDockStream]);
 
   // Stop stream when dock goes offline
   useEffect(() => {

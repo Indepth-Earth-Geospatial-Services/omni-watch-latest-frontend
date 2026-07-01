@@ -36,6 +36,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const contentType = djiRes.headers.get('content-type') ?? '';
+
+    // If DJI returns binary data directly (e.g. image/*), stream it straight through
+    // instead of trying to parse a JSON envelope.
+    if (contentType.startsWith('image/') || contentType === 'application/octet-stream') {
+      const fileName = searchParams.get('fileName') || 'preview';
+      const responseHeaders = new Headers();
+      responseHeaders.set('Content-Type', contentType);
+      responseHeaders.set('Content-Disposition', `inline; filename="${fileName}"`);
+      responseHeaders.set('Cache-Control', 'public, max-age=3600');
+
+      return new NextResponse(djiRes.body, {
+        status: 200,
+        headers: responseHeaders,
+      });
+    }
+
     const envelope = await djiRes.json();
 
     if (envelope.code !== 0) {
@@ -69,12 +86,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const fileName = searchParams.get('fileName') || 'preview';
-    const contentType = fileRes.headers.get('content-type') ?? 'application/octet-stream';
+    const respFileName = searchParams.get('fileName') || 'preview';
+    const respContentType = fileRes.headers.get('content-type') ?? 'application/octet-stream';
 
     const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', contentType);
-    responseHeaders.set('Content-Disposition', `inline; filename="${fileName}"`);
+    responseHeaders.set('Content-Type', respContentType);
+    responseHeaders.set('Content-Disposition', `inline; filename="${respFileName}"`);
     responseHeaders.set('Cache-Control', 'public, max-age=3600');
 
     return new NextResponse(fileRes.body, {

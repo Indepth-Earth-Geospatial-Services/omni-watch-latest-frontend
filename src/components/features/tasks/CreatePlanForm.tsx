@@ -12,6 +12,7 @@ interface CreatePlanFormProps {
   isPending: boolean;
   projectWaylines: Wayline[];
   projectDevices: ProjectDevice[];
+  droneToDockMap: Map<string, string>;
 }
 
 const lostActionOptions = [
@@ -26,6 +27,7 @@ export function CreatePlanForm({
   isPending,
   projectWaylines,
   projectDevices,
+  droneToDockMap,
 }: CreatePlanFormProps) {
   const [planName, setPlanName] = useState('');
   const [waylineId, setWaylineId] = useState('');
@@ -44,6 +46,7 @@ export function CreatePlanForm({
     if (!planName.trim()) newErrors.planName = 'Plan name is required';
     if (!waylineId) newErrors.waylineId = 'Flight route is required';
     if (!deviceSn) newErrors.deviceSn = 'Device is required';
+    if (deviceSn && !droneToDockMap.has(deviceSn)) newErrors.deviceSn = 'No dock found for selected device';
     if (rthAltitude < 20 || rthAltitude > 1500) newErrors.rthAltitude = 'Must be between 20 and 1500';
     if (taskType === 1 || taskType === 2) {
       if (!executeDate) newErrors.executeDate = 'Date is required';
@@ -67,6 +70,7 @@ export function CreatePlanForm({
       out_of_control_action: lostAction,
       rth_altitude: rthAltitude,
       device_sn: deviceSn,
+      dock_sn: droneToDockMap.get(deviceSn) ?? '',
       wayline_type: selectedWayline?.template_types?.[0] ?? 0,
     };
 
