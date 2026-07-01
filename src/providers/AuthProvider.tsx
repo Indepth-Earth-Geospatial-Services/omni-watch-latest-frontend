@@ -5,7 +5,7 @@
 //
 // Lifecycle:
 //   1. On mount → check in-memory token OR try to restore via refresh cookie
-//   2. Token in memory → call GET /api/auth/me (OmniWatch) to restore the session
+//   2. Token in memory → call GET /api/auth/me (Loctiva) to restore the session
 //   3. Token lost (page refresh) but session exists → refreshToken() → restore
 //   4. No session at all → user = null → middleware redirects to /sign-in
 //   5. After login → user state set, proactive refresh timer scheduled
@@ -49,10 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loginDataRef = useRef<{ role: string; username: string; user_id: string; user_type: number; mqtt_username: string; mqtt_password: string } | null>(null);
+  const loginDataRef = useRef<{
+    role: string;
+    username: string;
+    user_id: string;
+    user_type: number;
+    mqtt_username: string;
+    mqtt_password: string;
+  } | null>(null);
 
-  // ── Fetch the current user profile via OmniWatch /me ────────────────────
-  // Uses the OmniWatch auth endpoint — never calls the DJI Cloud server.
+  // ── Fetch the current user profile via Loctiva /me ────────────────────
+  // Uses the Loctiva auth endpoint — never calls the DJI Cloud server.
   const fetchCurrentUser = useCallback(async (): Promise<boolean> => {
     try {
       const me = await authApi.me();

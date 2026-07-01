@@ -78,9 +78,11 @@ module.exports = {
         bg: '#0a0a0a',
         panel: '#0c0c0c',
         blue: {
-          DEFAULT: '#3b82f6',
+          DEFAULT: '#007dfc',
           light: '#60a5fa',
         },
+        btn: '#282828',
+        'btn-hover': '#343434',
         't-primary': '#f5f5f5',
         't-bright': '#ffffff',
         't-muted': '#9a9a9a',

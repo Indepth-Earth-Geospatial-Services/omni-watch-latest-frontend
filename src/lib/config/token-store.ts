@@ -82,7 +82,7 @@ export function getToken(): string | null {
 /**
  * Stores the JWT in memory (never localStorage) after a successful login or token refresh.
  *
- * @param token     - The raw JWT string returned by the OmniWatch server
+ * @param token     - The raw JWT string returned by the Loctiva server
  * @param expiresIn - Lifetime in seconds (e.g. 3600 for 1 hour). Optional but strongly recommended.
  */
 export function setToken(token: string, expiresIn?: number): void {

@@ -64,8 +64,8 @@ export interface CreateAlertBody {
   alert_type: 'PENDING' | 'APPROVED';
 }
 
-// OmniWatch wraps every response in { code, message, data }
-interface OmniWatchEnvelope<T> {
+// loctiva wraps every response in { code, message, data }
+interface loctivaEnvelope<T> {
   code: number;
   message: string;
   data: T;
@@ -126,9 +126,9 @@ async function request<T>(
 
     const body = res.data;
 
-    // Handle OmniWatch envelope format { code, message, data }
+    // Handle loctiva envelope format { code, message, data }
     if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
-      const envelope = body as OmniWatchEnvelope<T>;
+      const envelope = body as loctivaEnvelope<T>;
       if (envelope.code !== 0) {
         const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
         const msg = String(detail ?? envelope.message ?? `Request failed: ${res.status}`);
@@ -144,9 +144,11 @@ async function request<T>(
       const body = err.response.data;
       // Try to extract error from envelope
       if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
-        const envelope = body as OmniWatchEnvelope<unknown>;
+        const envelope = body as loctivaEnvelope<unknown>;
         const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
-        throw new Error(String(detail ?? envelope.message ?? `Request failed: ${err.response.status}`));
+        throw new Error(
+          String(detail ?? envelope.message ?? `Request failed: ${err.response.status}`)
+        );
       }
       // Try to extract error from direct response
       if (body && typeof body === 'object' && 'detail' in body) {
@@ -170,9 +172,9 @@ export async function fetchDetections(filters: DetectionFilters = {}): Promise<D
   if (filters.deviceId) params.deviceId = filters.deviceId;
 
   const url = API_URLS.alerts.list(params);
-  
+
   try {
-    const data = await request<{ 
+    const data = await request<{
       alerts?: BackendAlert[];
       total?: number;
       page?: number;
@@ -181,9 +183,8 @@ export async function fetchDetections(filters: DetectionFilters = {}): Promise<D
     }>('GET', url);
 
     const alerts = data.alerts ?? [];
-    const nextPage = data.page && data.total_pages && data.page < data.total_pages
-      ? data.page + 1
-      : null;
+    const nextPage =
+      data.page && data.total_pages && data.page < data.total_pages ? data.page + 1 : null;
 
     return {
       detections: alerts.map(mapAlertToThreatDetection),

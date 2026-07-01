@@ -1,4 +1,4 @@
-// OmniWatch Auth API — all requests go through the Next.js proxy at /api/auth
+// Loctiva Auth API — all requests go through the Next.js proxy at /api/auth
 // which forwards to http://34.35.12.123:8002/api/v1/auth/<path>
 
 import axios, { AxiosError } from 'axios';
@@ -19,8 +19,8 @@ function jwtExpiresIn(token: string): number | undefined {
 
 // ─── Response shapes ──────────────────────────────────────────────────────────
 
-// Every OmniWatch endpoint wraps its payload in this envelope — code 0 = success.
-interface OmniWatchEnvelope<T> {
+// Every Loctiva endpoint wraps its payload in this envelope — code 0 = success.
+interface loctivaEnvelope<T> {
   code: number;
   message: string;
   data?: T;
@@ -63,7 +63,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, data?: unknown):
   const token = getToken();
 
   try {
-    const res = await axios.request<OmniWatchEnvelope<T>>({
+    const res = await axios.request<loctivaEnvelope<T>>({
       method,
       url: `${PROXY}${path}`,
       data,
@@ -75,7 +75,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, data?: unknown):
 
     const envelope = res.data;
 
-    // OmniWatch signals errors via code !== 0 even on HTTP 200
+    // LOCTIVA signals errors via code !== 0 even on HTTP 200
     if (envelope.code !== 0) {
       const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
       throw new Error(String(detail ?? envelope.message ?? `Auth request failed: ${res.status}`));
@@ -88,7 +88,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, data?: unknown):
 
     // Surface axios HTTP errors (4xx/5xx) with the server's detail message
     if (err instanceof AxiosError && err.response) {
-      const envelope = err.response.data as OmniWatchEnvelope<unknown> | undefined;
+      const envelope = err.response.data as loctivaEnvelope<unknown> | undefined;
       const detail = (envelope?.data as Record<string, unknown> | undefined)?.detail;
       throw new Error(
         String(detail ?? envelope?.message ?? `Auth request failed: ${err.response.status}`)
@@ -140,6 +140,6 @@ export const authApi = {
 };
 
 // Named export for the lazy import in client.ts 401 auto-retry
-export async function refreshOmniWatchToken(): Promise<void> {
+export async function refreshLoctivaToken(): Promise<void> {
   await authApi.refreshToken();
 }

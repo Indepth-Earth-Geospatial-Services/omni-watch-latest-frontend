@@ -36,7 +36,7 @@ export default function ProjectRoutesPage() {
     try {
       await projectsApi.unassignFlightArea(activeProject.id, modal.wayline.id);
       toast.success('Flight route unassigned');
-      queryClient.invalidateQueries({ queryKey: ['omniwatch', 'projects'] });
+      queryClient.invalidateQueries({ queryKey: ['loctiva', 'projects'] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       toast.error(`Failed to unassign: ${message}`);
@@ -63,11 +63,7 @@ export default function ProjectRoutesPage() {
   return (
     <MainLayout title='Flight Routes' subtitle='Waylines assigned to this project'>
       <div className='font-ui space-y-4'>
-        <ProjectRoutesTable
-          waylines={waylines}
-          isLoading={isLoading}
-          onUnassign={handleUnassign}
-        />
+        <ProjectRoutesTable waylines={waylines} isLoading={isLoading} onUnassign={handleUnassign} />
       </div>
 
       <ConfirmActionModal

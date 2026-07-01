@@ -49,7 +49,7 @@ const SOFT_SUCCESS_CODES = new Set([513003]);
 /**
  * Core request function — attaches auth token, calls the DJI server directly, unwraps the envelope.
  *
- * On 401: silently refreshes the OmniWatch token (which reissues the DJI session token),
+ * On 401: silently refreshes the Loctiva token (which reissues the DJI session token),
  * then replays the request once.
  *
  * @param method  - HTTP verb
@@ -92,7 +92,7 @@ async function request<T>(
 
     return envelope.data as T;
   } catch (err) {
-    // 401 → refresh OmniWatch token (reissues DJI session), then replay once.
+    // 401 → refresh Loctiva token (reissues DJI session), then replay once.
     if (err instanceof AxiosError && err.response?.status === 401 && !retried) {
       try {
         const { authApi } = await import('@/services/authservice-layer/auth-api');

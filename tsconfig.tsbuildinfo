@@ -502,7 +502,7 @@
     "./src/app/api/ai-detection/[...path]/route.ts",
     "./src/lib/config/config.ts",
     "./src/app/api/auth/[...path]/route.ts",
-    "./src/app/api/omniwatch/[...path]/route.ts",
+    "./src/app/api/loctiva/[...path]/route.ts",
     "./src/app/api/streams/route.ts",
     "./src/components/features/ai-detection/lib/detection-utils.ts",
     "./src/components/features/geospaital-map/map-types.ts",
@@ -518,7 +518,7 @@
     "./src/lib/types/firmware.ts",
     "./src/lib/types/logs.ts",
     "./src/lib/types/dock.ts",
-    "./src/lib/types/omniwatch.ts",
+    "./src/lib/types/LOCTIVA.ts",
     "./src/lib/types/threats.ts",
     "./src/lib/types/index.ts",
     "./src/components/features/streams/stream-utils.ts",
@@ -1380,7 +1380,7 @@
     "./.next/types/app/(panel)/projects/page.ts",
     "./.next/types/app/(website)/page.ts",
     "./.next/types/app/api/auth/[...path]/route.ts",
-    "./.next/types/app/api/omniwatch/[...path]/route.ts"
+    "./.next/types/app/api/LOCTIVA/[...path]/route.ts"
   ],
   "fileIdsList": [
     [
