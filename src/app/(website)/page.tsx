@@ -16,7 +16,7 @@ import { Footer } from '@/components/features/landing-page/components/layout/Foo
  */
 export default function Home() {
   return (
-    <>
+    <div className='landing-page'>
       <Navbar />
       <main>
         <Hero />
@@ -29,6 +29,6 @@ export default function Home() {
         <Trust />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

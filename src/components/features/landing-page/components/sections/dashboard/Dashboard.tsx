@@ -12,7 +12,7 @@ export function Dashboard() {
       <div className='wrap max-[860px]:overflow-x-auto max-[860px]:pb-2.5 max-[860px]:[-webkit-overflow-scrolling:touch]'>
         <Reveal>
           <Image
-            src='/assets/dashboard.png'
+            src='/landing/dashboard.png'
             alt='Incidents and threat detection dashboard'
             width={2480}
             height={1950}

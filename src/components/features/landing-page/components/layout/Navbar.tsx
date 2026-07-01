@@ -21,7 +21,7 @@ export function Navbar() {
         {/* Brand */}
         <Link href="#" className="flex flex-none items-center gap-2.5">
           <Image
-            src="/assets/nav-logo.png"
+            src="/landing/nav-logo.png"
             alt="Omniwatch logo"
             width={36}
             height={36}

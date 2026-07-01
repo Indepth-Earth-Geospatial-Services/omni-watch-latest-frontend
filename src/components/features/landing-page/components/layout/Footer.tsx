@@ -16,7 +16,7 @@ export function Footer() {
           {/* Brand */}
           <div className="flex flex-col">
             <div className="mb-4 flex items-center gap-2.5">
-              <Image src="/assets/nav-logo.png" alt="" width={34} height={34} className="h-[34px] w-[34px]" />
+              <Image src="/landing/nav-logo.png" alt="" width={34} height={34} className="h-[34px] w-[34px]" />
               <b className="font-geist text-lg font-semibold text-white">{siteConfig.name}</b>
             </div>
             <p className="mb-auto max-w-[280px] font-inter text-[13px] leading-[1.7] text-[#9a9a9a] max-[860px]:max-w-none">

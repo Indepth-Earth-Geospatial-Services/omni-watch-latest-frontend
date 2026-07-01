@@ -10,7 +10,7 @@ export const siteConfig = {
   // OG/Twitter use a slightly different lede in the original markup.
   socialDescription:
     "A unified geospatial ISR platform delivering real-time monitoring, threat detection, and operational intelligence across every critical asset you manage.",
-  ogImage: "/assets/nav-logo.png",
+  ogImage: "/landing/nav-logo.png",
 } as const;
 
 export const navLinks = [

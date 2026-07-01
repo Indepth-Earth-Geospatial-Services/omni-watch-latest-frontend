@@ -16,25 +16,25 @@ export interface FeatureCardItem {
 
 export const featureCards: FeatureCardItem[] = [
   {
-    art: "/assets/card-keyhole.png",
+    art: "/landing/card-keyhole.png",
     title: "Enterprise-Grade Security",
     body: "Encrypted communications, audit trails, permission-based access, and compliance-level data handling.",
     cta: "Get Started",
   },
   {
-    art: "/assets/card-bars.png",
+    art: "/landing/card-bars.png",
     title: "Real-Time Monitoring",
     body: "Continuous visibility into asset movement, status, and operational integrity.",
     cta: "Analyze trends",
   },
   {
-    art: "/assets/card-blockchain.png",
+    art: "/landing/card-blockchain.png",
     title: "Incident Response Acceleration",
     body: "Centralized workflows to detect, confirm, resolve, and document incidents.",
     cta: "Get Started",
   },
   {
-    art: "/assets/card-governance.png",
+    art: "/landing/card-governance.png",
     title: "Predictive Threat Detection",
     body: "AI models that analyze anomalies, risk patterns, and environmental signals.",
     cta: "Get Started",

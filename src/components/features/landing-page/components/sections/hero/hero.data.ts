@@ -14,11 +14,11 @@ export const partnerContent = {
 
 /** `small` renders the wide wordmarks at a reduced height (original `.logo-cell.sm`). */
 export const clientLogos = [
-  { src: "/assets/clients/metashape.webp", alt: "Metashape", small: true },
-  { src: "/assets/clients/aerosmart.webp", alt: "AeroSmart", small: false },
-  { src: "/assets/clients/falcon.webp", alt: "Falcon", small: false },
-  { src: "/assets/clients/iris.webp", alt: "Iris", small: false },
-  { src: "/assets/clients/transcorp.webp", alt: "Transcorp", small: true },
+  { src: "/landing/clients/metashape.webp", alt: "Metashape", small: true },
+  { src: "/landing/clients/aerosmart.webp", alt: "AeroSmart", small: false },
+  { src: "/landing/clients/falcon.webp", alt: "Falcon", small: false },
+  { src: "/landing/clients/iris.webp", alt: "Iris", small: false },
+  { src: "/landing/clients/transcorp.webp", alt: "Transcorp", small: true },
 ] as const;
 
 export const ratings = [

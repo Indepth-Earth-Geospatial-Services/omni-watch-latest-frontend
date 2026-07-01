@@ -23,7 +23,7 @@ export function Hero() {
           <HeroDevice />
 
           <Reveal className='order-1 max-w-[760px] flex-1 basis-[52%] max-[860px]:max-w-none max-[860px]:basis-full'>
-            <h1 className='mb-[18px] font-sans text-[clamp(44px,3.4vw,58px)] font-normal leading-[1.34] tracking-[-.5px] text-t-primary max-[860px]:text-[34px] max-[860px]:leading-[1.18] max-[430px]:text-[45px]'>
+            <h1 className='mb-[18px] font-satoshi text-[clamp(44px,3.4vw,58px)] font-normal leading-[1.34] tracking-[-.5px] text-t-primary max-[860px]:text-[34px] max-[860px]:leading-[1.18] max-[430px]:text-[45px]'>
               {heroContent.headline[0]}
               <br />
               {heroContent.headline[1]}

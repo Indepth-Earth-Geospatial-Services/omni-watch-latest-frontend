@@ -18,7 +18,7 @@ export function Delivers() {
         <Reveal>
           <Eyebrow className="mb-[26px]">{deliversContent.eyebrow}</Eyebrow>
 
-          <h2 className="mb-7 max-w-[963px] font-sans text-[44px] font-medium leading-[1.34] tracking-[-.5px] text-t-primary max-[860px]:text-[30px] max-[430px]:text-[26px]">
+          <h2 className="mb-7 max-w-[963px] font-satoshi text-[44px] font-medium leading-[1.34] tracking-[-.5px] text-t-primary max-[860px]:text-[30px] max-[430px]:text-[26px]">
             {deliversContent.title}
           </h2>
 

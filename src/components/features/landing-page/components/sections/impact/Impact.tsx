@@ -43,7 +43,7 @@ export function Impact() {
           <div className="absolute right-20 top-1/2 z-[1] w-[760px] -translate-y-[58%] max-[860px]:static max-[860px]:mx-auto max-[860px]:mt-7 max-[860px]:w-full max-[860px]:max-w-[380px] max-[860px]:translate-y-0">
             <Reveal>
               <Image
-                src="/assets/planet.png"
+                src="/landing/planet.png"
                 alt=""
                 width={1351}
                 height={1120}
