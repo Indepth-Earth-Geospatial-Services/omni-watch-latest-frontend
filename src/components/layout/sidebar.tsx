@@ -73,15 +73,15 @@ export function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
-      <div className={cn(
-        'flex items-center h-16 border-b border-border',
-        collapsed ? 'justify-center px-2' : 'justify-between px-4'
-      )}>
+      <div
+        className={cn(
+          'flex items-center h-16 border-b border-border',
+          collapsed ? 'justify-center px-2' : 'justify-between px-4'
+        )}
+      >
         <Link href='/' className='flex items-center'>
           <Satellite className={cn('h-5 w-5 text-muted-foreground', collapsed ? '' : 'mr-2')} />
-          {!collapsed && (
-            <h1 className='text-lg font-bold text-muted-foreground'>OMNIWATCH</h1>
-          )}
+          {!collapsed && <h1 className='text-lg font-bold text-muted-foreground'>LOCTIVA</h1>}
         </Link>
       </div>
 

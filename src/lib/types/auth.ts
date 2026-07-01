@@ -1,4 +1,4 @@
-// Authentication types for the OmniWatch Auth API
+// Authentication types for the LOCTIVA Auth API
 
 export interface AuthTokenResponse {
   username: string;
@@ -22,7 +22,7 @@ export interface MeResponse {
 export interface CurrentUser {
   user_id: string;
   username: string;
-  user_type: number;       // 0 = regular user, 1 = admin
+  user_type: number; // 0 = regular user, 1 = admin
   mqtt_username: string;
   mqtt_password: string;
   mqtt_client_id: string;

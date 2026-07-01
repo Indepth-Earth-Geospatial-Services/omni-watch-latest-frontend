@@ -1,4 +1,4 @@
-// Single source of truth for all OmniWatch & DJI Cloud configuration.
+// Single source of truth for all Loctiva & DJI Cloud configuration.
 // No other file should call process.env directly for these variables.
 
 // Helper to convert HTTP URL to WS/WSS URL
@@ -7,15 +7,15 @@ const toWsUrl = (url: string) => {
   return url.replace(/^https?/, isSecure ? 'wss' : 'ws');
 };
 
-const OMNIWATCH_API_URL = process.env.NEXT_PUBLIC_OMNIWATCH_API_URL ?? 'http://34.35.12.123:8000';
+const LOCTIVA_API_URL = process.env.NEXT_PUBLIC_LOCTIVA_API_URL ?? 'http://34.35.12.123:8000';
 const DJI_API_URL = process.env.NEXT_PUBLIC_DJI_API_URL ?? 'http://35.222.89.171:6789';
 
 export const DJI_CONFIG = {
   // DJI Cloud API Base
   BASE_URL: DJI_API_URL,
 
-  // OmniWatch API Base (REST)
-  OMNIWATCH_API_URL,
+  // LOCTIVA API Base (REST)
+  LOCTIVA_API_URL,
 
   // WebSocket Endpoint
   // On HTTPS deployments: converts to wss:// (requires backend to support WSS or add WSS proxy)
@@ -23,7 +23,7 @@ export const DJI_CONFIG = {
   WS_URL: `${toWsUrl(DJI_API_URL)}/api/v1/ws`,
 
   // For legacy WebRTC references
-  WEBRTC_BASE_URL: `${toWsUrl(OMNIWATCH_API_URL)}/api/v1/ws`,
+  WEBRTC_BASE_URL: `${toWsUrl(LOCTIVA_API_URL)}/api/v1/ws`,
 
   WORKSPACE_ID: process.env.NEXT_PUBLIC_WORKSPACE_ID ?? '',
   DEVICE_SN: process.env.NEXT_PUBLIC_DEVICE_SN ?? '',

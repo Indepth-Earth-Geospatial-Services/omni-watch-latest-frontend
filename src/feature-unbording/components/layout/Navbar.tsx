@@ -64,9 +64,12 @@ const Navbar = () => {
     <>
       <nav className='relative flex items-center justify-between w-full h-16 px-6 bg-background border-b border-border'>
         <div className='flex items-center flex-shrink-0'>
-          <Link href='/' className='flex items-center transition-opacity hover:opacity-80 focus:outline-none'>
+          <Link
+            href='/'
+            className='flex items-center transition-opacity hover:opacity-80 focus:outline-none'
+          >
             <Satellite className='h-5 w-5 text-sky-400 mr-2' />
-            <span className='text-lg font-bold text-sky-400'>OMNIWATCH</span>
+            <span className='text-lg font-bold text-sky-400'>loctiva</span>
           </Link>
         </div>
 
@@ -100,9 +103,7 @@ const Navbar = () => {
               className='flex items-center gap-2 focus:outline-none group'
             >
               <div className='w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center flex-shrink-0'>
-                <span className='text-xs font-bold text-white select-none'>
-                  {initials}
-                </span>
+                <span className='text-xs font-bold text-white select-none'>{initials}</span>
               </div>
               <ChevronDown
                 size={14}
@@ -115,9 +116,7 @@ const Navbar = () => {
                 <div className='px-4 py-4 border-b border-border'>
                   <div className='flex items-center gap-3'>
                     <div className='w-10 h-10 rounded-full bg-sky-600 flex items-center justify-center flex-shrink-0'>
-                      <span className='text-xs font-bold text-white'>
-                        {initials}
-                      </span>
+                      <span className='text-xs font-bold text-white'>{initials}</span>
                     </div>
                     <div className='min-w-0'>
                       <p className='text-sm font-bold text-foreground truncate'>{displayName}</p>
@@ -152,7 +151,7 @@ const Navbar = () => {
             aria-label='Toggle navigation menu'
           >
             {mobileMenuOpen ? (
-              <X size={20} strokeWidth={1.5} className="text-sky-400" />
+              <X size={20} strokeWidth={1.5} className='text-sky-400' />
             ) : (
               <Menu size={20} strokeWidth={1.5} />
             )}
@@ -171,18 +170,21 @@ const Navbar = () => {
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between py-3 px-4 rounded-lg font-ui tracking-widest text-sm font-semibold transition-all duration-200
-                      ${isActive 
-                        ? 'text-white bg-sky-950/20 border-l-2 border-sky-500' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-l-2 border-transparent'
+                      ${
+                        isActive
+                          ? 'text-white bg-sky-950/20 border-l-2 border-sky-500'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-l-2 border-transparent'
                       }`}
                   >
                     <span className='flex items-center gap-3'>
-                      <span className={`text-[10px] font-mono tracking-normal ${isActive ? 'text-sky-400' : 'text-muted-foreground'}`}>
+                      <span
+                        className={`text-[10px] font-mono tracking-normal ${isActive ? 'text-sky-400' : 'text-muted-foreground'}`}
+                      >
                         {numStr}
                       </span>
                       {item.label}
                     </span>
-                    
+
                     {isActive && (
                       <span className='w-1.5 h-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_hsl(var(--theme-accent))]' />
                     )}
@@ -192,13 +194,13 @@ const Navbar = () => {
             </div>
 
             <div className='grid grid-cols-2 gap-4 p-6 bg-background/40'>
-              <button 
+              <button
                 className='flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/60 hover:text-foreground text-muted-foreground transition-all text-xs font-semibold tracking-wider font-ui'
                 onClick={() => {
                   setMobileMenuOpen(false);
                 }}
               >
-                <Bell size={16} strokeWidth={1.5} className="text-muted-foreground" />
+                <Bell size={16} strokeWidth={1.5} className='text-muted-foreground' />
                 NOTIFICATIONS
               </button>
             </div>

@@ -1,8 +1,8 @@
-// OmniWatch backend types — projects, workspaces, teams
+// Loctiva backend types — projects, workspaces, teams
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
-// Legacy DRF shape — kept for reference but not used by OmniWatch endpoints
+// Legacy DRF shape — kept for reference but not used by Loctiva endpoints
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -10,9 +10,9 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
-// Actual paginated shape returned by OmniWatch list endpoints:
+// Actual paginated shape returned by Loctiva list endpoints:
 //   { list: T[], pagination: { page, total, page_size } }
-export interface OmniWatchPage<T> {
+export interface loctivaPage<T> {
   list: T[];
   pagination: {
     page: number;
@@ -218,7 +218,7 @@ export interface DJIWorkspaceUser {
   user_id: string;
   username: string;
   email: string;
-  user_type: string;         // "Web" or "Pilot"
+  user_type: string; // "Web" or "Pilot"
   workspace_id: string;
   workspace_name: string;
   mqtt_username: string;
@@ -226,7 +226,7 @@ export interface DJIWorkspaceUser {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  create_time: string;       // alternative timestamp field from API
+  create_time: string; // alternative timestamp field from API
 }
 
 // Request body for PUT /manage/api/v1/users/{wid}/users/{userId}

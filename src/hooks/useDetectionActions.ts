@@ -1,6 +1,6 @@
 // Mutation hooks for approving/dismissing AI detections.
 // Uses optimistic updates via the detection reducer for immediate UI feedback.
-// API calls are proxied through Next.js to the OmniWatch backend at http://34.35.12.123:8002.
+// API calls are proxied through Next.js to the LOCTIVA backend at http://34.35.12.123:8002.
 
 import { useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

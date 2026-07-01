@@ -2,9 +2,9 @@ import axios, { AxiosError } from 'axios';
 import { getToken } from '@/lib/config/token-store';
 import type { DeviceConfig, AIClass, StreamUrlResponse } from '@/lib/types';
 
-const OMNI_PROXY = '/api/omniwatch';
+const OMNI_PROXY = '/api/loctiva';
 
-interface OmniWatchEnvelope<T> {
+interface loctivaEnvelope<T> {
   code: number;
   message: string;
   data: T;
@@ -35,7 +35,7 @@ async function request<T>(
     const body = res.data;
 
     if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
-      const envelope = body as OmniWatchEnvelope<T>;
+      const envelope = body as loctivaEnvelope<T>;
       if (envelope.code !== 0) {
         const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
         const msg = String(detail ?? envelope.message ?? `Request failed: ${res.status}`);
@@ -49,9 +49,11 @@ async function request<T>(
     if (err instanceof AxiosError && err.response) {
       const body = err.response.data;
       if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
-        const envelope = body as OmniWatchEnvelope<unknown>;
+        const envelope = body as loctivaEnvelope<unknown>;
         const detail = (envelope.data as Record<string, unknown> | undefined)?.detail;
-        throw new Error(String(detail ?? envelope.message ?? `Request failed: ${err.response.status}`));
+        throw new Error(
+          String(detail ?? envelope.message ?? `Request failed: ${err.response.status}`)
+        );
       }
       if (body && typeof body === 'object' && 'detail' in body) {
         throw new Error(String((body as Record<string, unknown>).detail));

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DJI_CONFIG } from '@/lib/config/config';
 
 // The Auth Backend URL from our central config
-const AUTH_BASE_URL = DJI_CONFIG.OMNIWATCH_API_URL;
+const AUTH_BASE_URL = DJI_CONFIG.LOCTIVA_API_URL;
 
 const HOP_BY_HOP_HEADERS = new Set([
   'host',
@@ -76,7 +76,7 @@ async function forwardRequest(
 
     // Build response headers — forward Content-Type plus all Set-Cookie headers.
     // Set-Cookie must be forwarded so the browser stores the HttpOnly refresh token
-    // cookie issued by OmniWatch on login. Without it, token refresh always fails.
+    // cookie issued by loctiva on login. Without it, token refresh always fails.
     const responseHeaders = new Headers();
     responseHeaders.set(
       'Content-Type',

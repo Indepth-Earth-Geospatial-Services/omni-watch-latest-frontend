@@ -16,8 +16,8 @@ import type {
 } from '@/lib/types';
 
 const memberKeys = {
-  all: ['omniwatch', 'users'] as const,
-  list: ['omniwatch', 'users', 'list'] as const,
+  all: ['loctiva', 'users'] as const,
+  list: ['loctiva', 'users', 'list'] as const,
 };
 
 export function useMembers() {

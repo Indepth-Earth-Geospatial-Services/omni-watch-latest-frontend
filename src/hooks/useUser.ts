@@ -1,7 +1,7 @@
-// React Query hooks for OmniWatch organization user management.
-// Routes through /api/omniwatch/ proxy (OmniWatch port 8002) — NOT the DJI Cloud server.
+// React Query hooks for Loctiva organization user management.
+// Routes through /api/loctiva/ proxy (Loctiva port 8002) — NOT the DJI Cloud server.
 //
-// Query key convention: ['omniwatch', 'users', ...]
+// Query key convention: ['loctiva', 'users', ...]
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { organizationApi } from '@/services/authservice-layer/auth-service';
@@ -11,14 +11,14 @@ import type { OrgUser, UpdateOrgUserRequest } from '@/lib/types';
 // ─── Query key factory ────────────────────────────────────────────────────────
 
 const userKeys = {
-  all: ['omniwatch', 'users'] as const,
-  list: ['omniwatch', 'users', 'list'] as const,
-  current: ['omniwatch', 'users', 'current'] as const,
+  all: ['loctiva', 'users'] as const,
+  list: ['loctiva', 'users', 'list'] as const,
+  current: ['loctiva', 'users', 'current'] as const,
 };
 
 // ─── Read hooks ───────────────────────────────────────────────────────────────
 
-/** Fetches all users in the authenticated organisation from OmniWatch. */
+/** Fetches all users in the authenticated organisation from loctiva. */
 export function useWorkspaceUsers() {
   return useQuery({
     queryKey: userKeys.list,

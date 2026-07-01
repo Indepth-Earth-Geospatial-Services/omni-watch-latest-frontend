@@ -1,6 +1,6 @@
 /**
- * @file omniwatch-service.ts
- * @description HTTP service layer for all non-auth OmniWatch backend endpoints.
+ * @file loctiva-service.ts
+ * @description HTTP service layer for all non-auth loctiva backend endpoints.
  *
  * This file owns the HTTP logic. URLs are resolved from the centralised
  * registry in `AuthGlobalApi.ts` — never constructed inline here.
@@ -38,7 +38,7 @@ import type {
   OrgUser,
   AddOrgUserRequest,
   UpdateOrgUserRequest,
-  OmniWatchPage,
+  loctivaPage,
   PageParams,
   DJIWorkspaceUserListResponse,
   UpdateDJIWorkspaceUserRequest,
@@ -60,8 +60,8 @@ import type {
  * @param data         - Request body (axios serialises to JSON automatically)
  * @param extraHeaders - Additional headers merged on top of the defaults
  */
-// OmniWatch wraps every response in { code, message, data } — code 0 = success.
-interface OmniWatchEnvelope<T> {
+// LOCTIVA wraps every response in { code, message, data } — code 0 = success.
+interface loctivaEnvelope<T> {
   code: number;
   message: string;
   data: T;
@@ -79,7 +79,7 @@ async function request<T>(
   }
 
   try {
-    const res = await axios.request<OmniWatchEnvelope<T>>({
+    const res = await axios.request<loctivaEnvelope<T>>({
       method,
       url,
       data,
@@ -106,7 +106,7 @@ async function request<T>(
     return envelope.data;
   } catch (err) {
     if (err instanceof AxiosError && err.response) {
-      const envelope = err.response.data as OmniWatchEnvelope<unknown> | undefined;
+      const envelope = err.response.data as loctivaEnvelope<unknown> | undefined;
       const detail = (envelope?.data as Record<string, unknown> | undefined)?.detail;
       const msg = String(detail ?? envelope?.message ?? `Request failed: ${err.response.status}`);
       throw new Error(msg);
@@ -125,7 +125,7 @@ async function request<T>(
  */
 export const workspaceApi = {
   /**
-   * Create a new DJI workspace on the OmniWatch backend.
+   * Create a new DJI workspace on the LOCTIVA backend.
    *
    * @param body           - Workspace name, description, and platform identifier.
    * @param internalSecret - Value for the `X-Internal-Secret` header (gateway token).
@@ -144,7 +144,7 @@ export const workspaceApi = {
 /**
  * Project management service — full CRUD plus device and flight-area assignment.
  *
- * A project is the primary organisational unit on the OmniWatch platform.
+ * A project is the primary organisational unit on the LOCTIVA platform.
  * It groups a set of devices and wayline flight areas under a named context,
  * enabling mission planning and access-control scoping.
  */
@@ -154,8 +154,8 @@ export const projectsApi = {
    *
    * @param params - Optional `page` and `page_size` for pagination.
    */
-  list: (params?: PageParams): Promise<OmniWatchPage<Project>> =>
-    request<OmniWatchPage<Project>>('GET', API_URLS.projects.list(params)),
+  list: (params?: PageParams): Promise<loctivaPage<Project>> =>
+    request<loctivaPage<Project>>('GET', API_URLS.projects.list(params)),
 
   /**
    * Create a new project.
@@ -203,8 +203,14 @@ export const projectsApi = {
    * @param id     - Project UUID.
    * @param params - Optional pagination params.
    */
-  listDevices: (id: string, params?: PageParams): Promise<OmniWatchPage<ProjectDevice>> =>
-    request<OmniWatchPage<ProjectDevice>>('GET', API_URLS.projects.devices(id, params)),
+  listDevices: (
+    id: string,
+    params?: PageParams
+  ): Promise<loctivaPage<ProjectDevice>> =>
+    request<loctivaPage<ProjectDevice>>(
+      'GET',
+      API_URLS.projects.devices(id, params)
+    ),
 
   /**
    * Assign a device to a project by its serial number.
@@ -302,7 +308,7 @@ export const authAdminApi = {
  */
 export const healthApi = {
   /**
-   * Ping the OmniWatch server to verify that both databases are reachable.
+   * Ping the LOCTIVA server to verify that both databases are reachable.
    *
    * @returns A map of service names to their current status strings.
    */
@@ -358,7 +364,7 @@ export const organizationApi = {
 
 /**
  * DJI workspace user management — manages MQTT credentials and membership.
- * These endpoints proxy through the OmniWatch backend to the DJI manage API.
+ * These endpoints proxy through the LOCTIVA backend to the DJI manage API.
  */
 export const djiUsersApi = {
   /**
@@ -381,6 +387,5 @@ export const djiUsersApi = {
     workspaceId: string,
     userId: string,
     body: UpdateDJIWorkspaceUserRequest
-  ): Promise<void> =>
-    request<void>('PUT', API_URLS.djiUsers.update(workspaceId, userId), body),
+  ): Promise<void> => request<void>('PUT', API_URLS.djiUsers.update(workspaceId, userId), body),
 };
