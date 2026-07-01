@@ -18,7 +18,7 @@ export default function MembersHeader({ onSearch, onInviteClick }: MembersHeader
           type='text'
           onChange={(e) => onSearch?.(e.target.value)}
           placeholder='Search members...'
-          className='block w-full py-2.5 pl-10 pr-3 text-sm text-zinc-200 bg-[#32353C] border border-[#6B7280] rounded-md focus:outline-none focus:ring-1 focus:ring-[#adafaf] focus:border-transparent placeholder:text-[#CFC2D680]/50 transition-all'
+          className='block w-full py-2.5 pl-10 pr-3 text-sm text-zinc-200 bg-input border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground/50 transition-all'
         />
       </div>
 

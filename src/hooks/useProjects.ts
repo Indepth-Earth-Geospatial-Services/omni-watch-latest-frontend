@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/services/authservice-layer/auth-service';
-import type { Project, ProjectBody, ProjectDevice, PageParams } from '@/lib/types';
+import type { Project, ProjectBody, ProjectDevice, ProjectFlightArea, PageParams } from '@/lib/types';
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -136,6 +136,26 @@ export function useUnassignDevice() {
 
   return useMutation<void, Error, { projectId: string; deviceSn: string }>({
     mutationFn: ({ projectId, deviceSn }) => projectsApi.unassignDevice(projectId, deviceSn),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+/**
+ * Assigns a wayline flight area to a project.
+ * On success: invalidates all project queries so the flight areas list refreshes.
+ *
+ * @example
+ * const { mutate: assign } = useAssignWayline();
+ * assign({ projectId: 'abc-123', waylineId: 'wl-xyz' });
+ */
+export function useAssignWayline() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ProjectFlightArea, Error, { projectId: string; waylineId: string }>({
+    mutationFn: ({ projectId, waylineId }) =>
+      projectsApi.assignFlightArea(projectId, { wayline_id: waylineId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },

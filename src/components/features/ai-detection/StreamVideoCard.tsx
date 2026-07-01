@@ -115,7 +115,7 @@ export const StreamVideoCard = memo(function StreamVideoCard({
   const deviceLabel = device?.nickname || device?.deviceName || deviceSn;
 
   return (
-    <div className={`relative flex flex-col bg-[#0C0E12] overflow-hidden rounded-xl border border-zinc-800/50 ${isExpanded ? 'w-full h-full' : ''}`}>
+    <div className={`relative flex flex-col bg-background overflow-hidden rounded-xl border border-zinc-800/50 ${isExpanded ? 'w-full h-full' : ''}`}>
       {/* Headless WebRTC connection */}
       <WebRTCPlayer
         key={streamKey}
@@ -125,8 +125,8 @@ export const StreamVideoCard = memo(function StreamVideoCard({
       />
 
       {/* Device name label */}
-      <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-shrink-0'>
-        <span className='text-[11px] font-bold font-poppins text-zinc-300 truncate'>
+      <div className='flex items-center gap-2 px-3 py-2 bg-card border-b border-zinc-800/60 flex-shrink-0'>
+        <span className='text-[11px] font-bold font-ui text-zinc-300 truncate'>
           {deviceLabel}
         </span>
         <div className='flex-1' />
@@ -134,13 +134,13 @@ export const StreamVideoCard = memo(function StreamVideoCard({
           <div
             className={`w-1.5 h-1.5 rounded-full ${
               streamState === 'playing'
-                ? 'bg-[#2CAC73] shadow-[0px_0px_4px_0px_#45F0CF]'
+                ? 'bg-green-500 shadow-[0px_0px_4px_0px_hsl(var(--theme-accent))]'
                 : streamState === 'connecting'
                   ? 'bg-amber-400 animate-pulse'
                   : 'bg-zinc-600'
             }`}
           />
-          <span className='text-[10px] font-poppins text-zinc-500'>
+          <span className='text-[10px] font-ui text-zinc-500'>
             {streamState === 'playing' ? 'Live' : streamState === 'connecting' ? 'Connecting' : 'Error'}
           </span>
         </div>
@@ -179,7 +179,7 @@ export const StreamVideoCard = memo(function StreamVideoCard({
         {streamState === 'connecting' && (
           <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/60'>
             <Loader2 className='w-5 h-5 text-zinc-500 animate-spin mb-2' />
-            <span className='text-[10px] font-poppins text-zinc-500'>Connecting...</span>
+            <span className='text-[10px] font-ui text-zinc-500'>Connecting...</span>
           </div>
         )}
 
@@ -187,7 +187,7 @@ export const StreamVideoCard = memo(function StreamVideoCard({
         {streamState === 'error' && (
           <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/60'>
             <VideoOff className='w-5 h-5 text-red-500/60 mb-2' />
-            <span className='text-[10px] font-poppins text-red-400/60'>
+            <span className='text-[10px] font-ui text-red-400/60'>
               {errorMsg || 'Stream unavailable'}
             </span>
           </div>
@@ -199,7 +199,7 @@ export const StreamVideoCard = memo(function StreamVideoCard({
             <span className='text-[10px] font-mono text-zinc-500'>
               {deviceSn}
             </span>
-            <span className='text-[10px] font-poppins text-zinc-600'>
+            <span className='text-[10px] font-ui text-zinc-600'>
               {detections.length} detection{detections.length !== 1 ? 's' : ''}
             </span>
           </div>

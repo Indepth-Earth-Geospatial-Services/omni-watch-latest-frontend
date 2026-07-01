@@ -18,17 +18,16 @@ const DASHBOARD_ROUTES = [
   '/dashboard',
   '/live-feed',
   '/geospatial',
-  '/incidents',
-  '/logs',
-  '/reports',
-  '/threats',
-  '/users',
-  '/analytics',
   '/member',
   '/projects',
   '/assets',
   '/flightroutes',
   '/control',
+  '/media',
+  '/ai-detection',
+  '/alerts',
+  '/task',
+  '/flight-routes',
 ];
 
 // Routes that logged-in users should be bounced away from

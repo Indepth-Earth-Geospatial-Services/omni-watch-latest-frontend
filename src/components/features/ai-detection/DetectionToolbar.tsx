@@ -20,7 +20,7 @@ interface DetectionToolbarProps {
 }
 
 const selectCls =
-  'bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-xs font-poppins text-zinc-400 focus:outline-none focus:border-zinc-600 cursor-pointer';
+  'bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-xs font-ui text-zinc-400 focus:outline-none focus:border-zinc-600 cursor-pointer';
 
 export const DetectionToolbar = memo(function DetectionToolbar({
   connectionStatus,
@@ -43,18 +43,18 @@ export const DetectionToolbar = memo(function DetectionToolbar({
   const isError = connectionStatus === 'error';
 
   return (
-    <div className='flex items-center justify-between px-3 py-2 bg-[#12151C] border border-[#1E2330] rounded-lg flex-shrink-0 gap-3'>
+    <div className='flex items-center justify-between px-3 py-2 bg-card border border-border rounded-lg flex-shrink-0 gap-3'>
       {/* Left: Title + Status */}
       <div className='flex items-center gap-2.5'>
-        <Brain size={14} className='text-[#AFC6FF]' />
-        <span className='text-xs font-bold font-poppins text-[#E2E2E8] hidden sm:inline'>
+        <Brain size={14} className='text-blue-300' />
+        <span className='text-xs font-bold font-ui text-foreground hidden sm:inline'>
           AI Detection
         </span>
         <div className='flex items-center gap-1.5'>
           <div
             className={`w-1.5 h-1.5 rounded-full ${
               isConnected
-                ? 'bg-[#2CAC73] shadow-[0px_0px_4px_0px_#45F0CF]'
+                ? 'bg-green-500 shadow-[0px_0px_4px_0px_hsl(var(--theme-accent))]'
                 : isReconnecting || isConnecting
                   ? 'bg-amber-400 animate-pulse'
                   : isError
@@ -62,7 +62,7 @@ export const DetectionToolbar = memo(function DetectionToolbar({
                     : 'bg-zinc-600'
             }`}
           />
-          <span className='text-[10px] font-semibold font-poppins uppercase tracking-tighter text-zinc-500'>
+          <span className='text-[10px] font-semibold font-ui uppercase tracking-tighter text-zinc-500'>
             {isConnected
               ? 'Live'
               : isReconnecting
@@ -86,7 +86,7 @@ export const DetectionToolbar = memo(function DetectionToolbar({
             placeholder='Search class...'
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className='bg-zinc-900 border border-zinc-800 rounded-md pl-7 pr-2 py-1 text-xs font-poppins text-zinc-400 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 w-32'
+            className='bg-zinc-900 border border-zinc-800 rounded-md pl-7 pr-2 py-1 text-xs font-ui text-zinc-400 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 w-32'
           />
         </div>
 
@@ -131,9 +131,9 @@ export const DetectionToolbar = memo(function DetectionToolbar({
       <div className='flex items-center gap-1.5'>
         <button
           onClick={onToggleMap}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-poppins font-semibold transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-ui font-semibold transition-colors ${
             showMap
-              ? 'bg-[#1C93FF]/15 text-[#1C93FF] border border-[#1C93FF]/30'
+              ? 'bg-primary/15 text-primary border border-primary/30'
               : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
           }`}
         >
@@ -143,9 +143,9 @@ export const DetectionToolbar = memo(function DetectionToolbar({
 
         <button
           onClick={onToggleSound}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-poppins font-semibold transition-colors ${
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-ui font-semibold transition-colors ${
             soundEnabled
-              ? 'bg-[#45F0CF]/10 text-[#45F0CF] border border-[#45F0CF]/20'
+              ? 'bg-theme-accent/10 text-theme-accent border border-theme-accent/20'
               : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
           }`}
           title={soundEnabled ? 'Mute alerts' : 'Enable alert sounds'}

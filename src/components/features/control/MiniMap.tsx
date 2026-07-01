@@ -5,7 +5,7 @@ import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/maplibre';
 import type { MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Globe, HardDrive, Layers, Moon, MousePointerClick, Navigation, Plane, Target } from 'lucide-react';
+import { Globe, Home, Layers, Moon, MousePointerClick, Navigation, Plane, Target } from 'lucide-react';
 import type { ProcessedDroneData } from '@/hooks/useTelemetry';
 
 export interface TacticalMiniMapProps {
@@ -115,25 +115,31 @@ const TacticalMiniMap = ({
   const isAirborne = altitude > AIRBORNE_ALT_M;
   const altPct = Math.min((altitude / ALT_MAX) * 100, 100);
 
-  // ─── Dock position ────────────────────────────────────────────────────────
+  // ─── Dock / home position ─────────────────────────────────────────────────
+  // Prefer dock telemetry GPS; fall back to the launch origin when dock doesn't
+  // broadcast its own coordinates (common for stationary DJI Dock hardware).
   const dockLat = dockData?.latitude ?? 0;
   const dockLng = dockData?.longitude ?? 0;
-  const hasDockPos = dockLat !== 0 || dockLng !== 0;
+  const hasDockGPS = dockLat !== 0 || dockLng !== 0;
+  const hasOriginFallback = !hasDockGPS && originLat != null && originLng != null && (originLat !== 0 || originLng !== 0);
+  const homeLat = hasDockGPS ? dockLat : (hasOriginFallback ? originLat! : 0);
+  const homeLng = hasDockGPS ? dockLng : (hasOriginFallback ? originLng! : 0);
+  const hasDockPos = homeLat !== 0 || homeLng !== 0;
   const dockOnline = dockData?.online ?? false;
 
   // ─── Destination target ───────────────────────────────────────────────────
   const hasTarget = targetLat != null && targetLng != null && targetLat !== 0 && targetLng !== 0;
 
-  // ─── Range circle (centered on dock, fallback to drone) ───────────────────
+  // ─── Range circle (centered on home, fallback to drone) ──────────────────
   const rangeCircle = useMemo(() => {
-    const cLng = hasDockPos ? dockLng : hasPosition ? droneLng : null;
-    const cLat = hasDockPos ? dockLat : hasPosition ? droneLat : null;
+    const cLng = hasDockPos ? homeLng : hasPosition ? droneLng : null;
+    const cLat = hasDockPos ? homeLat : hasPosition ? droneLat : null;
     if (cLng == null || cLat == null) return null;
     return {
       type: 'FeatureCollection' as const,
       features: [circleGeoJSON(cLng, cLat, DJI_MAX_RANGE_M)],
     };
-  }, [hasDockPos, dockLng, dockLat, hasPosition, droneLng, droneLat]);
+  }, [hasDockPos, homeLng, homeLat, hasPosition, droneLng, droneLat]);
 
   // ─── Route line: drone → target ───────────────────────────────────────────
   const routeGeoJson =
@@ -176,8 +182,8 @@ const TacticalMiniMap = ({
 
   // ─── Initial view ─────────────────────────────────────────────────────────
   const hasAnyPos = hasPosition || hasDockPos;
-  const initLat = hasPosition ? droneLat : hasDockPos ? dockLat : 20;
-  const initLng = hasPosition ? droneLng : hasDockPos ? dockLng : 0;
+  const initLat = hasPosition ? droneLat : hasDockPos ? homeLat : 20;
+  const initLng = hasPosition ? droneLng : hasDockPos ? homeLng : 0;
   const initZoom = hasAnyPos ? 16 : 2;
   const initPitch = hasAnyPos ? 45 : 0;
 
@@ -229,12 +235,12 @@ const TacticalMiniMap = ({
       mapRef.current.easeTo({ center: [droneLng, droneLat], duration: 800 });
     } else if (hasDockPos && !hasAutoZoomed.current) {
       hasAutoZoomed.current = true;
-      mapRef.current.flyTo({ center: [dockLng, dockLat], zoom: 16, pitch: 45, duration: 1500 });
+      mapRef.current.flyTo({ center: [homeLng, homeLat], zoom: 16, pitch: 45, duration: 1500 });
     }
   }, [
     droneLat, droneLng, hasPosition, droneOnline,
     hasTarget, targetLat, targetLng,
-    dockLat, dockLng, hasDockPos,
+    homeLat, homeLng, hasDockPos,
   ]);
 
   // ─── Right-click handler ──────────────────────────────────────────────────
@@ -338,16 +344,19 @@ const TacticalMiniMap = ({
           </Marker>
         ))}
 
-        {/* Dock marker */}
+        {/* Home / dock marker */}
         {hasDockPos && (
-          <Marker longitude={dockLng} latitude={dockLat} anchor='center'>
-            <div className='relative flex items-center justify-center'>
+          <Marker longitude={homeLng} latitude={homeLat} anchor='center'>
+            <div className='relative flex flex-col items-center'>
               {dockOnline && (
-                <div className='absolute w-10 h-10 rounded-full border-2 border-emerald-500/40 animate-ping' />
+                <div className='absolute top-0 w-10 h-10 rounded-full border-2 border-emerald-500/40 animate-ping' />
               )}
-              <div className='w-7 h-7 rounded-full border border-emerald-500/60 bg-emerald-950/90 flex items-center justify-center drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]'>
-                <HardDrive size={14} className='text-emerald-400' />
+              <div className='w-9 h-9 rounded-full border-2 border-emerald-400 bg-emerald-950 flex items-center justify-center shadow-[0_0_14px_rgba(16,185,129,1)] ring-2 ring-emerald-500/30'>
+                <Home size={17} className='text-emerald-300' />
               </div>
+              <span className='mt-1 px-1.5 py-0.5 text-[8px] font-black text-emerald-300 bg-black/80 rounded tracking-wider uppercase leading-none whitespace-nowrap'>
+                Home
+              </span>
             </div>
           </Marker>
         )}
@@ -367,11 +376,16 @@ const TacticalMiniMap = ({
         {/* Drone marker — rotates with heading */}
         {hasPosition && (
           <Marker longitude={droneLng} latitude={droneLat} anchor='center'>
-            <div
-              style={{ transform: `rotate(${heading}deg)` }}
-              className='transition-transform duration-700 ease-out drop-shadow-[0_0_8px_rgba(59,130,246,0.9)]'
-            >
-              <Plane className='text-blue-500 fill-blue-500' size={28} />
+            <div className='flex flex-col items-center'>
+              <div
+                style={{ transform: `rotate(${heading}deg)` }}
+                className='transition-transform duration-700 ease-out drop-shadow-[0_0_10px_rgba(59,130,246,1)]'
+              >
+                <Plane className='text-blue-400 fill-blue-400' size={30} />
+              </div>
+              <span className='mt-0.5 px-1.5 py-0.5 text-[8px] font-black text-blue-300 bg-black/80 rounded tracking-wider uppercase leading-none whitespace-nowrap'>
+                Drone
+              </span>
             </div>
           </Marker>
         )}
@@ -414,8 +428,8 @@ const TacticalMiniMap = ({
             )}
             {hasDockPos && (
               <div className='flex items-center gap-1.5'>
-                <HardDrive size={10} className='text-emerald-400' />
-                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Dock</span>
+                <Home size={10} className='text-emerald-400' />
+                <span className='text-[8px] font-mono text-emerald-400/70 uppercase tracking-wide'>Home</span>
               </div>
             )}
             {hasOrigin && (
@@ -437,9 +451,19 @@ const TacticalMiniMap = ({
         <div className='absolute top-3 left-3 flex flex-col gap-1'>
           <div className='w-2.5 h-2.5 border-t-2 border-l-2 border-white/30 rounded-tl' />
           <span className='text-[8px] font-mono text-white/25 uppercase tracking-wider'>
-            {isAirborne ? 'Airborne' : hasPosition ? 'GPS Lock' : hasDockPos ? 'Dock Only' : 'No Signal'}
+            {isAirborne ? 'Airborne' : hasPosition ? 'GPS Lock' : hasDockPos ? 'Home Only' : 'No Signal'}
           </span>
         </div>
+
+        {/* No-data overlay */}
+        {!hasAnyPos && (
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none'>
+            <Home size={22} className='text-emerald-500/30' />
+            <span className='text-[9px] font-mono text-white/20 uppercase tracking-widest text-center px-4'>
+              Waiting for GPS signal
+            </span>
+          </div>
+        )}
 
         {/* Right-click hint */}
         {showRightClickHint && (

@@ -122,7 +122,7 @@ const GimbalControls = ({ dockSn, droneSn, payloadIndex, className }: GimbalCont
     <div
       className={`flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md border border-white/[0.07] rounded-xl px-2.5 py-2 shadow-2xl ${className ?? ''}`}
     >
-      <span className='text-[7px] font-mono uppercase tracking-[0.2em] text-white/25 leading-none'>
+      <span className='text-[7px] font-logs uppercase tracking-[0.2em] text-white/25 leading-none'>
         Gimbal
       </span>
 

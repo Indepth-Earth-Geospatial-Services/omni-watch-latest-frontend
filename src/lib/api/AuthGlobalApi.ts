@@ -146,6 +146,26 @@ export const API_URLS = {
   },
 
   /**
+   * DJI workspace user management — proxied through OmniWatch backend.
+   * These endpoints manage MQTT credentials and workspace membership.
+   */
+  djiUsers: {
+    /** GET — paginated list of DJI workspace users */
+    list: (workspaceId: string, params?: PageParams) => {
+      const q = new URLSearchParams();
+      if (params?.page !== undefined) q.set('page', String(params.page));
+      if (params?.page_size !== undefined) q.set('page_size', String(params.page_size));
+      const s = q.toString();
+      return s
+        ? `${OMNI_PROXY}/dji-users/${workspaceId}/users?${s}`
+        : `${OMNI_PROXY}/dji-users/${workspaceId}/users`;
+    },
+    /** PUT — update a DJI workspace user's MQTT credentials */
+    update: (workspaceId: string, userId: string) =>
+      `${OMNI_PROXY}/dji-users/${workspaceId}/users/${userId}`,
+  },
+
+  /**
    * AI Detection alerts — paginated history and action endpoints.
    */
   alerts: {

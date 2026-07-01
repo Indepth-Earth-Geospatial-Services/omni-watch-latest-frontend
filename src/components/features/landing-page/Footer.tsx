@@ -25,7 +25,7 @@ export default function Footer() {
               © 2025 SENTINEL. All rights reserved.
             </div>
             <div className='flex items-center space-x-2 text-xs'>
-              <div className='w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse'></div>
+              <div className='w-1.5 h-1.5 bg-green-500 rounded-full'></div>
               <span className='text-green-500 font-mono'>SECURE</span>
             </div>
           </div>

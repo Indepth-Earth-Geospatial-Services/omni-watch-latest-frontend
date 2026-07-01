@@ -110,7 +110,7 @@ export function DetectionVideoFeed({
   const streamCount = selectedStreamKeys.size;
 
   return (
-    <div className='relative bg-[#0C0E12] overflow-hidden flex flex-col flex-1 min-w-0 rounded-xl border border-zinc-800/50'>
+    <div className='relative bg-background overflow-hidden flex flex-col flex-1 min-w-0 rounded-xl border border-border/50'>
       {whepUrl && (
         <WebRTCPlayer
           key={activeEntry?.streamKey}
@@ -120,12 +120,12 @@ export function DetectionVideoFeed({
         />
       )}
 
-      <div className='flex items-center gap-2 px-3 py-2 bg-[#12151C] border-b border-zinc-800/60 flex-shrink-0'>
-        <span className='text-xs font-semibold font-poppins uppercase tracking-wider text-[#8C90A0]'>
+      <div className='flex items-center gap-2 px-3 py-2 bg-card border-b border-zinc-800/60 flex-shrink-0'>
+        <span className='text-xs font-semibold font-ui uppercase tracking-wider text-muted-foreground'>
           Live Feed
         </span>
         {streamCount > 0 && (
-          <span className='text-[10px] font-poppins text-zinc-600'>
+          <span className='text-[10px] font-ui text-muted-foreground'>
             — {streamCount} stream{streamCount !== 1 ? 's' : ''} selected
           </span>
         )}
@@ -134,13 +134,13 @@ export function DetectionVideoFeed({
           <div
             className={`w-1.5 h-1.5 rounded-full ${
               streamState === 'playing'
-                ? 'bg-[#2CAC73] shadow-[0px_0px_4px_0px_#45F0CF]'
+                ? 'bg-green-500 shadow-[0px_0px_4px_0px_hsl(var(--theme-accent))]'
                 : streamState === 'connecting'
                   ? 'bg-amber-400 animate-pulse'
                   : 'bg-zinc-600'
             }`}
           />
-          <span className='text-[10px] font-poppins text-zinc-500'>
+          <span className='text-[10px] font-ui text-muted-foreground'>
             {streamState === 'playing' ? 'Live' : streamState === 'connecting' ? 'Connecting' : 'Idle'}
           </span>
         </div>
@@ -160,15 +160,15 @@ export function DetectionVideoFeed({
 
             {streamState === 'connecting' && (
               <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/60'>
-                <Loader2 className='w-6 h-6 text-zinc-500 animate-spin mb-2' />
-                <span className='text-xs font-poppins text-zinc-500'>Connecting to stream...</span>
+                <Loader2 className='w-6 h-6 text-muted-foreground animate-spin mb-2' />
+                <span className='text-xs font-ui text-muted-foreground'>Connecting to stream...</span>
               </div>
             )}
 
             {streamState === 'error' && (
               <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/60'>
                 <VideoOff className='w-6 h-6 text-red-500/60 mb-2' />
-                <span className='text-xs font-poppins text-red-400/60'>
+                <span className='text-xs font-ui text-red-400/60'>
                   {errorMsg || 'Stream unavailable'}
                 </span>
               </div>
@@ -184,16 +184,16 @@ export function DetectionVideoFeed({
               }}
             />
             <Video className='w-8 h-8 text-zinc-700 mb-2' />
-            <p className='text-xs font-poppins text-zinc-600'>Select a stream to begin monitoring</p>
+            <p className='text-xs font-ui text-muted-foreground'>Select a stream to begin monitoring</p>
           </div>
         )}
 
         {activeEntry && streamState === 'playing' && (
           <div className='absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1.5 bg-gradient-to-t from-black/80 to-transparent'>
-            <span className='text-[10px] font-mono font-poppins text-zinc-500'>
+            <span className='text-[10px] font-mono font-ui text-muted-foreground'>
               {activeEntry.deviceSn}
             </span>
-            <span className='text-[10px] font-poppins text-zinc-600'>
+            <span className='text-[10px] font-ui text-muted-foreground'>
               {detections.length} detection{detections.length !== 1 ? 's' : ''}
             </span>
           </div>

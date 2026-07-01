@@ -20,21 +20,11 @@ export default function Stats({ visibleSections, getStatDisplay }: StatsProps) {
       {stats.map((stat, index) => (
         <div
           key={stat.label}
-          className={`relative group text-center p-6 sm:p-8 bg-card/50 backdrop-blur-sm rounded-xl border border-cyan-500/20 hover:border-cyan-500/50 transition-all duration-500 overflow-hidden ${
-            visibleSections.has('stats-section')
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-10'
-          }`}
-          style={{ transitionDelay: `${index * 100}ms` }}
+          className='relative group text-center p-6 sm:p-8 bg-card/50 backdrop-blur-sm rounded-xl border border-cyan-500/20 hover:border-cyan-500/50 overflow-hidden'
         >
-          {/* Animated border glow */}
-          <div className='absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500'>
-            <div className='absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-cyan-500/20 blur-sm animate-pulse'></div>
-          </div>
-
-          <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity'></div>
+          <div className='absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 rounded-xl opacity-0 group-hover:opacity-100'></div>
           <div className='relative'>
-            <div className='text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-br from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300'>
+            <div className='text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-br from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2 md:mb-3'>
               {visibleSections.has('stats-section') ? getStatDisplay(index) : stat.value}
             </div>
             <div className='text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wider'>

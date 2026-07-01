@@ -1,14 +1,17 @@
 'use client';
 
-// DRC = Drone Real-time Control — the MQTT channel required for emergency stop.
+// DRC = Drone Real-time Control — the MQTT channel required for manual flight and emergency stop.
 //
-// Lifecycle (matches Lawrence's confirmed working approach):
-//   call activate(dockSn) → POST /drc/enter → MQTT connect (credentials from enter response
-//                           or fallback to POST /drc/connect) → heartbeat loop
-//   call deactivate()     → clear heartbeat → end MQTT → POST /drc/exit
+// Activation sequence:
+//   activate(dockSn)
+//     → POST /drc/enter  (drc_mode_enter → dock services MQTT, returns pub/sub topics + credentials)
+//     → MQTT connect + heartbeat loop
 //
-// Emergency stop MUST go through this channel; the REST /jobs API does not
-// support real-time stop commands.
+// Teardown:
+//   deactivate() → POST /drc/exit (closes DRC channel on the server side)
+//
+// stick_control requires flight authority to be held — enforced in the UI.
+// Emergency stop (drone_emergency_stop) does NOT require flight authority.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mqtt from 'mqtt';
@@ -36,13 +39,14 @@ export function useDRC() {
   workspaceIdRef.current = workspaceId;
 
   // All mutable session state lives in refs — no re-render needed
-  const clientRef    = useRef<ReturnType<typeof mqtt.connect> | null>(null);
-  const clientIdRef  = useRef('');
-  const dockSnRef    = useRef('');
-  const pubTopicRef  = useRef('');
-  const seqRef       = useRef(0);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mountedRef   = useRef(true);
+  const clientRef       = useRef<ReturnType<typeof mqtt.connect> | null>(null);
+  const clientIdRef     = useRef('');
+  const dockSnRef       = useRef('');
+  const pubTopicRef     = useRef('');
+  const heartbeatSeqRef = useRef(0);  // heart_beat top-level seq
+  const stickSeqRef     = useRef(0);  // stick_control top-level seq
+  const heartbeatRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef      = useRef(true);
 
   // Cleanup on unmount — end MQTT and fire exit API
   useEffect(() => {
@@ -62,10 +66,11 @@ export function useDRC() {
       clientRef.current.end(true);
       clientRef.current = null;
     }
-    if (clientIdRef.current && dockSnRef.current) {
+    if (workspaceIdRef.current && clientIdRef.current && dockSnRef.current) {
       drcExit(workspaceIdRef.current, clientIdRef.current, dockSnRef.current).catch(() => {});
       clientIdRef.current = '';
     }
+    stickSeqRef.current = 0;
     if (updateState && mountedRef.current) setStatus('idle');
   }
 
@@ -132,12 +137,12 @@ export function useDRC() {
           // Heartbeat — required to keep the DRC session alive.
           // Only set up once; auto-reconnect reuses the same client and existing interval.
           if (!heartbeatRef.current) {
-            seqRef.current = 0;
+            heartbeatSeqRef.current = 0;
             heartbeatRef.current = setInterval(() => {
               if (!pubTopicRef.current || !clientRef.current) return;
               clientRef.current.publish(
                 pubTopicRef.current,
-                JSON.stringify({ method: 'heart_beat', data: { seq: seqRef.current++, timestamp: Date.now() } }),
+                JSON.stringify({ method: 'heart_beat', data: { timestamp: Date.now() }, seq: heartbeatSeqRef.current++ }),
               );
             }, 1000);
           }
@@ -182,5 +187,34 @@ export function useDRC() {
     return true;
   }, []);
 
-  return { status, activate, deactivate, sendEmergencyStop };
+  /**
+   * Send a stick_control frame via DRC MQTT (5-10 Hz).
+   * Accepts normalized axes: -1.0 to +1.0 (already speed-scaled by the caller).
+   *   x = roll     right + / left -
+   *   y = pitch    fwd  + / back -
+   *   h = throttle up   + / down -
+   *   w = yaw      CW   + / CCW  -
+   * Converted to RC PWM stick values: neutral 1024, range 364–1684 (±660).
+   */
+  const sendJoystick = useCallback((x: number, y: number, h: number, w: number): boolean => {
+    if (!clientRef.current || !pubTopicRef.current) return false;
+    const toStick = (v: number) => Math.round(Math.max(364, Math.min(1684, 1024 + v * 660)));
+    clientRef.current.publish(
+      pubTopicRef.current,
+      JSON.stringify({
+        seq: stickSeqRef.current++,
+        method: 'stick_control',
+        data: {
+          roll: toStick(x),
+          pitch: toStick(y),
+          throttle: toStick(h),
+          yaw: toStick(w),
+          gimbal_pitch: 1024,
+        },
+      }),
+    );
+    return true;
+  }, []);
+
+  return { status, activate, deactivate, sendEmergencyStop, sendJoystick };
 }
