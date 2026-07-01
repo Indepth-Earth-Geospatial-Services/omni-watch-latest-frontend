@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { useDRC } from '@/hooks/useDRC';
 import TelemetryHeader from '@/components/features/control/TelemetryHeader';
 import FlightStatsBar from '@/components/features/control/FlightStatsBar';
 import DroneFeed from '@/components/features/control/DroneFeed';
@@ -42,6 +43,18 @@ function formatElapsed(s: number): string {
 export default function ControlPage() {
   // ─── Auth ─────────────────────────────────────────────────────────────────
   const { user } = useAuth();
+
+  // ─── DRC (Drone Real-time Control) ───────────────────────────────────────
+  // Owned here so the channel + sendJoystick survive panel/tab switches and
+  // ManualFlightControls can be rendered inside the main panel container.
+  const {
+    status: drcStatus,
+    activate: drcActivate,
+    deactivate: drcDeactivate,
+    sendEmergencyStop,
+    sendJoystick,
+  } = useDRC();
+  const [isManualActive, setIsManualActive] = useState(false);
 
   // ─── Livestream hooks ──────────────────────────────────────────────────────
   const {
@@ -89,7 +102,9 @@ export default function ControlPage() {
   });
   const handleMapStyleChange = useCallback((style: 'dark' | 'satellite') => {
     setMapStyle(style);
-    try { localStorage.setItem('omni_map_style', style); } catch {}
+    try {
+      localStorage.setItem('omni_map_style', style);
+    } catch {}
   }, []);
 
   // ─── Active mission target (current destination) ─────────────────────────
@@ -100,7 +115,10 @@ export default function ControlPage() {
   const [flightWaypoints, setFlightWaypoints] = useState<Array<{ lat: number; lng: number }>>([]);
 
   // ─── Flight command modal (unified Takeoff + Fly-To) ─────────────────────
-  const [flightCommandTarget, setFlightCommandTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [flightCommandTarget, setFlightCommandTarget] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   // ─── Selection state ──────────────────────────────────────────────────────
   const [selectedSn, setSelectedSn] = useState('');
@@ -171,7 +189,7 @@ export default function ControlPage() {
     if (videos.length === 0) return [];
     const primary = videos[0];
     if (primary.switch_video_types && primary.switch_video_types.length > 0) {
-      return primary.switch_video_types;
+      return primary.switch_video_types.filter((t) => t.toLowerCase() !== 'normal');
     }
     return videos.map((v) => v.type);
   }, [videos]);
@@ -196,6 +214,25 @@ export default function ControlPage() {
   const dockModeCode = dockDevice ? getDockModeCode(dockDevice.deviceSn) : -1;
   const joystickInvalidState = dockDevice ? getJoystickInvalidState(dockDevice.deviceSn) : null;
   const dockCoverState = dockDevice ? getDockCoverState(dockDevice.deviceSn) : null;
+
+  // ─── DRC lifecycle ────────────────────────────────────────────────────────
+  const dockSn = dockDevice?.deviceSn;
+  // Auto-activate when the dock comes online. drcActivate is idempotent.
+  useEffect(() => {
+    if (!dockSn || !dockOnline) return;
+    drcActivate(dockSn).catch((err: Error) =>
+      console.warn('[DRC] Auto-activate failed:', err.message)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dockSn, dockOnline]); // no cleanup — a brief flicker must not disconnect the session
+
+  // Disconnect only when the dock changes or this component unmounts.
+  useEffect(() => {
+    return () => {
+      drcDeactivate();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dockSn]);
 
   // Clear takeoff target when drone returns to dock (modeCode=0 = IDLE/in dock)
   useEffect(() => {
@@ -240,10 +277,12 @@ export default function ControlPage() {
       setActiveStreamUrl('');
       setIsStreaming(false);
       const video = videos.find((v) => v.index === videoIndex);
-      // Default type: first entry in switch_video_types when available ('normal' for M4D
-      // Camera, matching drone_tracker.html which omits video_type and gets 'normal' by
-      // default). For Mavic-style cameras without switch_video_types, use the video's type.
-      const defaultType = video?.switch_video_types?.[0] ?? video?.type ?? '';
+      const wideType = video?.switch_video_types?.find((t) => t.toLowerCase() === 'wide');
+      const defaultType =
+        wideType ??
+        video?.switch_video_types?.find((t) => t.toLowerCase() !== 'normal') ??
+        video?.type ??
+        '';
       setSelectedVideoType(defaultType);
     },
     [videos]
@@ -426,7 +465,7 @@ export default function ControlPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className='bg-black text-zinc-100 flex flex-col font-sans selection:bg-blue-500/30'>
+    <div className='bg-background text-foreground flex flex-col font-sans selection:bg-blue-500/30'>
       <main className='flex-1 flex flex-col items-center py-4 px-6 pb-[80px] overflow-y-auto overflow-x-hidden'>
         <div className='w-full space-y-4'>
           {/* ── Header section ── */}
@@ -491,6 +530,8 @@ export default function ControlPage() {
                   activeStreamUrl={activeStreamUrl}
                   mediaStream={mediaStream}
                   streamConnectState={streamConnectState}
+                  onStreamStateChange={setStreamConnectState}
+                  onMediaStreamChange={setMediaStream}
                   onReconnect={handleReconnect}
                   dockSn={dockDevice?.deviceSn}
                   payloadIndex={selectedCameraId}
@@ -499,8 +540,14 @@ export default function ControlPage() {
                   onQualityChange={handleQualityChange}
                   onStart={handleStart}
                   onStop={handleStop}
+                  latitude={droneData?.latitude}
+                  longitude={droneData?.longitude}
                   className={isMain ? undefined : 'h-[342px]'}
                   isMini={!isMain}
+                  isManualActive={isManualActive}
+                  drcStatus={drcStatus}
+                  sendJoystick={sendJoystick}
+                  onManualDeactivate={() => setIsManualActive(false)}
                 />
               </ControlErrorBoundary>
             );
@@ -510,6 +557,15 @@ export default function ControlPage() {
                 {/* ── Main panel (left, big) + FlightControlActions below it ── */}
                 <div className='relative flex-1 flex flex-col'>
                   {swapBtn(mainPanel)}
+                  {mainPanel === 'viewport' && isStreaming && (
+                    <button
+                      onClick={handleReconnect}
+                      title='Refresh feed'
+                      className='absolute top-[50px] right-9 z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm bg-black/60 border-white/10 text-zinc-400 hover:text-white hover:bg-white/15 hover:border-white/25'
+                    >
+                      <RefreshCw size={12} />
+                    </button>
+                  )}
 
                   {/* Viewport always mounted — CSS-hidden when not main.
                       Keeps the video element and WebRTC stream alive across swaps. */}
@@ -566,6 +622,15 @@ export default function ControlPage() {
                   {/* Viewport mini always mounted — CSS-hidden when viewport is main */}
                   <div className={`relative ${mainPanel === 'viewport' ? 'hidden' : ''}`}>
                     {swapBtn('viewport')}
+                    {isStreaming && (
+                      <button
+                        onClick={handleReconnect}
+                        title='Refresh feed'
+                        className='absolute top-[50px] right-9 z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm bg-black/60 border-white/10 text-zinc-400 hover:text-white hover:bg-white/15 hover:border-white/25'
+                      >
+                        <RefreshCw size={10} />
+                      </button>
+                    )}
                     {viewportPanel(false)}
                   </div>
 
@@ -633,6 +698,12 @@ export default function ControlPage() {
           droneAltitude={droneData?.altitude ?? 0}
           onTakeoffSucceeded={(lat, lng) => setTakeoffTarget({ lat, lng })}
           onOpenFlightCommand={handleOpenFlightCommand}
+          drcStatus={drcStatus}
+          drcActivate={drcActivate}
+          drcDeactivate={drcDeactivate}
+          sendEmergencyStop={sendEmergencyStop}
+          isManualFlightActive={isManualActive}
+          onManualFlightToggle={setIsManualActive}
         />
       </ControlErrorBoundary>
 

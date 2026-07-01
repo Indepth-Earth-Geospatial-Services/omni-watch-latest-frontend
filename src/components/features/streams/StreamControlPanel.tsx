@@ -253,11 +253,11 @@ export function StreamControlPanel({
         </p>
       )}
 
-      <div className='flex flex-wrap items-end gap-6'>
+      <div className='flex items-end gap-4 flex-nowrap'>
         {/* Lens selector — shows when there are multiple lens options */}
         {lensOptions.length > 1 && (
           <div>
-            <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
+            <p className='text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1.5'>
               Lens
             </p>
             <div className='flex gap-1 flex-wrap'>
@@ -269,8 +269,8 @@ export function StreamControlPanel({
                   className={cn(
                     'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                     value === effectiveLens
-                      ? 'bg-[#1C93FF] text-white'
-                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
+                      ? 'bg-theme-accent text-white'
+                      : 'bg-secondary text-muted-foreground border border-border hover:border-zinc-500 hover:text-foreground'
                   )}
                 >
                   {label}
@@ -282,7 +282,7 @@ export function StreamControlPanel({
 
         {/* Quality selector */}
         <div>
-          <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
+          <p className='text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1.5'>
             Quality
           </p>
           <div className='flex gap-1 flex-wrap'>
@@ -295,7 +295,7 @@ export function StreamControlPanel({
                   'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                   quality === value
                     ? 'bg-violet-600 text-white'
-                    : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200'
+                    : 'bg-secondary text-muted-foreground border border-border hover:border-zinc-500 hover:text-foreground'
                 )}
               >
                 {label}
@@ -306,7 +306,7 @@ export function StreamControlPanel({
 
         {/* Start / Stop */}
         <div className='sm:ml-auto w-full sm:w-auto'>
-          <p className='text-[10px] font-black tracking-widest uppercase text-zinc-600 mb-1.5'>
+          <p className='text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1.5'>
             Stream
           </p>
           {isStreaming ? (

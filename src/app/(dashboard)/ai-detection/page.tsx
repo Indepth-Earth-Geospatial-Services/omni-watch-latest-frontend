@@ -240,7 +240,7 @@ export default function AIDetectionPage() {
   if (!activeProject) {
     return (
       <EmptyPage
-        icon={<Brain className='w-6 h-6 text-zinc-400' />}
+        icon={<Brain className='w-6 h-6 text-muted-foreground' />}
         title='No Project Selected'
         body='Please select a project from the sidebar to access AI Detection features.'
         action={{
@@ -257,7 +257,7 @@ export default function AIDetectionPage() {
       subtitle='Intelligent threat detection and object recognition'
     >
       <div className='-my-6 -mr-6'>
-        <div className='flex flex-col h-[calc(100vh-10rem)] font-poppins'>
+        <div className='flex flex-col h-[calc(100vh-10rem)] font-ui'>
           {/* Alert Banner */}
           <AlertBanner
             alerts={alerts}
@@ -300,10 +300,10 @@ export default function AIDetectionPage() {
               <div className='flex items-center gap-1'>
                 <button
                   onClick={() => setViewMode('panel')}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-poppins font-semibold transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-ui font-semibold transition-colors ${
                     viewMode === 'panel'
-                      ? 'bg-[#1C93FF]/15 text-[#1C93FF] border border-[#1C93FF]/30'
-                      : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                      ? 'bg-theme-accent/15 text-theme-accent border border-theme-accent/30'
+                      : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
                   }`}
                 >
                   <LayoutList size={11} />
@@ -311,10 +311,10 @@ export default function AIDetectionPage() {
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-poppins font-semibold transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-ui font-semibold transition-colors ${
                     viewMode === 'grid'
-                      ? 'bg-[#1C93FF]/15 text-[#1C93FF] border border-[#1C93FF]/30'
-                      : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                      ? 'bg-theme-accent/15 text-theme-accent border border-theme-accent/30'
+                      : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
                   }`}
                 >
                   <LayoutGrid size={11} />
@@ -343,26 +343,26 @@ export default function AIDetectionPage() {
                 <div className='flex flex-col items-center justify-center py-12 text-center'>
                   {status === 'connecting' || status === 'reconnecting' ? (
                     <>
-                      <Loader2 size={16} className='text-zinc-600 animate-spin' />
-                      <p className='text-xs font-poppins text-zinc-600 mt-2'>
+                      <Loader2 size={16} className='text-muted-foreground animate-spin' />
+                      <p className='text-xs font-ui text-muted-foreground mt-2'>
                         {status === 'connecting' ? 'Connecting to AI server...' : 'Reconnecting to AI server...'}
                       </p>
                     </>
                   ) : status === 'error' ? (
                     <>
                       <AlertTriangle size={16} className='text-red-500/60' />
-                      <p className='text-xs font-poppins text-red-400/60 mt-2'>Connection failed</p>
+                      <p className='text-xs font-ui text-red-400/60 mt-2'>Connection failed</p>
                       <button
                         onClick={() => window.location.reload()}
-                        className='mt-2 flex items-center gap-1 text-[10px] font-poppins text-zinc-500 hover:text-zinc-300 transition-colors'
+                        className='mt-2 flex items-center gap-1 text-[10px] font-ui text-muted-foreground hover:text-muted-foreground transition-colors'
                       >
                         <RefreshCw size={10} /> Retry
                       </button>
                     </>
                   ) : (
                     <>
-                      <AlertTriangle size={16} className='text-zinc-600' />
-                      <p className='text-xs font-poppins text-zinc-600 mt-2'>No detections match filters</p>
+                      <AlertTriangle size={16} className='text-muted-foreground' />
+                      <p className='text-xs font-ui text-muted-foreground mt-2'>No detections match filters</p>
                     </>
                   )}
                 </div>

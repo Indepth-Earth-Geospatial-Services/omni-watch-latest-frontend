@@ -89,7 +89,7 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
       <div className='absolute inset-0 bg-black/70 backdrop-blur-sm' onClick={onClose} />
 
       {/* Modal card */}
-      <div className='relative z-10 w-full max-w-lg mx-4 bg-[#0F1117] border border-blue-500/30 rounded-2xl shadow-[0_0_60px_rgba(59,130,246,0.10)] overflow-hidden'>
+      <div className='relative z-10 w-full max-w-lg mx-4 bg-secondary border border-blue-500/30 rounded-2xl shadow-[0_0_60px_rgba(59,130,246,0.10)] overflow-hidden'>
 
         {/* Accent bar */}
         <div className='h-0.5 w-full bg-gradient-to-r from-transparent via-blue-500/70 to-transparent' />
@@ -101,29 +101,29 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
               <Send size={15} className='text-blue-400' />
             </div>
             <div>
-              <h2 className='text-sm font-black uppercase tracking-widest text-zinc-100'>Fly-To Point</h2>
-              <p className='text-[10px] text-blue-500/60 font-mono tracking-wide mt-0.5'>
+              <h2 className='text-sm font-black uppercase tracking-widest text-foreground'>Fly-To Point</h2>
+              <p className='text-[10px] text-blue-500/60 font-logs tracking-wide mt-0.5'>
                 fly-to-point · {dockSn.slice(-6)}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className='text-zinc-600 hover:text-zinc-300 transition-colors p-1'
+            className='text-muted-foreground hover:text-foreground transition-colors p-1'
             aria-label='Close'
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className='h-px bg-zinc-800/80 mx-6' />
+        <div className='h-px bg-border/80 mx-6' />
 
         {/* Form body */}
         <div className='px-6 py-4 flex flex-col gap-4 max-h-[65vh] overflow-y-auto'>
 
           {/* Global speed */}
           <div>
-            <p className='text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2.5'>
+            <p className='text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2.5'>
               Flight Speed
             </p>
             <div className='w-1/2 pr-1.5'>
@@ -139,14 +139,14 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
             </div>
           </div>
 
-          <div className='h-px bg-zinc-800/60' />
+          <div className='h-px bg-border/60' />
 
           {/* Waypoint rows */}
           <div>
             <div className='flex items-center justify-between mb-2.5'>
-              <p className='text-[9px] font-black uppercase tracking-widest text-zinc-500'>
+              <p className='text-[9px] font-black uppercase tracking-widest text-muted-foreground'>
                 Waypoints
-                <span className='ml-1.5 text-[9px] font-mono text-zinc-700'>({waypoints.length})</span>
+                <span className='ml-1.5 text-[9px] font-logs text-muted-foreground'>({waypoints.length})</span>
               </p>
               <button
                 onClick={addRow}
@@ -158,15 +158,15 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
 
             <div className='flex flex-col gap-3'>
               {waypoints.map((row, idx) => (
-                <div key={row.id} className='rounded-lg bg-zinc-900/60 border border-zinc-800/50 p-3'>
+                <div key={row.id} className='rounded-lg bg-secondary/50 border border-border/50 p-3'>
                   <div className='flex items-center justify-between mb-2'>
-                    <span className='text-[8px] font-black uppercase tracking-widest text-zinc-600'>
+                    <span className='text-[8px] font-black uppercase tracking-widest text-muted-foreground'>
                       Point {idx + 1}
                     </span>
                     {waypoints.length > 1 && (
                       <button
                         onClick={() => removeRow(row.id)}
-                        className='text-zinc-700 hover:text-red-400 transition-colors'
+                        className='text-muted-foreground hover:text-red-400 transition-colors'
                         aria-label='Remove waypoint'
                       >
                         <Trash2 size={10} />
@@ -210,7 +210,7 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
               ))}
             </div>
 
-            <p className='text-[8px] text-zinc-700 mt-2'>
+            <p className='text-[8px] text-muted-foreground mt-2'>
               Min height 20 m — DJI safety floor · Drone visits points in order
             </p>
           </div>
@@ -221,18 +221,18 @@ export const FlyToPointModal = ({ dockSn, onClose }: FlyToPointModalProps) => {
               <AlertTriangle size={13} className='text-red-400 flex-shrink-0 mt-0.5' />
               <div className='min-w-0'>
                 <p className='text-[9px] font-black uppercase tracking-widest text-red-400 mb-1'>API Error</p>
-                <p className='text-[10px] text-red-300/80 font-mono break-all leading-relaxed'>{lastError}</p>
-                <p className='text-[8px] text-zinc-600 mt-1'>Full details logged to browser console.</p>
+                <p className='text-[10px] text-red-300/80 font-logs break-all leading-relaxed'>{lastError}</p>
+                <p className='text-[8px] text-muted-foreground mt-1'>Full details logged to browser console.</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className='flex gap-3 px-6 py-4 border-t border-zinc-800/60'>
+        <div className='flex gap-3 px-6 py-4 border-t border-border/60'>
           <button
             onClick={onClose}
-            className='flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 text-[11px] font-bold uppercase tracking-widest hover:border-zinc-500 hover:text-zinc-200 transition-colors'
+            className='flex-1 py-2.5 rounded-lg border border-border text-muted-foreground text-[11px] font-bold uppercase tracking-widest hover:border-border hover:text-foreground transition-colors'
           >
             Cancel
           </button>

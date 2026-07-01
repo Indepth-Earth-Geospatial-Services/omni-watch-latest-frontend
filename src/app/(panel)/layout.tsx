@@ -34,9 +34,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   if (!isLoading && !isAuthenticated) return null;
 
   return (
-    <>
+    <div className='panel-fixed-dark'>
       {children}
       <Toaster />
-    </>
+    </div>
   );
 }

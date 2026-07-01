@@ -12,7 +12,7 @@ interface EmptyPageProps {
 
 export function EmptyPage({ icon, title, body, action }: EmptyPageProps) {
   return (
-    <div className='flex flex-col items-center justify-center gap-4 py-24 text-center font-poppins'>
+    <div className='flex flex-col items-center justify-center gap-4 py-24 text-center font-ui'>
       <div className='w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center'>
         {icon}
       </div>

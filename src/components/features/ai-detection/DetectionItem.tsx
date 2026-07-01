@@ -52,7 +52,7 @@ export const DetectionItem = memo(function DetectionItem({ detection, onSelect, 
           type='checkbox'
           checked={selected ?? false}
           onChange={() => onToggleSelect(d.id)}
-          className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-[#1C93FF] cursor-pointer flex-shrink-0'
+          className='w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-primary cursor-pointer flex-shrink-0'
           onClick={(e) => e.stopPropagation()}
         />
       )}
@@ -73,19 +73,19 @@ export const DetectionItem = memo(function DetectionItem({ detection, onSelect, 
 
       {/* Type + Confidence */}
       <div className='flex items-center gap-1.5 min-w-0'>
-        <span className='text-xs font-poppins font-medium text-[#E2E2E8] capitalize truncate'>
+        <span className='text-xs font-ui font-medium text-foreground capitalize truncate'>
           {d.type}
         </span>
-        <span className={cn('text-xs font-mono font-poppins', getConfidenceColor(d.confidence))}>
+        <span className={cn('text-xs font-mono font-ui', getConfidenceColor(d.confidence))}>
           {(d.confidence * 100).toFixed(0)}%
         </span>
       </div>
 
       {/* Track + Stream */}
-      <span className='text-[10px] font-mono font-poppins text-zinc-500 hidden sm:inline'>
+      <span className='text-[10px] font-mono font-ui text-zinc-500 hidden sm:inline'>
         #{d.trackId}
       </span>
-      <span className='text-[10px] font-poppins text-zinc-500 truncate hidden md:inline'>
+      <span className='text-[10px] font-ui text-zinc-500 truncate hidden md:inline'>
         {d.streamId}
       </span>
 
@@ -102,13 +102,13 @@ export const DetectionItem = memo(function DetectionItem({ detection, onSelect, 
           className='opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-zinc-700/50 flex-shrink-0'
           title='View on Map'
         >
-          <MapPin className='w-3 h-3 text-[#1C93FF]' />
+          <MapPin className='w-3 h-3 text-primary' />
         </button>
       )}
 
       {/* Reasoning preview (verified only) */}
       {d.isVerified && d.reasoning && (
-        <span className='text-[10px] font-poppins text-green-500/60 truncate max-w-[140px] hidden lg:inline'>
+        <span className='text-[10px] font-ui text-green-500/60 truncate max-w-[140px] hidden lg:inline'>
           {d.reasoning.slice(0, 50)}...
         </span>
       )}
@@ -119,7 +119,7 @@ export const DetectionItem = memo(function DetectionItem({ detection, onSelect, 
       ) : (
         <Clock className='w-3.5 h-3.5 text-orange-500/60 flex-shrink-0' />
       )}
-      <span className='text-[10px] font-poppins text-zinc-500 flex-shrink-0'>
+      <span className='text-[10px] font-ui text-zinc-500 flex-shrink-0'>
         {formatTimeAgo(d.detectedAt)}
       </span>
     </div>

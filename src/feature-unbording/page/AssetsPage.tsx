@@ -1,41 +1,46 @@
 'use client';
 
 import { lazy, Suspense, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import AssetManagement from '../components/assets-components/AssetManagement';
 import FleetOverviewKPI from '../components/assets-components/FleetOverviewKPI';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
 
-// Lazy — chunk only downloaded when the user first clicks "Add Asset"
 const AddAssetModal = lazy(() => import('../components/assets-components/AddAssetModal'));
 
-/**
- * Fetches all devices bound to the workspace from:
- *   GET /manage/api/v1/devices/{workspace_id}/devices
- * and passes the result down to child components.
- */
 export default function AssetsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
-
-  // Single fetch at page level — children receive devices as props
+  const [searchQuery, setSearchQuery] = useState('');
   const { data: devices = [], isLoading, error } = useDJIDevices();
 
   return (
-    <div className='flex flex-col gap-4'>
+    <div className='flex flex-col gap-4 font-ui p-6'>
       <FleetOverviewKPI devices={devices} isLoading={isLoading} />
 
-      <div className='flex justify-between mx-4 items-center w-[calc(100%-2rem)]'>
-        <h2 className='text-2xl sm:text-3xl font-bold text-[#E2E2E8]'>Assets Overview</h2>
+      <div className='flex items-center justify-between'>
+        <div className='relative flex-1 max-w-sm'>
+          <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
+            <Search size={12} className='text-zinc-500' />
+          </div>
+          <input
+            type='text'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder='Search devices...'
+            className='w-full text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 focus:outline-none focus:border-zinc-600'
+          />
+        </div>
+
         <button
           onClick={() => setShowAddModal(true)}
-          className='flex items-center gap-2 bg-[#1C93FF] text-white py-2 px-4 rounded-md hover:bg-[#1C93FF]/80 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold transition-colors'
+          className='flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-ui font-semibold bg-theme-accent/10 text-theme-accent border border-theme-accent/20 hover:bg-theme-accent/20 transition-colors'
         >
-          <Plus size={14} />
+          <Plus size={13} />
           Add Asset
         </button>
       </div>
 
-      <AssetManagement devices={devices} isLoading={isLoading} error={error} />
+      <AssetManagement devices={devices} isLoading={isLoading} error={error} searchQuery={searchQuery} />
 
       {showAddModal && (
         <Suspense fallback={null}>

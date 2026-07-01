@@ -18,7 +18,6 @@ const ProjectManagement = ({ onEditProject }: ProjectManagementProps) => {
       <ProjectTabs
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
-        onSearch={setSearchQuery}
       />
       <ProjectTable
         activeTab={activeTab}

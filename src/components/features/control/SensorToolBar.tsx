@@ -23,11 +23,11 @@ const SensorToolbar = ({
 }: SensorToolbarProps) => {
   return (
     <div
-      className='flex items-center justify-between px-1 bg-[#0C0E12] overflow-hidden w-full mb-2'
+      className='flex items-center justify-between px-1 bg-background overflow-hidden w-full mb-2'
       style={{ height: '45px' }}
     >
       {/* View mode toggles */}
-      <div className='flex items-center h-full gap-2 bg-[#333539CC] rounded-sm p-2'>
+      <div className='flex items-center h-full gap-2 bg-muted rounded-sm p-2'>
         {MODES.map(({ label, value }) => {
           const isActive = selectedVideoType === value;
           return (
@@ -41,8 +41,8 @@ const SensorToolbar = ({
                 disabled:cursor-not-allowed disabled:opacity-50
                 ${
                   isActive
-                    ? 'bg-[#1C93FF33] text-[#1C93FF] ring-1 ring-[#1C93FF]/40 shadow-inner'
-                    : 'text-[#C2C6D7] hover:text-zinc-100 hover:bg-zinc-800/30'
+                    ? 'bg-theme-accent/20 text-theme-accent ring-1 ring-theme-accent/40 shadow-inner'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                 }`}
             >
               {label}

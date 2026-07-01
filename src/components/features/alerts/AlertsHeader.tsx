@@ -26,7 +26,7 @@ interface AlertsHeaderProps {
 }
 
 const selectCls =
-  'bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-xs font-poppins text-zinc-400 focus:outline-none focus:border-zinc-600 cursor-pointer';
+  'bg-secondary border border-border rounded-md px-2 py-1 text-xs font-ui text-muted-foreground focus:outline-none focus:border-zinc-600 cursor-pointer';
 
 export const AlertsHeader = memo(function AlertsHeader({
   connectionStatus,
@@ -48,7 +48,7 @@ export const AlertsHeader = memo(function AlertsHeader({
   const isError = connectionStatus === 'error';
 
   const statusDotClass = isConnected
-    ? 'bg-[#2CAC73] shadow-[0px_0px_5px_0px_#45F0CF]'
+    ? 'bg-green-500 shadow-[0px_0px_5px_0px_hsl(var(--theme-accent))]'
     : isReconnecting || isConnecting
       ? 'bg-amber-400 animate-pulse'
       : isError
@@ -66,7 +66,7 @@ export const AlertsHeader = memo(function AlertsHeader({
           : 'Disconnected';
 
   const statusTextColor = isConnected
-    ? 'text-[#2CAC73]'
+    ? 'text-green-500'
     : isReconnecting || isConnecting
       ? 'text-amber-400'
       : isError
@@ -77,7 +77,7 @@ export const AlertsHeader = memo(function AlertsHeader({
     {
       label: 'Total',
       value: stats.total,
-      icon: <Bell size={14} className='text-[#AFC6FF]' />,
+      icon: <Bell size={14} className='text-blue-300' />,
     },
     {
       label: 'Pending',
@@ -88,28 +88,28 @@ export const AlertsHeader = memo(function AlertsHeader({
     {
       label: 'Verified',
       value: stats.verified,
-      icon: <ShieldCheck size={14} className='text-[#45F0CF]' />,
-      colorClass: 'text-[#45F0CF]',
+      icon: <ShieldCheck size={14} className='text-theme-accent' />,
+      colorClass: 'text-theme-accent',
     },
     {
       label: 'High Conf.',
       value: stats.highConfidence,
-      icon: <Target size={14} className='text-[#AFC6FF]' />,
+      icon: <Target size={14} className='text-blue-300' />,
     },
     {
       label: 'Today',
       value: stats.today,
-      icon: <TrendingUp size={14} className='text-[#AFC6FF]' />,
+      icon: <TrendingUp size={14} className='text-blue-300' />,
     },
   ];
 
   return (
     <div className='flex flex-col gap-3 flex-shrink-0'>
       {/* Stats Bar */}
-      <div className='relative flex items-center w-full h-16 bg-[#12151C] border border-[#1E2330] rounded-lg overflow-hidden'>
+      <div className='relative flex items-center w-full h-16 bg-card border border-border rounded-lg overflow-hidden'>
         <div className='absolute top-2 left-3 flex items-center gap-1.5'>
           <div className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
-          <span className={`text-[10px] font-semibold font-poppins uppercase tracking-tighter ${statusTextColor}`}>
+          <span className={`text-[10px] font-semibold font-ui uppercase tracking-tighter ${statusTextColor}`}>
             {statusLabel}
           </span>
         </div>
@@ -119,16 +119,16 @@ export const AlertsHeader = memo(function AlertsHeader({
             <div
               key={stat.label}
               className={`flex flex-col items-center justify-center flex-1 gap-0.5 ${
-                index !== statItems.length - 1 ? 'border-r border-zinc-800/40' : ''
+                index !== statItems.length - 1 ? 'border-r border-border/40' : ''
               }`}
             >
               <div className='mb-0.5'>{stat.icon}</div>
               <span
-                className={`text-sm font-semibold font-poppins leading-none text-white ${stat.colorClass ?? ''}`}
+                className={`text-sm font-semibold font-ui leading-none text-white ${stat.colorClass ?? ''}`}
               >
                 {stat.value}
               </span>
-              <span className='text-[10px] font-normal font-poppins text-[#8C90A0] uppercase tracking-wide'>
+              <span className='text-[10px] font-normal font-ui text-muted-foreground uppercase tracking-wide'>
                 {stat.label}
               </span>
             </div>
@@ -137,16 +137,16 @@ export const AlertsHeader = memo(function AlertsHeader({
       </div>
 
       {/* Toolbar */}
-      <div className='flex items-center justify-between px-3 py-2 bg-[#12151C] border border-[#1E2330] rounded-lg gap-3'>
+      <div className='flex items-center justify-between px-3 py-2 bg-card border border-border rounded-lg gap-3'>
         {/* Left: Title + Status */}
         <div className='flex items-center gap-2.5'>
-          <Bell size={14} className='text-[#AFC6FF]' />
-          <span className='text-xs font-bold font-poppins text-[#E2E2E8] hidden sm:inline'>
+          <Bell size={14} className='text-blue-300' />
+            <span className='text-xs font-bold font-ui text-foreground hidden sm:inline'>
             Alerts
           </span>
           <div className='flex items-center gap-1.5'>
             <div className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
-            <span className='text-[10px] font-semibold font-poppins uppercase tracking-tighter text-zinc-500'>
+            <span className='text-[10px] font-semibold font-ui uppercase tracking-tighter text-muted-foreground'>
               {statusLabel}
             </span>
           </div>
@@ -155,13 +155,13 @@ export const AlertsHeader = memo(function AlertsHeader({
         {/* Center: Search + Filters */}
         <div className='flex items-center gap-2'>
           <div className='relative'>
-            <Search size={11} className='absolute left-2 top-1/2 -translate-y-1/2 text-zinc-500' />
+            <Search size={11} className='absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground' />
             <input
               type='text'
               placeholder='Search class...'
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className='bg-zinc-900 border border-zinc-800 rounded-md pl-7 pr-2 py-1 text-xs font-poppins text-zinc-400 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 w-32'
+              className='bg-secondary border border-border rounded-md pl-7 pr-2 py-1 text-xs font-ui text-muted-foreground placeholder:text-muted-foreground focus:outline-none focus:border-zinc-600 w-32'
             />
           </div>
 
@@ -208,10 +208,10 @@ export const AlertsHeader = memo(function AlertsHeader({
         <div className='flex items-center gap-1.5'>
           <button
             onClick={onToggleSound}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-poppins font-semibold transition-colors ${
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-ui font-semibold transition-colors ${
               soundEnabled
-                ? 'bg-[#45F0CF]/10 text-[#45F0CF] border border-[#45F0CF]/20'
-                : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                ? 'bg-theme-accent/10 text-theme-accent border border-theme-accent/30'
+                : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
             }`}
             title={soundEnabled ? 'Mute alerts' : 'Enable alert sounds'}
           >

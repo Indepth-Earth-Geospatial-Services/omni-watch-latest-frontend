@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import KPIItem from '../layout/KpiItems';
+import { PlaneTakeoff, Box, Wifi } from 'lucide-react';
 import type { DJIDevice } from '@/lib/types';
 
 interface FleetOverviewKPIProps {
@@ -18,20 +18,57 @@ const FleetOverviewKPI = ({ devices, isLoading = false }: FleetOverviewKPIProps)
   const online = devices.filter((d) => d.status).length;
   const offline = total - online;
 
-  return (
-    <div className='w-[calc(100%-2rem)] bg-[#1A1C20] backdrop-blur-md border border-zinc-800/50 rounded-xl my-4 mx-4 h-[70px] flex items-center px-2 sm:px-6 overflow-hidden'>
-      <div className='flex flex-row items-center w-full justify-between'>
-        <KPIItem label='Devices' value={total} valueClass='text-[#1C93FF]' />
-        <KPIItem label='Drones' value={drones} />
-        <KPIItem label='Docks' value={docks} />
-        <KPIItem label='Online' value={online} valueClass='text-emerald-400' />
-        <KPIItem label='Offline' value={offline} valueClass='text-zinc-500' />
+  const stats = [
+    {
+      label: 'Devices',
+      value: total,
+      icon: <PlaneTakeoff size={16} className='text-theme-accent' />,
+    },
+    {
+      label: 'Drones',
+      value: drones,
+      icon: <PlaneTakeoff size={16} className='text-blue-300' />,
+    },
+    {
+      label: 'Docks',
+      value: docks,
+      icon: <Box size={16} className='text-cyan-400' />,
+    },
+    {
+      label: 'Online',
+      value: online,
+      icon: <Wifi size={16} className='text-emerald-400' />,
+      colorClass: 'text-emerald-400',
+    },
+    {
+      label: 'Offline',
+      value: offline,
+      icon: <Wifi size={16} className='text-zinc-500' />,
+      colorClass: 'text-zinc-500',
+    },
+  ];
 
-        {/* Live Badge - hidden on mobile, visible on desktop */}
-        <div className='hidden md:flex items-center gap-2 px-3 py-1.5 bg-red-600/10 border border-red-600/30 rounded-md w-fit md:ml-auto'>
-          <div className='w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.5)]' />
-          <span className='text-[10px] font-black text-red-600 tracking-widest uppercase'>Live</span>
-        </div>
+  return (
+    <div className='relative flex items-center w-full h-16 bg-card border border-border rounded-lg overflow-hidden'>
+      <div className='flex w-full h-full'>
+        {stats.map((stat, index) => (
+          <div
+            key={stat.label}
+            className={`flex flex-col items-center justify-center flex-1 gap-0.5 ${
+              index !== stats.length - 1 ? 'border-r border-zinc-800/40' : ''
+            }`}
+          >
+            <div className='mb-0.5'>{stat.icon}</div>
+            <span
+              className={`text-sm font-semibold font-ui leading-none text-white ${stat.colorClass ?? ''}`}
+            >
+              {stat.value}
+            </span>
+            <span className='text-[10px] font-normal font-ui text-muted-foreground uppercase tracking-wide'>
+              {stat.label}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

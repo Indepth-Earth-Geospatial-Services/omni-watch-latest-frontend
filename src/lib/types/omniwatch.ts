@@ -40,6 +40,30 @@ export interface CreateWorkspaceResponse {
   platform_name: string;
 }
 
+// ─── Device AI Configuration ─────────────────────────────────────────────────
+
+export interface DeviceConfig {
+  device_sn: string;
+  name: string;
+  targetClasses: string;
+  isActive: boolean;
+  ai_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIClass {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface StreamUrlResponse {
+  url: string;
+  sn: string;
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export interface ProjectDevice {
@@ -185,4 +209,38 @@ export interface UpdateOrgUserRequest {
   full_name?: string;
   pin?: string;
   is_active?: boolean;
+}
+
+// ─── DJI Workspace Users ─────────────────────────────────────────────────────
+
+// DJI workspace user — returned by GET /manage/api/v1/users/{wid}/users
+export interface DJIWorkspaceUser {
+  user_id: string;
+  username: string;
+  email: string;
+  user_type: string;         // "Web" or "Pilot"
+  workspace_id: string;
+  workspace_name: string;
+  mqtt_username: string;
+  mqtt_password: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  create_time: string;       // alternative timestamp field from API
+}
+
+// Request body for PUT /manage/api/v1/users/{wid}/users/{userId}
+export interface UpdateDJIWorkspaceUserRequest {
+  mqtt_username?: string;
+  mqtt_password?: string;
+}
+
+// Paginated response from DJI manage API
+export interface DJIWorkspaceUserListResponse {
+  list: DJIWorkspaceUser[];
+  pagination: {
+    total: number;
+    page: number;
+    page_size: number;
+  };
 }

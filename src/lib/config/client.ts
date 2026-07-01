@@ -99,6 +99,57 @@ async function request<T>(
   }
 }
 
+/**
+ * Core request function for FormData uploads — does NOT set Content-Type
+ * so axios can automatically set `multipart/form-data` with the correct boundary.
+ */
+async function requestForm<T>(
+  method: 'POST',
+  path: string,
+  formData: FormData,
+  retried = false
+): Promise<T> {
+  const token = getToken();
+  const directUrl = `${DJI_BASE_URL}/${path.replace(/^\//, '')}`;
+
+  try {
+    const res = await axios.request<DJIApiResponse<T>>({
+      method,
+      url: directUrl,
+      data: formData,
+      headers: {
+        ...(token ? { 'x-auth-token': token } : {}),
+      },
+    });
+
+    const envelope = res.data;
+
+    if (envelope.code !== 0 && !SOFT_SUCCESS_CODES.has(envelope.code)) {
+      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed', envelope.data);
+    }
+
+    return envelope.data as T;
+  } catch (err) {
+    if (err instanceof AxiosError && err.response?.status === 401 && !retried) {
+      try {
+        const { authApi } = await import('@/services/authservice-layer/auth-api');
+        await authApi.refreshToken();
+        return requestForm<T>(method, path, formData, true);
+      } catch {
+        throw new DJIApiError(401, 'Session expired. Please sign in again.');
+      }
+    }
+
+    if (err instanceof DJIApiError) throw err;
+
+    if (err instanceof AxiosError && err.response) {
+      throw new DJIApiError(err.response.status, err.message);
+    }
+
+    throw err;
+  }
+}
+
 /** Downloads a binary file (e.g. KMZ) from a DJI endpoint — bypasses the JSON envelope. */
 async function requestBinary(path: string): Promise<ArrayBuffer> {
   const token = getToken();
@@ -119,6 +170,9 @@ export const djiRequest = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
 
   delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
+
+  /** Posts FormData (multipart/form-data) — lets axios set the Content-Type boundary automatically. */
+  postForm: <T>(path: string, formData: FormData) => requestForm<T>('POST', path, formData),
 
   /** Fetches a binary resource (ArrayBuffer) — no DJI envelope unwrapping. */
   getBinary: (path: string) => requestBinary(path),

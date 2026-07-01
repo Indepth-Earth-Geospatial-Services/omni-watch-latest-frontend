@@ -56,7 +56,7 @@ export const VideoArea = memo(function VideoArea({
   const displayState = streamState?.state ?? (isActive ? 'connecting' : null);
 
   const containerCls = `relative bg-zinc-950 overflow-hidden ${
-    large ? 'h-full w-full rounded-xl border border-zinc-800' : 'aspect-video'
+    large ? 'h-full w-full rounded-xl border border-border' : 'aspect-video'
   }`;
 
   return (
@@ -74,8 +74,8 @@ export const VideoArea = memo(function VideoArea({
 
             {displayState === 'connecting' && (
               <div className='absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-zinc-950'>
-                <div className='w-6 h-6 rounded-full border-2 border-[#1C93FF] border-t-transparent animate-spin' />
-                <p className='text-[11px] font-medium text-zinc-500'>Connecting…</p>
+                <div className='w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin' />
+                <p className='text-[11px] font-medium text-muted-foreground'>Connecting…</p>
               </div>
             )}
 
@@ -87,7 +87,7 @@ export const VideoArea = memo(function VideoArea({
                 {onRetry && (
                   <button
                     onClick={onRetry}
-                    className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors'
+                    className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-secondary border border-border text-muted-foreground hover:border-zinc-500 hover:text-foreground transition-colors'
                   >
                     Retry
                   </button>
@@ -125,10 +125,10 @@ export const VideoArea = memo(function VideoArea({
           </>
         ) : device.status ? (
           <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4'>
-            <div className='w-9 h-9 rounded-xl bg-[#1C93FF]/10 border border-[#1C93FF]/20 flex items-center justify-center'>
-              <Activity size={large ? 20 : 15} className='text-[#1C93FF]/60' />
+            <div className='w-9 h-9 rounded-xl bg-theme-accent/10 border border-theme-accent/20 flex items-center justify-center'>
+              <Activity size={large ? 20 : 15} className='text-theme-accent/60' />
             </div>
-            <p className={`font-bold text-zinc-500 ${large ? 'text-sm' : 'text-[11px]'}`}>
+            <p className={`font-bold text-muted-foreground ${large ? 'text-sm' : 'text-[11px]'}`}>
               Stream Ready
             </p>
             {large && (

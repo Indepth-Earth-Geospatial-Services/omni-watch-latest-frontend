@@ -3,8 +3,10 @@
 import React, { useRef, useEffect } from 'react';
 import { AlertTriangle, ChevronDown, Crosshair, Navigation, RefreshCw } from 'lucide-react';
 import GimbalControls from './GimbalControls';
-import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
+import { ManualFlightControls } from './ManualFlightControls';
+import { WebRTCPlayer, type StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
+import type { DRCStatus } from '@/hooks/useDRC';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,8 @@ interface DroneFeedProps {
   // Stream state lifted to Control so it survives panel swaps
   mediaStream: MediaStream | null;
   streamConnectState: StreamState | null;
+  onStreamStateChange?: (state: StreamState) => void;
+  onMediaStreamChange?: (stream: MediaStream | null) => void;
   onReconnect: () => void;
   dockSn?: string;
   payloadIndex?: string;
@@ -31,8 +35,15 @@ interface DroneFeedProps {
   onQualityChange: (quality: number) => void;
   onStart: () => void;
   onStop: () => void;
+  latitude?: number;
+  longitude?: number;
   className?: string;
   isMini?: boolean;
+  // Manual flight — only rendered when not mini
+  isManualActive?: boolean;
+  drcStatus?: DRCStatus;
+  sendJoystick?: (x: number, y: number, h: number, w: number) => boolean;
+  onManualDeactivate?: () => void;
 }
 
 const QUALITY_LABELS: Record<string, string> = {
@@ -44,7 +55,7 @@ const QUALITY_LABELS: Record<string, string> = {
 };
 
 const selectCls =
-  'appearance-none w-full bg-[#16181D] border border-zinc-700/70 text-zinc-200 text-[11px] font-medium rounded-md pl-2.5 pr-7 py-1.5 cursor-pointer transition-colors hover:border-zinc-500 hover:bg-[#1E2127] focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed';
+  'bg-card border border-border text-foreground text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-40';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -62,6 +73,8 @@ const DroneFeed = ({
   activeStreamUrl,
   mediaStream,
   streamConnectState,
+  onStreamStateChange,
+  onMediaStreamChange,
   onReconnect,
   dockSn,
   payloadIndex,
@@ -70,10 +83,27 @@ const DroneFeed = ({
   onQualityChange,
   onStart,
   onStop,
+  latitude,
+  longitude,
   className,
   isMini = false,
+  isManualActive = false,
+  drcStatus = 'idle',
+  sendJoystick,
+  onManualDeactivate,
 }: DroneFeedProps) => {
   const heading = 247;
+
+  const fmtLat = (v?: number) => {
+    if (v == null || v === 0) return '—';
+    const dir = v >= 0 ? 'N' : 'S';
+    return `${Math.abs(v).toFixed(5)}° ${dir}`;
+  };
+  const fmtLng = (v?: number) => {
+    if (v == null || v === 0) return '—';
+    const dir = v >= 0 ? 'E' : 'W';
+    return `${Math.abs(v).toFixed(5)}° ${dir}`;
+  };
   const canStart = !!selectedVideoId && !isStreaming;
   const canStop = !!selectedVideoId && isStreaming;
 
@@ -92,7 +122,7 @@ const DroneFeed = ({
 
   return (
     <div
-      className={`relative bg-[#0C0E12] overflow-hidden flex flex-col ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
+      className={`relative bg-background overflow-hidden flex flex-col mb-2 ${isMini ? '' : 'w-full'}${className ? ` ${className}` : ''}`}
       style={
         isMini
           ? { width: '301px', height: '342px', borderRadius: '8px' }
@@ -103,7 +133,7 @@ const DroneFeed = ({
     >
       {/* ── Stream Control Bar ─────────────────────────────────────────────── */}
       {!isMini && (
-        <div className='flex items-center gap-2 py-2 flex-wrap'>
+        <div className='flex items-center gap-2 px-3 py-2 bg-card border-b border-border/50 flex-wrap'>
           {/* Device */}
           <div className='relative'>
             <select
@@ -134,11 +164,13 @@ const DroneFeed = ({
                 disabled={!selectedVideoId}
                 className={selectCls}
               >
-                {videoTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </option>
-                ))}
+                {videoTypes
+                  .filter((t) => t.toLowerCase() !== 'normal')
+                  .map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
               </select>
               <ChevronDown
                 size={11}
@@ -189,8 +221,19 @@ const DroneFeed = ({
       )}
 
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
-      <div className='relative w-full flex-1 overflow-hidden bg-black border rounded-t-md border-zinc-800/90'>
-        {/* Video element — srcObject set imperatively from lifted mediaStream prop */}
+      <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-background'>
+        {/* WebRTC player — headless, mounts only while a stream URL is active.
+            key={activeStreamUrl} forces a fresh WebRTC negotiation when URL changes. */}
+        {activeStreamUrl && (
+          <WebRTCPlayer
+            key={activeStreamUrl}
+            url={activeStreamUrl}
+            onStateChange={(state) => onStreamStateChange?.(state)}
+            onMediaStream={(stream) => onMediaStreamChange?.(stream)}
+          />
+        )}
+
+        {/* Video element — hidden until track arrives */}
         <video
           ref={videoRef}
           autoPlay
@@ -201,20 +244,22 @@ const DroneFeed = ({
 
         {/* Connecting spinner */}
         {activeStreamUrl && streamConnectState === 'connecting' && !mediaStream && (
-          <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050709]'>
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background'>
             <div className='w-7 h-7 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin' />
-            <span className='text-[11px] font-medium text-zinc-500 tracking-wide'>Connecting…</span>
+            <span className='text-[11px] font-medium text-muted-foreground tracking-wide'>
+              Connecting…
+            </span>
           </div>
         )}
 
         {/* Error state */}
         {streamConnectState === 'error' && (
-          <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#050709]'>
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background'>
             <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
             <button
               onClick={onReconnect}
-              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-zinc-300 border border-zinc-600 rounded hover:bg-zinc-700 transition-colors'
+              className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-muted-foreground border border-border rounded hover:bg-secondary/60 transition-colors'
             >
               <RefreshCw size={9} /> Reconnect
             </button>
@@ -223,7 +268,7 @@ const DroneFeed = ({
 
         {/* No-stream placeholder */}
         {!activeStreamUrl && (
-          <div className='absolute inset-0 bg-[#050709]'>
+          <div className='absolute inset-0 bg-background'>
             <div className='absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.012)_2px,rgba(255,255,255,0.012)_4px)] pointer-events-none' />
           </div>
         )}
@@ -240,10 +285,20 @@ const DroneFeed = ({
           </div>
         </div>
 
+        {/* Manual flight controls — full viewport only, positions itself absolutely */}
+        {!isMini && (
+          <ManualFlightControls
+            isActive={isManualActive}
+            drcStatus={drcStatus}
+            sendJoystick={sendJoystick ?? (() => false)}
+            onDeactivate={onManualDeactivate ?? (() => {})}
+          />
+        )}
+
         {/* Compass inset */}
         <div
           className={`absolute rounded-full border border-white/10 bg-black/20 backdrop-blur-xl shadow-2xl flex items-center justify-center overflow-hidden ${
-            isMini ? 'bottom-3 left-3 w-20 h-20' : 'bottom-6 left-6 w-40 h-40'
+            isMini ? 'bottom-3 left-3 w-16 h-16' : 'bottom-6 left-6 w-20 h-20'
           }`}
         >
           <div
@@ -272,10 +327,10 @@ const DroneFeed = ({
             <div className='flex flex-col items-center'>
               <Navigation
                 className='text-emerald-400 fill-emerald-400/20'
-                size={isMini ? 14 : 24}
+                size={isMini ? 14 : 18}
               />
               <div
-                className={`absolute font-mono font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
+                className={`absolute font-logs font-bold text-emerald-400 ${isMini ? '-top-4 text-[8px]' : '-top-6 text-[10px]'}`}
               >
                 {heading}°
               </div>
@@ -307,23 +362,30 @@ const DroneFeed = ({
           >
             <div className='flex items-center gap-2 mb-1'>
               <div
-                className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`}
+                className={`rounded-full ${isMini ? 'w-1.5 h-1.5' : 'w-2 h-2'} ${isStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-muted'}`}
               />
               <span
-                className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-zinc-500'}`}
+                className={`font-bold uppercase tracking-widest ${isMini ? 'text-[7px]' : 'text-[8px]'} ${isStreaming ? 'text-emerald-500' : 'text-muted-foreground'}`}
               >
                 {isStreaming ? 'Stream Active' : 'Stream Idle'}
               </span>
             </div>
+            {selectedSn && (
+              <span
+                className={`font-logs text-white/70 tracking-tighter ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              >
+                {selectedSn}
+              </span>
+            )}
             <span
-              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              className={`font-logs text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
-              Lat: 6.5244° N
+              Lat: {fmtLat(latitude)}
             </span>
             <span
-              className={`font-mono text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
+              className={`font-logs text-white/90 tracking-tighter leading-none ${isMini ? 'text-[8px]' : 'text-[10px]'}`}
             >
-              Lon: 3.3792° E
+              Lon: {fmtLng(longitude)}
             </span>
           </div>
         </div>

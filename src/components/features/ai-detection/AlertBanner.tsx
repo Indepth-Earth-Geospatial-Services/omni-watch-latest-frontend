@@ -64,10 +64,10 @@ export function AlertBanner({
             <div className="flex items-center gap-2.5 min-w-0">
               <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-semibold font-poppins text-red-200 capitalize">
+                <p className="text-xs font-semibold font-ui text-red-200 capitalize">
                   {d.type} detected
                 </p>
-                <p className="text-xs font-poppins text-red-300/70 truncate">
+                <p className="text-xs font-ui text-red-300/70 truncate">
                   {(d.confidence * 100).toFixed(1)}% confidence · Stream {d.streamId}
                 </p>
               </div>
@@ -77,7 +77,7 @@ export function AlertBanner({
               {onViewDetection && (
                 <button
                   onClick={() => handleView(d.id)}
-                  className="text-xs font-poppins px-2 py-1 rounded-md bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors border border-red-500/30"
+                  className="text-xs font-ui px-2 py-1 rounded-md bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors border border-red-500/30"
                 >
                   View
                 </button>

@@ -3,15 +3,15 @@
 export interface MediaFile {
   file_id: string;
   file_name: string;
-  file_size: number;             // bytes
-  fingerprint: string;           // MD5 hash — used for deduplication
-  drone_model_key: string;       // which drone captured this
-  payload_model_key: string;     // which camera/payload captured this
-  create_time: number;           // Unix timestamp ms (capture time)
-  object_key: string;            // path inside the object storage bucket
-  sub_file_type: number;         // 0 = original, 1 = thumbnail, etc.
+  file_path: string;              // group/path label
+  object_key: string;             // path inside the object storage bucket
   is_original: boolean;
-  extra: Record<string, unknown>; // GPS coordinates, altitude, and other metadata
+  drone: string;                  // drone serial number
+  payload: string;                // payload/camera name
+  tinny_fingerprint: string;      // short fingerprint
+  fingerprint: string;            // MD5 hash — used for deduplication
+  create_time: string;            // "YYYY-MM-DD HH:mm:ss" format
+  job_id: string;                 // associated flight job
 }
 
 // Sent before upload to check if a file with this fingerprint already exists
@@ -47,4 +47,14 @@ export interface UploadCallbackRequest {
   longitude: number;
   altitude: number;
   create_time: string; // ISO timestamp
+}
+
+// Paginated list of media files
+export interface MediaListResponse {
+  list: MediaFile[];
+  pagination: {
+    total: number;
+    page: number;
+    page_size: number;
+  };
 }

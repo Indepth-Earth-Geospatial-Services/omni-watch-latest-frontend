@@ -38,7 +38,7 @@ export default function EditMemberModal({ member, onClose, onSave, isSaving }: E
 
   return (
     <div className='fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center'>
-      <div className='bg-[#1A1C20] border border-zinc-800 rounded-xl w-full max-w-md mx-4 shadow-2xl shadow-black/60'>
+      <div className='bg-card border border-zinc-800 rounded-xl w-full max-w-md mx-4 shadow-2xl shadow-black/60'>
         <div className='flex items-center justify-between px-6 pt-6 pb-4'>
           <h3 className='text-lg font-semibold text-zinc-100'>Edit Member</h3>
           <button onClick={onClose} className='p-1 hover:bg-zinc-800 rounded transition-colors'>
@@ -65,7 +65,7 @@ export default function EditMemberModal({ member, onClose, onSave, isSaving }: E
               type='text'
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className='w-full px-3 py-2 bg-[#32353C] border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent'
+              className='w-full px-3 py-2 bg-input border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent'
               required
             />
           </div>
@@ -76,7 +76,7 @@ export default function EditMemberModal({ member, onClose, onSave, isSaving }: E
               type='checkbox'
               checked={resetPin}
               onChange={(e) => setResetPin(e.target.checked)}
-              className='w-4 h-4 rounded border-zinc-700 bg-[#32353C] accent-blue-500'
+              className='w-4 h-4 rounded border-zinc-700 bg-input accent-blue-500'
             />
             <label htmlFor='reset-pin' className='text-sm font-medium text-zinc-400'>
               Reset PIN
@@ -90,7 +90,7 @@ export default function EditMemberModal({ member, onClose, onSave, isSaving }: E
                 type='password'
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className='w-full px-3 py-2 bg-[#32353C] border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent'
+                className='w-full px-3 py-2 bg-input border border-zinc-700 rounded-md text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent'
                 minLength={4}
                 maxLength={20}
                 required={resetPin}
@@ -104,7 +104,7 @@ export default function EditMemberModal({ member, onClose, onSave, isSaving }: E
               type='checkbox'
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className='w-4 h-4 rounded border-zinc-700 bg-[#32353C] accent-blue-500'
+              className='w-4 h-4 rounded border-zinc-700 bg-input accent-blue-500'
             />
             <label htmlFor='is-active' className='text-sm font-medium text-zinc-400'>
               Active account
