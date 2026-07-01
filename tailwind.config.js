@@ -22,6 +22,11 @@ module.exports = {
         poppins: ['var(--font-poppins)', 'sans-serif'],
         mono: ['var(--font-jetbrains)', 'monospace'],
         inter: ['var(--font-inter)', 'sans-serif'],
+        // Landing page only — Satoshi (headings) / Geist (UI labels).
+        // Named `satoshi` rather than overriding the default `sans` key,
+        // since `font-sans` is already relied on elsewhere (e.g. Control.tsx).
+        satoshi: ['var(--font-satoshi)', 'sans-serif'],
+        geist: ['var(--font-geist)', 'sans-serif'],
         'share-tech': ['var(--font-share-tech)', 'monospace'],
         'roboto-flex': ['var(--font-roboto-flex)', 'sans-serif'],
         'space-grotesk': ['var(--font-space-grotesk)', 'sans-serif'],
@@ -69,6 +74,21 @@ module.exports = {
         'theme-accent': 'hsl(var(--theme-accent))',
         'theme-ai': 'hsl(var(--theme-ai))',
         'theme-alert': 'hsl(var(--theme-alert))',
+        // Landing page only — see the "Landing page only" block in globals.css.
+        bg: '#0a0a0a',
+        panel: '#0c0c0c',
+        blue: {
+          DEFAULT: '#3b82f6',
+          light: '#60a5fa',
+        },
+        't-primary': '#f5f5f5',
+        't-bright': '#ffffff',
+        't-muted': '#9a9a9a',
+        't-dim': '#707070',
+      },
+      maxWidth: {
+        // Landing page only — mirrors the `.wrap` container / `--maxw` var.
+        wrap: 'var(--maxw, 80vw)',
       },
       borderRadius: {
         lg: 'var(--radius)',
