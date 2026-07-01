@@ -4,7 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { AlertTriangle, ChevronDown, Crosshair, Navigation, RefreshCw } from 'lucide-react';
 import GimbalControls from './GimbalControls';
 import { ManualFlightControls } from './ManualFlightControls';
-import type { StreamState } from '@/components/features/streams/WebRTCPlayer';
+import { WebRTCPlayer, type StreamState } from '@/components/features/streams/WebRTCPlayer';
 import type { LiveCapacity } from '@/lib/types';
 import type { DRCStatus } from '@/hooks/useDRC';
 
@@ -25,6 +25,8 @@ interface DroneFeedProps {
   // Stream state lifted to Control so it survives panel swaps
   mediaStream: MediaStream | null;
   streamConnectState: StreamState | null;
+  onStreamStateChange?: (state: StreamState) => void;
+  onMediaStreamChange?: (stream: MediaStream | null) => void;
   onReconnect: () => void;
   dockSn?: string;
   payloadIndex?: string;
@@ -71,6 +73,8 @@ const DroneFeed = ({
   activeStreamUrl,
   mediaStream,
   streamConnectState,
+  onStreamStateChange,
+  onMediaStreamChange,
   onReconnect,
   dockSn,
   payloadIndex,
@@ -219,13 +223,13 @@ const DroneFeed = ({
       {/* ── Primary Feed Area ──────────────────────────────────────────────── */}
       <div className='relative w-full flex-1 rounded-t-lg overflow-hidden bg-background'>
         {/* WebRTC player — headless, mounts only while a stream URL is active.
-            key={reconnectKey} forces a fresh WebRTC negotiation on reconnect. */}
+            key={activeStreamUrl} forces a fresh WebRTC negotiation when URL changes. */}
         {activeStreamUrl && (
           <WebRTCPlayer
-            key={reconnectKey}
+            key={activeStreamUrl}
             url={activeStreamUrl}
-            onStateChange={(state) => setStreamConnectState(state)}
-            onMediaStream={setMediaStream}
+            onStateChange={(state) => onStreamStateChange?.(state)}
+            onMediaStream={(stream) => onMediaStreamChange?.(stream)}
           />
         )}
 
@@ -254,7 +258,7 @@ const DroneFeed = ({
             <AlertTriangle size={22} className='text-red-500' strokeWidth={1.5} />
             <span className='text-[11px] font-semibold text-red-400'>Stream connection lost</span>
             <button
-              onClick={handleReconnect}
+              onClick={onReconnect}
               className='flex items-center gap-1 px-2 py-1 text-[9px] font-bold text-muted-foreground border border-border rounded hover:bg-secondary/60 transition-colors'
             >
               <RefreshCw size={9} /> Reconnect

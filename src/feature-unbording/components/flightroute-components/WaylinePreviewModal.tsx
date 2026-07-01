@@ -141,7 +141,7 @@ export default function WaylinePreviewModal({ wayline, open, onClose }: WaylineP
     const map = e.target;
     if (!map.hasImage('hatch-pattern')) {
       const canvas = createHatchPattern();
-      map.addImage('hatch-pattern', canvas);
+      map.addImage('hatch-pattern', canvas as any);
     }
   }, []);
 

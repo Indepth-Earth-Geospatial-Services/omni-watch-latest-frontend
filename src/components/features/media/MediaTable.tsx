@@ -144,24 +144,48 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
           <thead>
             <tr className='border-b border-border/50'>
               <th className='px-4 py-3 w-8'></th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>File Name</th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Drone</th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Payload</th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Original</th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
-              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Action</th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                File Name
+              </th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                Drone
+              </th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                Payload
+              </th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                Original
+              </th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                Created
+              </th>
+              <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
               <tr key={i} className='border-b border-border/20'>
                 <td className='px-4 py-3'></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-32' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-20' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-16' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-8' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-24' /></td>
-                <td className='px-4 py-3'><div className='h-3 bg-secondary rounded animate-pulse w-8' /></td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-32' />
+                </td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-20' />
+                </td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-16' />
+                </td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-8' />
+                </td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-24' />
+                </td>
+                <td className='px-4 py-3'>
+                  <div className='h-3 bg-secondary rounded animate-pulse w-8' />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -205,16 +229,31 @@ export function MediaTable({ data, isLoading, workspaceId }: MediaTableProps) {
         <thead>
           <tr className='border-b border-border/50'>
             <th className='px-4 py-3 w-8'>
-              <button onClick={toggleSelectAll} className='text-muted-foreground hover:text-muted-foreground'>
+              <button
+                onClick={toggleSelectAll}
+                className='text-muted-foreground hover:text-muted-foreground'
+              >
                 {allSelected ? <CheckSquare size={12} /> : <Square size={12} />}
               </button>
             </th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>File Name</th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Drone</th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Payload</th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Original</th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Created</th>
-            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>Action</th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              File Name
+            </th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              Drone
+            </th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              Payload
+            </th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              Original
+            </th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              Created
+            </th>
+            <th className='px-4 py-3 text-[10px] font-ui font-medium text-muted-foreground uppercase'>
+              Action
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -374,10 +413,7 @@ function PreviewModal({
           <span className='text-xs font-ui text-muted-foreground truncate max-w-[300px]'>
             {file.file_name}
           </span>
-          <button
-            onClick={onClose}
-            className='p-1 rounded hover:bg-secondary transition-colors'
-          >
+          <button onClick={onClose} className='p-1 rounded hover:bg-secondary transition-colors'>
             <X className='w-4 h-4 text-muted-foreground' />
           </button>
         </div>

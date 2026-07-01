@@ -228,7 +228,9 @@ export default function ControlPage() {
 
   // Disconnect only when the dock changes or this component unmounts.
   useEffect(() => {
-    return () => { drcDeactivate(); };
+    return () => {
+      drcDeactivate();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dockSn]);
 
@@ -528,6 +530,8 @@ export default function ControlPage() {
                   activeStreamUrl={activeStreamUrl}
                   mediaStream={mediaStream}
                   streamConnectState={streamConnectState}
+                  onStreamStateChange={setStreamConnectState}
+                  onMediaStreamChange={setMediaStream}
                   onReconnect={handleReconnect}
                   dockSn={dockDevice?.deviceSn}
                   payloadIndex={selectedCameraId}
@@ -611,7 +615,6 @@ export default function ControlPage() {
                       dockOnline={dockOnline}
                     />
                   )}
-
                 </div>
 
                 {/* ── Side panels (right column) ── */}

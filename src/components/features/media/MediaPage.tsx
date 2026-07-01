@@ -76,7 +76,7 @@ export default function MediaPage() {
   if (!activeProject) {
     return (
       <EmptyPage
-        icon={<Image aria-hidden className='w-6 h-6 text-zinc-400' />}
+        icon={<Image aria-hidden className='w-6 h-6 text-zinc-400'/>}
         title='No Project Selected'
         body='Please select a project from the sidebar to access Media Files.'
         action={{
@@ -87,9 +87,7 @@ export default function MediaPage() {
     );
   }
 
-  const totalPages = filteredData
-    ? Math.ceil(filteredData.list.length / pageSize)
-    : 1;
+  const totalPages = filteredData ? Math.ceil(filteredData.list.length / pageSize) : 1;
 
   return (
     <MainLayout title='Media Files' subtitle='Review and download drone-captured media'>
@@ -102,7 +100,10 @@ export default function MediaPage() {
             <input
               type='date'
               value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
               className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
             />
           </div>
@@ -111,7 +112,10 @@ export default function MediaPage() {
             <input
               type='date'
               value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
               className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
             />
           </div>
@@ -120,12 +124,17 @@ export default function MediaPage() {
               <span className='text-[10px] font-medium text-zinc-500 uppercase'>Drone</span>
               <select
                 value={droneFilter}
-                onChange={(e) => { setDroneFilter(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setDroneFilter(e.target.value);
+                  setPage(1);
+                }}
                 className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
               >
                 <option value=''>All Drones</option>
                 {uniqueDrones.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </div>

@@ -141,7 +141,9 @@ export const DeviceSidebar = memo(function DeviceSidebar({
                         return (
                           <div className='flex items-center gap-1'>
                             {aiEnabled && (
-                              <Sparkles size={9} className='text-violet-400' title='AI enabled' />
+                              <div title='AI enabled'>
+                                <Sparkles size={9} className='text-violet-400' />
+                              </div>
                             )}
                             <Switch
                               checked={aiEnabled}

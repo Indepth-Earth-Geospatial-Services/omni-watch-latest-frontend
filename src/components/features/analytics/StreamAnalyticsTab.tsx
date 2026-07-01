@@ -58,7 +58,7 @@ export function StreamAnalyticsTab() {
       cameraData,
       activeStreams: activeAIStreams,
     };
-  }, [capacityMap, totalAIConfiguredDevices, activeAIStreams, aiEnabledDevices]);
+  }, [capacityMap, totalAIConfiguredDevices, activeAIStreams]);
 
   // Stream uptime from device login times (days since last login as proxy)
   const uptimeData = useMemo(() => {
@@ -93,7 +93,10 @@ export function StreamAnalyticsTab() {
         />
       </ChartCard>
 
-      <ChartCard title='Stream Quality Distribution' description='Video quality levels from stream capacity'>
+      <ChartCard
+        title='Stream Quality Distribution'
+        description='Video quality levels from stream capacity'
+      >
         <BarChart
           data={stats.qualityData}
           xKey='name'
