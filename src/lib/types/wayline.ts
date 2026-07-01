@@ -98,6 +98,7 @@ export interface WaylineJobItem {
   end_time: string;
   completed_time: string;
   status: number;
+  progress: number;      // 0-100 percent — task execution progress
   username: string;
   code: number;
   rth_altitude: number;
@@ -111,17 +112,17 @@ export interface WaylineJobListResponse {
 }
 
 // Flight task status — numeric union matching the DJI API wire format
-export type FlightTaskStatus = 0 | 1 | 2 | 3 | 4 | 5;
-// 0 = Pending, 1 = InProgress, 2 = Complete, 3 = Failed, 4 = Paused, 5 = Cancelled
+export type FlightTaskStatus = 1 | 2 | 3 | 4 | 5 | 6;
+// 1 = Pending, 2 = InProgress, 3 = Complete, 4 = Failed, 5 = Cancelled, 6 = Paused
 
 // Companion constants for display mapping (not enums — follows codebase convention)
 export const FlightTaskStatusMap: Record<FlightTaskStatus, string> = {
-  0: 'Pending',
-  1: 'In Progress',
-  2: 'Complete',
-  3: 'Failed',
-  4: 'Paused',
+  1: 'Pending',
+  2: 'In Progress',
+  3: 'Complete',
+  4: 'Failed',
   5: 'Cancelled',
+  6: 'Paused',
 };
 
 // Request body for POST /wayline/api/v1/workspaces/{wid}/flight-tasks

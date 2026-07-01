@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { EmptyPage } from '@/components/features/streams/EmptyPage';
 import { TaskTable } from './TaskTable';
@@ -11,6 +12,7 @@ import { CreatePlanForm } from './CreatePlanForm';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import {
   useFlightTasks,
+  flightTaskKeys,
   useCreateFlightTask,
   useDeleteFlightTask,
   useUpdateTaskStatus,
@@ -18,15 +20,17 @@ import {
 } from '@/hooks/useFlightTasks';
 import { useWaylines } from '@/hooks/useWaylines';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
+import { useDJIWebSocket, type TaskProgressData } from '@/hooks/useDJIWebSocket';
 import { useProject } from '@/providers/ProjectProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
-import type { WaylineJobItem, CreateFlightTask } from '@/lib/types';
+import type { WaylineJobItem, WaylineJobListResponse, CreateFlightTask } from '@/lib/types';
 
 export function TaskPage() {
   const { activeProject } = useProject();
   const { user } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const workspaceId = user?.workspace_id ?? DJI_CONFIG.WORKSPACE_ID;
 
   const [mode, setMode] = useState<'list' | 'create'>('list');
@@ -74,6 +78,50 @@ export function TaskPage() {
   const deleteMutation = useDeleteFlightTask();
   const updateStatusMutation = useUpdateTaskStatus();
   const uploadMutation = useUploadMediaNow();
+
+  // WebSocket — subscribe to task progress events for real-time updates
+  const { on } = useDJIWebSocket();
+  useEffect(() => {
+    const unsub = on('task_progress', (data: TaskProgressData) => {
+      const { job_id, status, progress } = data;
+      if (!job_id) return;
+
+      // Map WS status strings to numeric DJI API status codes
+      const wsStatusMap: Record<string, number> = {
+        sent: 2,           // In Progress
+        in_progress: 2,    // In Progress
+        ok: 3,             // Complete
+        failed: 4,         // Failed
+        canceled: 5,       // Cancelled
+        timeout: 4,        // Failed (timeout treated as failure)
+        rejected: 4,       // Failed
+        paused: 6,         // Paused
+      };
+
+      const numericStatus = wsStatusMap[status];
+      if (numericStatus === undefined) return;
+
+      // Optimistically update the task in the React Query cache
+      const queryKey = flightTaskKeys.list(workspaceId, { page, page_size: pageSize });
+      queryClient.setQueryData<WaylineJobListResponse>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          list: old.list.map((task) =>
+            task.job_id === job_id
+              ? { ...task, status: numericStatus, progress: progress ?? task.progress }
+              : task
+          ),
+        };
+      });
+
+      // On terminal states, refetch to ensure consistency
+      if ([3, 4, 5].includes(numericStatus)) {
+        queryClient.invalidateQueries({ queryKey: flightTaskKeys.all });
+      }
+    });
+    return unsub;
+  }, [on, workspaceId, page, pageSize, queryClient]);
 
   // Handlers
   function handleCreate(body: CreateFlightTask) {
