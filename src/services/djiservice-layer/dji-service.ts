@@ -17,6 +17,7 @@
 
 import { djiRequest } from '@/lib/config/client';
 import { DJI_URLS } from '@/lib/api';
+import { getToken } from '@/lib/config/token-store';
 import type {
   DJIDevice,
   DJIDeviceTopology,
@@ -319,9 +320,26 @@ export function getWaylineJobs(
   return djiRequest.get<WaylineJobListResponse>(DJI_URLS.waylines.jobs(workspaceId, params));
 }
 
-/** Downloads a wayline KMZ file as an ArrayBuffer. The endpoint streams binary directly. */
-export function downloadWaylineKmz(workspaceId: string, waylineId: string): Promise<ArrayBuffer> {
-  return djiRequest.getBinary(DJI_URLS.waylines.downloadUrl(workspaceId, waylineId));
+/**
+ * Downloads a wayline KMZ file as an ArrayBuffer via the /api/wayline/download proxy.
+ * The DJI endpoint redirects to a signed GCS URL with no CORS headers, so the browser
+ * can't fetch it directly (djiRequest.getBinary would follow the redirect client-side
+ * and get blocked by CORS) — the proxy follows the redirect server-side instead.
+ */
+export async function downloadWaylineKmz(workspaceId: string, waylineId: string): Promise<ArrayBuffer> {
+  const token = getToken() ?? '';
+  const params = new URLSearchParams({ workspaceId, waylineId });
+
+  const res = await fetch(`/api/wayline/download?${params}`, {
+    headers: { 'x-auth-token': token },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(body.error || `Download failed (${res.status})`);
+  }
+
+  return res.arrayBuffer();
 }
 
 // ─── Dock / Flight Control ────────────────────────────────────────────────────
