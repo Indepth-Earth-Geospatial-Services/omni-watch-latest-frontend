@@ -13,7 +13,9 @@ import {
   IBM_Plex_Mono,
   DM_Sans,
   Geist_Mono,
+  Geist,
 } from 'next/font/google';
+import localFont from 'next/font/local';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -81,8 +83,26 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
 });
 
+// Landing page only — headline font.
+const satoshi = localFont({
+  src: [
+    { path: '../fonts/Satoshi-Regular.woff2', weight: '400', style: 'normal' },
+    { path: '../fonts/Satoshi-Medium.woff2', weight: '500', style: 'normal' },
+    { path: '../fonts/Satoshi-Bold.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-satoshi',
+  display: 'swap',
+});
+
+// Landing page only — UI/label font.
+const geist = Geist({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-geist',
+});
+
 export const metadata: Metadata = {
-  title: 'OMNIWATCH OS',
+  title: 'LOCTIVA OS',
   description:
     'Intelligence, Surveillance, and Reconnaissance Command & Control Dashboard',
 };
@@ -93,7 +113,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='en' suppressHydrationWarning className={`${poppins.variable} ${jetbrainsMono.variable} ${inter.variable} ${shareTechMono.variable} ${robotoFlex.variable} ${spaceGrotesk.variable} ${spaceMono.variable} ${plusJakarta.variable} ${ibmPlexMono.variable} ${dmSans.variable} ${geistMono.variable}`} data-scroll-behavior='smooth'>
+    <html lang='en' suppressHydrationWarning className={`${poppins.variable} ${jetbrainsMono.variable} ${inter.variable} ${shareTechMono.variable} ${robotoFlex.variable} ${spaceGrotesk.variable} ${spaceMono.variable} ${plusJakarta.variable} ${ibmPlexMono.variable} ${dmSans.variable} ${geistMono.variable} ${satoshi.variable} ${geist.variable}`} data-scroll-behavior='smooth'>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>

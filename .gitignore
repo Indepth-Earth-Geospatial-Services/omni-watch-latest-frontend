@@ -1,12 +1,15 @@
 # Node.js dependencies
 node_modules/
-.next/
+.pnp
+.pnp.*
 
 # Build output
-dist/
-build/
-Cloud-API-Demo-Web/
 .agents/
+Cloud-API-Demo-Web/
+build/
+dist/
+out/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
@@ -20,38 +23,42 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env*.local
 
 # IDE files
 .idea/
 *.swp
+.vscode/
 .vscode/*.code-snippets
 
 # Backups
-backup_original
 *.bak
 *.tmp
+backup_original
 
 # Coverage
 coverage/
 
 # Next.js
+.next/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
 
-# claude
+# Claude
 .claude/
 
-# mcp
+# MCP
 .mcp.json
 .playwright-mcp/
 
 # Development Bypass Files
-src/components/dev/
 DEV_AUTO_LOGIN.md
-
-# vscode
-.vscode/
+src/components/dev/
 
 # Docs
+DJI_PROXY_REMOVAL_GUIDE.md
 reference-docs/
+
+# Misc
+*.pem

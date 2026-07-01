@@ -163,8 +163,11 @@ export function useDJIWebSocket() {
       const token = getToken();
       if (!token || cancelled) return;
 
-      const base = DJI_CONFIG.BASE_URL.replace(/^http/, 'ws');
-      const url = `${base}/api/v1/ws?x-auth-token=${token}`;
+      // DJI_CONFIG.WS_URL already resolves to wss:// on HTTPS deployments
+      // (see toWsUrl in config.ts) — building the scheme here manually
+      // previously always produced ws://, which browsers block as mixed
+      // content on an HTTPS page.
+      const url = `${DJI_CONFIG.WS_URL}?x-auth-token=${token}`;
 
       const ws = new WebSocket(url);
       wsRef.current = ws;
