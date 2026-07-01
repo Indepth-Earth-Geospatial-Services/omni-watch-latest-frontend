@@ -3,14 +3,20 @@
 import { useState } from 'react';
 import { Loader2, Settings2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { useDeviceConfigs, useUpdateDeviceConfig } from '@/hooks/useDeviceConfig';
+import { useDeviceConfigs, useUpdateDeviceConfig, useStartAI, useStopAI } from '@/hooks/useDeviceConfig';
+import { useActiveStreams } from '@/hooks/useLiveStreams';
 import AIDeviceConfigModal from './AIDeviceConfigModal';
 import type { DeviceConfig } from '@/lib/types';
 
 export default function AISettingsTab() {
   const { data: deviceConfigs = [], isLoading } = useDeviceConfigs();
   const { mutate: updateConfig, isPending } = useUpdateDeviceConfig();
+  const { mutate: startAI, isPending: startingAI } = useStartAI();
+  const { mutate: stopAI, isPending: stoppingAI } = useStopAI();
+  const { data: activeStreams = [] } = useActiveStreams();
   const [configTarget, setConfigTarget] = useState<DeviceConfig | null>(null);
+
+  const aiPending = isPending || startingAI || stoppingAI;
 
   const handleToggleAI = (device: DeviceConfig, enabled: boolean) => {
     let parsedClasses: string[] = [];
@@ -26,6 +32,15 @@ export default function AISettingsTab() {
       targetClasses: JSON.stringify(parsedClasses).replace(/"/g, "'"),
       ai_enabled: enabled,
     });
+
+    const activeStream = activeStreams.find((s) => s.sn === device.device_sn);
+    if (activeStream) {
+      if (enabled) {
+        startAI({ streamId: activeStream.url });
+      } else {
+        stopAI({ streamId: activeStream.url });
+      }
+    }
   };
 
   const parseClasses = (targetClasses: string): string[] => {
@@ -92,7 +107,7 @@ export default function AISettingsTab() {
                   <Switch
                     checked={device.ai_enabled}
                     onCheckedChange={(checked) => handleToggleAI(device, checked)}
-                    disabled={isPending}
+                    disabled={aiPending}
                   />
                 </div>
               </div>

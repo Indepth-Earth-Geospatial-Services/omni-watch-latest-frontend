@@ -103,6 +103,19 @@ export function TaskTable({
                 </td>
                 <td className='px-3 py-3'>
                   <TaskStatusBadge status={task.status} />
+                  {task.status === 2 && (
+                    <div className='mt-1.5 w-full'>
+                      <div className='h-1.5 bg-secondary rounded-full overflow-hidden'>
+                        <div
+                          className='h-full bg-blue-500 transition-all duration-500'
+                          style={{ width: `${task.progress ?? 0}%` }}
+                        />
+                      </div>
+                      <span className='text-[10px] text-muted-foreground mt-0.5'>
+                        {task.progress ?? 0}%
+                      </span>
+                    </div>
+                  )}
                 </td>
                 <td className='px-3 py-3 text-muted-foreground max-w-[160px] truncate' title={task.job_name}>
                   {task.job_name}
