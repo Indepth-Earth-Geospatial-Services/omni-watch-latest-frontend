@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlaneTakeoff } from 'lucide-react';
 
 import { MainLayout } from '@/components/layout/main-layout';
 import { useProject } from '@/providers/ProjectProvider';
 import { useDJIDevices } from '@/hooks/useDJIDevices';
-import { useDeviceConfigs, useUpdateDeviceConfig } from '@/hooks/useDeviceConfig';
+import { useActiveStreams } from '@/hooks/useLiveStreams';
+import { useDeviceConfigs, useUpdateDeviceConfig, useStartAI, useStopAI } from '@/hooks/useDeviceConfig';
 import { WebRTCPlayer } from '@/components/features/streams/WebRTCPlayer';
 import { DeviceSidebar } from '@/components/features/streams/DeviceSidebar';
 import { FeedToolbar } from '@/components/features/streams/FeedToolbar';
@@ -24,6 +25,10 @@ export default function LiveFeedPage() {
   });
   const { data: deviceConfigs = [] } = useDeviceConfigs();
   const { mutate: updateDeviceConfig } = useUpdateDeviceConfig();
+  const { mutate: startAI, isPending: startingAI } = useStartAI();
+  const { mutate: stopAI, isPending: stoppingAI } = useStopAI();
+
+  const aiPending = startingAI || stoppingAI;
 
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('multi');
   const [selectedSn, setSelectedSn] = useState<string | null>(null);
@@ -44,6 +49,24 @@ export default function LiveFeedPage() {
     () => djiDevices.filter((d) => projectSnSet.has(d.deviceSn)),
     [djiDevices, projectSnSet]
   );
+
+  // Auto-connect active streams on load — fetch workspace-active streams and
+  // populate streamingDevices for any project device that is already live.
+  const { data: activeStreams = [] } = useActiveStreams();
+  useEffect(() => {
+    if (activeStreams.length === 0 || projectSnSet.size === 0) return;
+    setStreamingDevices((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const { sn, url } of activeStreams) {
+        if (projectSnSet.has(sn) && !next.has(sn)) {
+          next.set(sn, url);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeStreams, projectSnSet]);
 
   const selectedDevice =
     projectDevices.find((d) => d.deviceSn === selectedSn) ?? projectDevices[0] ?? null;
@@ -104,8 +127,17 @@ export default function LiveFeedPage() {
         targetClasses: JSON.stringify(parsedClasses).replace(/"/g, "'"),
         ai_enabled: enabled,
       });
+
+      const streamUrl = streamingDevices.get(sn);
+      if (streamUrl) {
+        if (enabled) {
+          startAI({ streamId: streamUrl });
+        } else {
+          stopAI({ streamId: streamUrl });
+        }
+      }
     },
-    [deviceConfigs, updateDeviceConfig]
+    [deviceConfigs, updateDeviceConfig, streamingDevices, startAI, stopAI]
   );
 
   const stopAll = useCallback(() => {
@@ -182,6 +214,7 @@ export default function LiveFeedPage() {
               onClose={() => {}}
               deviceConfigs={deviceConfigs}
               onAIToggle={handleAIToggle}
+              aiPending={aiPending}
             />
           </div>
 

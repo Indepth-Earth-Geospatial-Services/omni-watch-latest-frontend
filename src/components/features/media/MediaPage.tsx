@@ -2,11 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Image, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Image, ChevronLeft, ChevronRight, Calendar, Plane } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { EmptyPage } from '@/components/features/streams/EmptyPage';
 import { MediaTable } from './MediaTable';
 import { useMediaFiles } from '@/hooks/useMedia';
+import { useFlightTasks } from '@/hooks/useFlightTasks';
 import { useProject } from '@/providers/ProjectProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { DJI_CONFIG } from '@/lib/config/config';
@@ -20,10 +21,14 @@ export default function MediaPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [droneFilter, setDroneFilter] = useState('');
+  const [taskFilter, setTaskFilter] = useState('');
   const pageSize = 20;
 
   const workspaceId = user?.workspace_id || DJI_CONFIG.WORKSPACE_ID;
   const { data, isLoading } = useMediaFiles(workspaceId, { page: 1, page_size: 500 });
+
+  // Fetch all flight tasks to build the job_id → job_name mapping
+  const { data: tasksData } = useFlightTasks(workspaceId, { page: 1, page_size: 500 });
 
   // Collect unique drone values for filter dropdown
   const uniqueDrones = useMemo(() => {
@@ -31,6 +36,25 @@ export default function MediaPage() {
     const drones = new Set(data.list.map((f: MediaFile) => f.drone).filter(Boolean));
     return Array.from(drones).sort();
   }, [data]);
+
+  // Map job_id → job_name for the dropdown
+  const taskMap = useMemo(() => {
+    if (!tasksData?.list) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const job of tasksData.list) {
+      map.set(job.job_id, job.job_name);
+    }
+    return map;
+  }, [tasksData]);
+
+  // Unique tasks that actually have media files (for the dropdown)
+  const tasksWithMedia = useMemo(() => {
+    if (!data) return [];
+    const jobIds = new Set(data.list.map((f: MediaFile) => f.job_id).filter(Boolean));
+    return Array.from(jobIds)
+      .map((id) => ({ id, name: taskMap.get(id) || id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data, taskMap]);
 
   // Client-side filtering
   const filteredData = useMemo(() => {
@@ -52,6 +76,11 @@ export default function MediaPage() {
       filtered = filtered.filter((f: MediaFile) => f.drone === droneFilter);
     }
 
+    // Flight task filter — match media job_id to selected task
+    if (taskFilter) {
+      filtered = filtered.filter((f: MediaFile) => f.job_id === taskFilter);
+    }
+
     return {
       ...data,
       list: filtered,
@@ -60,7 +89,7 @@ export default function MediaPage() {
         total: filtered.length,
       },
     };
-  }, [data, dateFrom, dateTo, droneFilter]);
+  }, [data, dateFrom, dateTo, droneFilter, taskFilter]);
 
   // Paginate filtered results
   const paginatedData = useMemo(() => {
@@ -139,12 +168,29 @@ export default function MediaPage() {
               </select>
             </div>
           )}
-          {(dateFrom || dateTo || droneFilter) && (
+          {tasksWithMedia.length > 0 && (
+            <div className='flex items-center gap-2'>
+              <Plane size={12} className='text-zinc-500' />
+              <span className='text-[10px] font-medium text-zinc-500 uppercase'>Flight Task</span>
+              <select
+                value={taskFilter}
+                onChange={(e) => { setTaskFilter(e.target.value); setPage(1); }}
+                className='text-xs font-ui text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-zinc-600'
+              >
+                <option value=''>All Tasks</option>
+                {tasksWithMedia.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {(dateFrom || dateTo || droneFilter || taskFilter) && (
             <button
               onClick={() => {
                 setDateFrom('');
                 setDateTo('');
                 setDroneFilter('');
+                setTaskFilter('');
                 setPage(1);
               }}
               className='text-[10px] font-ui text-zinc-500 hover:text-zinc-300 transition-colors'

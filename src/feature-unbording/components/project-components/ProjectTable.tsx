@@ -9,6 +9,8 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Download,
   Archive,
   FolderOpen,
@@ -23,6 +25,8 @@ import {
   Wifi,
   List,
   Route,
+  Calendar,
+  Search,
 } from 'lucide-react';
 
 import { ProjectTabType } from './ProjectTabs';
@@ -37,17 +41,20 @@ import type { Project } from '@/lib/types';
 
 const PAGE_SIZE = 5;
 
+type SortKey = 'devices' | 'flight_areas' | 'created_at';
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface ProjectTableProps {
   activeTab: ProjectTabType;
   searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onEditProject?: (project: Project) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTableProps) => {
+const ProjectTable = ({ activeTab, searchQuery = '', onSearchChange = () => {}, onEditProject }: ProjectTableProps) => {
   const router = useRouter();
   const { activeProject, setActiveProject, clearActiveProject } = useProject();
   const { data, isLoading, error } = useProjects();
@@ -66,11 +73,16 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Reset page on tab / search change
+  // Date & device filters
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [deviceFilter, setDeviceFilter] = useState('');
+
+  // Reset page on tab / search / filter change
   useEffect(() => {
     setPage(1);
     setSelected(new Set());
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, dateFrom, dateTo, deviceFilter]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -104,29 +116,71 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
 
   const allProjects = useMemo(() => data?.list ?? [], [data]);
 
-  // Tab filtering — 'Online' shows projects where at least one device is currently online
+  // Tab filtering
   const tabFiltered = useMemo(() => allProjects.filter((p) => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Active') return p.devices.length > 0;
-    if (activeTab === 'Offline') return p.devices.length === 0;
-    if (activeTab === 'Online') return p.devices.some((d) =>
-      djiDevices.find((dev) => dev.deviceSn === d.device.device_sn)?.status === true
-    );
+    if (activeTab === 'Archived') return p.devices.length === 0 && p.flight_areas.length === 0;
     return true;
-  }), [allProjects, activeTab, djiDevices]);
+  }), [allProjects, activeTab]);
 
-  // Search
+  // Unique device serial numbers across all projects (for the filter dropdown)
+  const uniqueDeviceSerials = useMemo(() => {
+    const serials = new Set<string>();
+    allProjects.forEach((p) => p.devices.forEach((d) => serials.add(d.device.device_sn)));
+    return Array.from(serials).sort();
+  }, [allProjects]);
+
+  // Search + date + device filters
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return tabFiltered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
-    );
-  }, [tabFiltered, searchQuery]);
+    return tabFiltered.filter((p) => {
+      // Search
+      if (!p.name.toLowerCase().includes(q) && !(p.description ?? '').toLowerCase().includes(q)) {
+        return false;
+      }
+      // Date from
+      if (dateFrom && p.created_at < dateFrom) return false;
+      // Date to (inclusive of end day)
+      if (dateTo && p.created_at > dateTo + ' 23:59:59') return false;
+      // Device filter
+      if (deviceFilter && !p.devices.some((d) => d.device.device_sn === deviceFilter)) return false;
+      return true;
+    });
+  }, [tabFiltered, searchQuery, dateFrom, dateTo, deviceFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
+
+  const toggleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        return prev.direction === 'asc' ? { key, direction: 'desc' } : null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortConfig) return filtered;
+    return [...filtered].sort((a, b) => {
+      let valA: number, valB: number;
+      if (sortConfig.key === 'devices') {
+        valA = a.devices.length;
+        valB = b.devices.length;
+      } else if (sortConfig.key === 'flight_areas') {
+        valA = a.flight_areas.length;
+        valB = b.flight_areas.length;
+      } else {
+        valA = new Date(a.created_at).getTime();
+        valB = new Date(b.created_at).getTime();
+      }
+      return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [filtered, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const allChecked = paginated.length > 0 && selected.size === paginated.length;
 
   const activeMenuProject = openMenuId
@@ -190,6 +244,118 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         </div>
       )}
 
+      {/* Search + Filter bar */}
+      <div className='flex items-center gap-2 px-3 py-2.5 bg-secondary/30 border border-border/40 rounded-xl flex-wrap'>
+        {/* Search */}
+        <div className='relative flex-1 min-w-[180px] max-w-[260px]'>
+          <div className='absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none'>
+            <Search size={12} className='text-muted-foreground' />
+          </div>
+          <input
+            type='text'
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder='Search projects...'
+            className='w-full text-xs font-ui text-muted-foreground bg-background border border-border rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-theme-accent/50 transition-colors'
+          />
+        </div>
+
+        {/* Divider */}
+        <div className='w-px h-5 bg-border/50' />
+
+        {/* Date range */}
+        <div className='flex items-center gap-1.5'>
+          <Calendar size={11} className='text-cyan-400' />
+          <input
+            type='date'
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className='text-[11px] font-ui text-muted-foreground bg-background border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-cyan-500/50 transition-colors'
+          />
+          <span className='text-[10px] text-muted-foreground'>–</span>
+          <input
+            type='date'
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className='text-[11px] font-ui text-muted-foreground bg-background border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-cyan-500/50 transition-colors'
+          />
+        </div>
+
+        {/* Divider */}
+        <div className='w-px h-5 bg-border/50' />
+
+        {/* Device filter */}
+        {uniqueDeviceSerials.length > 0 && (
+          <div className='flex items-center gap-1.5'>
+            <Box size={11} className='text-purple-400' />
+            <select
+              value={deviceFilter}
+              onChange={(e) => setDeviceFilter(e.target.value)}
+              className='text-[11px] font-ui text-muted-foreground bg-background border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors max-w-[160px] truncate'
+            >
+              <option value=''>All Devices</option>
+              {uniqueDeviceSerials.map((sn) => (
+                <option key={sn} value={sn}>{sn}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className='w-px h-5 bg-border/50' />
+
+        {/* Sort */}
+        <div className='flex items-center gap-1'>
+          {([
+            { label: 'Date', key: 'created_at' as SortKey, color: 'cyan' },
+            { label: 'Devices', key: 'devices' as SortKey, color: 'emerald' },
+            { label: 'Waylines', key: 'flight_areas' as SortKey, color: 'amber' },
+          ]).map((opt) => {
+            const isActive = sortConfig?.key === opt.key;
+            const dir = isActive ? sortConfig!.direction : null;
+            const colorClasses: Record<string, string> = {
+              cyan:   'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+              emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+              amber:  'text-amber-400 bg-amber-500/10 border-amber-500/30',
+            };
+            return (
+              <button
+                key={opt.key}
+                onClick={() => toggleSort(opt.key)}
+                className={`flex items-center gap-0.5 px-2 py-1 text-[10px] font-semibold rounded border transition-colors ${
+                  isActive
+                    ? colorClasses[opt.color]
+                    : 'text-muted-foreground border-border/50 hover:text-foreground hover:border-border'
+                }`}
+              >
+                {opt.label}
+                {isActive && (
+                  dir === 'asc'
+                    ? <ChevronUp size={9} />
+                    : <ChevronDown size={9} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Clear all */}
+        {(searchQuery || dateFrom || dateTo || deviceFilter || sortConfig) && (
+          <button
+            onClick={() => {
+              onSearchChange('');
+              setDateFrom('');
+              setDateTo('');
+              setDeviceFilter('');
+              setSortConfig(null);
+            }}
+            className='text-[10px] font-semibold text-muted-foreground hover:text-foreground underline transition-colors ml-1'
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {/* Desktop view */}
       <div className='hidden md:flex flex-col h-[743px] bg-background rounded-xl border border-border/50 overflow-hidden'>
         <div className='flex-1 overflow-y-auto overflow-x-auto'>
@@ -204,16 +370,39 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                     className='w-4 h-4 rounded border-border bg-secondary accent-theme-accent cursor-pointer'
                   />
                 </th>
-                {['Name', 'Description', 'Devices', 'Flight Areas', 'Created', 'Actions'].map(
-                  (col) => (
+                {[
+                  { label: 'Name', key: null },
+                  { label: 'Description', key: null },
+                  { label: 'Devices', key: 'devices' as SortKey },
+                  { label: 'Flight Areas', key: 'flight_areas' as SortKey },
+                  { label: 'Created', key: 'created_at' as SortKey },
+                  { label: 'Actions', key: null },
+                ].map((col) => {
+                  const sortColorMap: Record<string, string> = {
+                    devices: 'text-emerald-400',
+                    flight_areas: 'text-amber-400',
+                    created_at: 'text-cyan-400',
+                  };
+                  const isSorted = col.key && sortConfig?.key === col.key;
+                  return (
                     <th
-                      key={col}
-                      className='px-4 py-4 text-xs font-medium text-muted-foreground'
+                      key={col.label}
+                      className={`px-4 py-4 text-xs font-medium text-muted-foreground ${
+                        col.key ? 'cursor-pointer select-none hover:text-foreground transition-colors' : ''
+                      }`}
+                      onClick={col.key ? () => toggleSort(col.key!) : undefined}
                     >
-                      {col}
+                      <div className='flex items-center gap-1'>
+                        {col.label}
+                        {isSorted && (
+                          sortConfig!.direction === 'asc'
+                            ? <ChevronUp size={12} className={sortColorMap[col.key!]} />
+                            : <ChevronDown size={12} className={sortColorMap[col.key!]} />
+                        )}
+                      </div>
                     </th>
-                  )
-                )}
+                  );
+                })}
               </tr>
             </thead>
             <tbody className='divide-y divide-border/40'>
@@ -262,10 +451,10 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                     <div className='flex flex-col items-center gap-2'>
                       <FolderOpen className='w-8 h-8 text-muted-foreground mx-auto mb-2' />
                       <span className='text-sm text-muted-foreground'>
-                        {searchQuery
-                          ? 'No projects match your search.'
-                          : activeTab === 'Online'
-                            ? 'No projects with online drones.'
+                        {searchQuery || dateFrom || dateTo || deviceFilter
+                          ? 'No projects match your filters.'
+                          : activeTab === 'Archived'
+                            ? 'No archived projects.'
                             : 'No projects yet. Create one to get started.'}
                       </span>
                     </div>
@@ -284,7 +473,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                   return (
                     <tr
                       key={project.id}
-                      className={`border-l-2 ${borderColor} transition-colors hover:bg-secondary/50
+                      className={`group border-l-2 ${borderColor} transition-colors hover:bg-secondary/50
                         ${isActiveProject ? 'bg-theme-accent/[0.04]' : ''}
                         ${isChecked ? 'bg-theme-accent/5' : ''}
                         ${isBeingDeleted ? 'opacity-40 pointer-events-none' : ''}`}
@@ -315,10 +504,10 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                             <button
                               onClick={() => handleOpenProject(project)}
                               disabled={navigatingId === project.id}
-                              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded transition-colors disabled:opacity-70 ${
+                              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded transition-all duration-200 disabled:opacity-70 ${
                                 isActiveProject
                                   ? 'text-theme-accent bg-theme-accent/10 border border-theme-accent/30 hover:bg-theme-accent/20'
-                                  : 'text-white bg-theme-accent hover:bg-theme-accent/80'
+                                  : 'text-muted-foreground border border-border opacity-0 group-hover:opacity-100 hover:text-foreground hover:border-border'
                               }`}
                             >
                               {navigatingId === project.id ? (
@@ -413,7 +602,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
         <div className='flex-shrink-0 flex items-center justify-between px-6 py-3.5 border-t border-border/50 bg-card'>
           <span className='text-[11px] text-muted-foreground'>
             Showing <span className='text-muted-foreground font-semibold'>{paginated.length}</span> of{' '}
-            <span className='text-muted-foreground font-semibold'>{filtered.length}</span> projects
+            <span className='text-muted-foreground font-semibold'>{sorted.length}</span> projects
           </span>
           <div className='flex items-center gap-1'>
             <button
@@ -482,10 +671,10 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
           <div className='bg-secondary rounded-lg border border-border/50 p-8 text-center'>
             <FolderOpen className='w-8 h-8 text-muted-foreground mx-auto mb-2' />
             <p className='text-sm text-muted-foreground'>
-              {searchQuery
-                ? 'No projects match your search.'
-                : activeTab === 'Online'
-                  ? 'No projects with online drones.'
+              {searchQuery || dateFrom || dateTo || deviceFilter
+                ? 'No projects match your filters.'
+                : activeTab === 'Archived'
+                  ? 'No archived projects.'
                   : 'No projects yet. Create one to get started.'}
             </p>
           </div>
@@ -552,7 +741,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
                       className={`flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold rounded transition-colors disabled:opacity-70 ${
                         isActiveProject
                           ? 'text-theme-accent bg-theme-accent/10 border border-theme-accent/30 hover:bg-theme-accent/20'
-                          : 'text-white bg-theme-accent hover:bg-theme-accent/80'
+                          : 'text-muted-foreground border border-border hover:text-foreground hover:border-border'
                       }`}
                     >
                       {navigatingId === project.id ? (
@@ -620,7 +809,7 @@ const ProjectTable = ({ activeTab, searchQuery = '', onEditProject }: ProjectTab
             <div className='flex items-center justify-between px-4 py-3 border border-border/50 bg-card rounded-lg mt-1'>
               <span className='text-[10px] text-muted-foreground'>
                 Showing <span className='text-foreground font-semibold'>{paginated.length}</span> of{' '}
-                <span className='text-foreground font-semibold'>{filtered.length}</span>
+                <span className='text-foreground font-semibold'>{sorted.length}</span>
               </span>
               <div className='flex items-center gap-1'>
                 <button

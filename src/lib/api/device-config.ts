@@ -94,3 +94,11 @@ export async function fetchAIClasses(): Promise<AIClass[]> {
 export async function fetchStreamUrl(deviceSn: string): Promise<StreamUrlResponse> {
   return request<StreamUrlResponse>('GET', `/api/stream-url?sn=${deviceSn}`);
 }
+
+export async function startAIPipeline(streamId: string): Promise<void> {
+  return request<void>('POST', `/api/ai-detection/streams/start-ai`, { streamId });
+}
+
+export async function stopAIPipeline(streamId: string): Promise<void> {
+  return request<void>('POST', `/api/ai-detection/streams/stop-ai`, { streamId });
+}

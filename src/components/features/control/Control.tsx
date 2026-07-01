@@ -16,6 +16,7 @@ import FlightControlActions from '@/components/features/control/FlightControlAct
 import SystemStatusFooter from '@/components/features/control/SystemStatusFooter';
 import { ControlErrorBoundary } from '@/components/features/control/ControlErrorBoundary';
 import {
+  useActiveStreams,
   useLiveCapacity,
   useStartStream,
   useStopStream,
@@ -66,6 +67,7 @@ export default function ControlPage() {
   const { mutate: stopStream, isPending: isStopping } = useStopStream();
   const { mutate: updateQuality } = useUpdateStreamQuality();
   const { mutate: switchCamera } = useSwitchStreamCamera();
+  const { data: activeStreams = [] } = useActiveStreams();
 
   // ─── Device data ───────────────────────────────────────────────────────────
   const { data: deviceList = [], error: devicesError } = useDJIDevices();
@@ -462,6 +464,28 @@ export default function ControlPage() {
       handleVideoChange(videos[0].index);
     }
   }, [videos, selectedVideoId, handleVideoChange]);
+
+  // ─── Auto-connect active stream ──────────────────────────────────────────
+  // If the selected device already has an active stream in the workspace,
+  // connect to its WHEP URL instead of waiting for the user to click Start.
+  useEffect(() => {
+    if (!selectedSn || isStreaming || activeStreams.length === 0) return;
+    const match = activeStreams.find((s) => s.sn === selectedSn);
+    if (match?.url) {
+      console.log(`[Control:AutoConnect] active stream for ${selectedSn} → ${match.url}`);
+      setIsStreaming(true);
+      setActiveStreamUrl(match.url);
+      // Derive video_id from capacity if available, otherwise use sn as fallback
+      const cap = capacityMap?.get(selectedSn);
+      const cam = cap?.cameras_list?.[0];
+      const vid = cam?.videos_list?.[0];
+      if (cam && vid) {
+        setActiveStreamVideoId(`${selectedSn}/${cam.index}/${vid.index}`);
+      } else {
+        setActiveStreamVideoId(selectedSn);
+      }
+    }
+  }, [selectedSn, isStreaming, activeStreams, capacityMap]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (

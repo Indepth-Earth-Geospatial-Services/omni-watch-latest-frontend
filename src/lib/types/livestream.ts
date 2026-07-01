@@ -45,3 +45,8 @@ export interface LiveStreamRequest {
 export interface StartStreamResponse {
   url: string;
 }
+
+export interface ActiveStream {
+  url: string;
+  sn: string;
+}
