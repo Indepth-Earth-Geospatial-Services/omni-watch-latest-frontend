@@ -1,5 +1,11 @@
 // Typed HTTP client for all DJI Cloud API calls.
-// Requests go directly from the browser to the DJI server (CORS is open on that server).
+//
+// HTTPS deployments (Vercel) use /api/dji proxy to avoid Mixed Content errors.
+// Localhost development uses direct backend connection (CORS is open).
+//
+// To disable the proxy when backend implements HTTPS:
+//   1. Set NEXT_PUBLIC_USE_DJI_PROXY=false in .env
+//   2. Delete src/app/api/dji/[...path]/route.ts
 //
 // Usage:
 //   import { djiRequest } from '@/lib/config/client';
@@ -28,7 +34,13 @@ export class DJIApiError extends Error {
   }
 }
 
-const DJI_BASE_URL = process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '';
+// Detect if we should use the proxy (on HTTPS, unless explicitly disabled)
+const isSecureDeployment = typeof window !== 'undefined' && window.location.protocol === 'https:';
+const useProxy = process.env.NEXT_PUBLIC_USE_DJI_PROXY !== 'false';
+const DJI_BASE_URL =
+  isSecureDeployment && useProxy
+    ? '/api/dji'
+    : (process.env.NEXT_PUBLIC_DJI_API_URL?.replace(/\/$/, '') ?? '');
 
 // DJI "soft-success" codes — the request succeeded and data is usable, but code !== 0.
 // 513003: "stream already started" — the response still carries a valid WHEP URL in data.url.
@@ -71,7 +83,11 @@ async function request<T>(
     // DJI signals errors via code !== 0 even on HTTP 200.
     // Some codes are "soft-success" — the operation completed and data is valid.
     if (envelope.code !== 0 && !SOFT_SUCCESS_CODES.has(envelope.code)) {
-      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed', envelope.data);
+      throw new DJIApiError(
+        envelope.code ?? -1,
+        envelope.message ?? 'Request failed',
+        envelope.data
+      );
     }
 
     return envelope.data as T;
@@ -125,7 +141,11 @@ async function requestForm<T>(
     const envelope = res.data;
 
     if (envelope.code !== 0 && !SOFT_SUCCESS_CODES.has(envelope.code)) {
-      throw new DJIApiError(envelope.code ?? -1, envelope.message ?? 'Request failed', envelope.data);
+      throw new DJIApiError(
+        envelope.code ?? -1,
+        envelope.message ?? 'Request failed',
+        envelope.data
+      );
     }
 
     return envelope.data as T;
